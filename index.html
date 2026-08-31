@@ -144,12 +144,26 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .bubble strong { font-weight: 600; }
 
 .opening { max-width: 52ch; }
-.opening h2 {
-  font-size: 26px;
+.opening-label {
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.2;
-  margin: 0 0 10px;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  margin: 0 0 12px;
+}
+.opening h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+.opening .tagline {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 14px;
 }
 .opening p { margin: 0 0 8px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
 
@@ -414,16 +428,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
       <span class="meter-read" id="meterRead">0.00</span>
       <span class="meter-label">
         <span class="meter-unit">g CO₂e</span>
-        <span class="meter-hint">see the working</span>
+        <span class="meter-hint">This Chat's CO₂</span>
       </span>
     </button>
   </header>
 
   <main class="transcript" id="transcript">
     <div class="opening" id="opening">
-      <h2>What do you want to know?</h2>
-      <p>Ask about diet, travel, home energy — anything. You'll get specific answers with real numbers, not vague encouragement.</p>
-      <p>This conversation costs energy too. The counter above tracks it live. Tap it to see how it's worked out.</p>
+      <p class="opening-label">Ask Susty</p>
+      <h2>Got questions on what's more sustainable?</h2>
+      <p class="tagline">Susty is here with tiny ways to make the world a little less bad.</p>
+      <p>Ask about diet, travel, home energy — anything. You'll get specific answers with our best attempts at real numbers, not vague encouragement.</p>
+      <p>And of course this conversation costs energy too. The counter up top tracks it live. Tap it to see how it's worked out so far.</p>
     </div>
   </main>
 
