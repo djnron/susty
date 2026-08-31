@@ -1,0 +1,13 @@
+{
+  "name": "tare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A sustainability chatbot that meters the carbon cost of its own conversation.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
