@@ -1,7 +1,7 @@
-// Feedback storage — writes to Vercel KV (Upstash Redis).
-// Set up: Vercel dashboard → Storage → Create → KV Database → Connect to project.
-// That auto-sets KV_REST_API_URL and KV_REST_API_TOKEN as env vars.
-// Without those vars, feedback is logged to console only (no crash).
+// Feedback storage — writes each entry as a JSON file to Vercel Blob.
+// Set up: Vercel dashboard → Storage → Create → Blob Store → Connect to project.
+// That auto-sets BLOB_READ_WRITE_TOKEN as an env var.
+// Without it, feedback is logged to console only (no crash).
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,38 +13,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Feedback text is required.' });
   }
 
-  const entry = JSON.stringify({
+  const entry = {
     text: text.slice(0, 2000),
     grams: typeof grams === 'number' ? +grams.toFixed(4) : null,
     ts: new Date().toISOString(),
-    ip: ((req.headers['x-forwarded-for'] || '').split(',')[0] || '').trim() || 'unknown',
-  });
+  };
 
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
 
-  if (!url || !token) {
-    console.log('[susty feedback — no KV configured]', entry);
+  if (!token) {
+    console.log('[susty feedback — no Blob token configured]', JSON.stringify(entry));
     return res.status(200).json({ ok: true, stored: false });
   }
 
+  const filename = `feedback/${entry.ts.replace(/[:.]/g, '-')}.json`;
+
   try {
-    const r = await fetch(url, {
-      method: 'POST',
+    const r = await fetch(`https://blob.vercel-storage.com/${filename}`, {
+      method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
+        'x-api-version': '7',
         'content-type': 'application/json',
       },
-      body: JSON.stringify(['LPUSH', 'susty:feedback', entry]),
+      body: JSON.stringify(entry),
     });
+
     if (!r.ok) {
       const err = await r.text();
-      console.error('KV write failed', r.status, err);
+      console.error('Blob write failed', r.status, err);
       return res.status(500).json({ error: 'Could not save feedback.' });
     }
+
     return res.status(200).json({ ok: true, stored: true });
   } catch (err) {
-    console.error('KV error:', err);
+    console.error('Blob error:', err);
     return res.status(500).json({ error: 'Could not save feedback.' });
   }
 }
