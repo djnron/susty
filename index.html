@@ -350,6 +350,52 @@ button, input, textarea, select { font: inherit; color: inherit; }
 }
 .act:hover { background: var(--accent-dark); }
 
+.sources { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.sources li { padding: 6px 0; border-bottom: 1px dotted var(--rule); line-height: 1.5; }
+.sources li:last-child { border-bottom: none; }
+.sources a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 2px; }
+.sources span { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+
+.composer-meta { display: flex; justify-content: flex-end; padding-top: 8px; }
+.feedback-link { background: none; border: none; padding: 0; font-size: 12px; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.feedback-link:hover { color: var(--ink); }
+
+.feedback-drawer {
+  position: fixed;
+  left: 50%; bottom: 0;
+  width: min(780px, 100%);
+  transform: translateX(-50%) translateY(101%);
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  border-radius: 16px 16px 0 0;
+  z-index: 30;
+  transition: transform .3s cubic-bezier(.4,.14,.3,1);
+  padding: 20px var(--pad) 32px;
+}
+.feedback-drawer.open { transform: translateX(-50%) translateY(0); }
+.feedback-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.feedback-top h3 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.feedback-body { display: flex; flex-direction: column; gap: 10px; }
+.feedback-body textarea {
+  width: 100%; min-height: 90px; max-height: 180px; resize: vertical;
+  border: 1.5px solid var(--rule); border-radius: 10px;
+  background: var(--bg); padding: 10px 14px;
+  font-size: 15px; line-height: 1.5; transition: border-color .15s;
+}
+.feedback-body textarea:focus { border-color: var(--accent); outline: none; }
+.feedback-body textarea::placeholder { color: #A1A1AA; }
+.feedback-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.feedback-status { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
+.feedback-status.ok { color: var(--accent-dark); }
+.feedback-status.err { color: var(--meter); }
+.feedback-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; color: var(--ink-soft); transition: border-color .15s; }
+.feedback-cancel:hover { border-color: var(--ink); color: var(--ink); }
+.feedback-submit { background: var(--accent); border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; transition: background .15s; }
+.feedback-submit:hover { background: var(--accent-dark); }
+.feedback-submit:disabled { opacity: .4; cursor: default; }
+
 @media (max-width: 600px) {
   .masthead { flex-wrap: wrap; }
   .turn.user { max-width: 100%; }
@@ -387,6 +433,9 @@ button, input, textarea, select { font: inherit; color: inherit; }
       <textarea id="input" rows="1" placeholder="Is flying once a year a big deal?" aria-label="Your question"></textarea>
       <button class="send" id="send">Ask</button>
     </div>
+    <div class="composer-meta">
+      <button class="feedback-link" id="feedbackBtn">Share feedback</button>
+    </div>
   </div>
 </div>
 
@@ -412,6 +461,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
         <tr class="muted"><td>Chip energy, written @ 0.5 mWh/token</td><td id="rEOut">0 Wh</td></tr>
         <tr class="muted"><td>Cooling &amp; overhead ×1.12</td><td id="rPue">0 Wh</td></tr>
         <tr class="muted"><td>Hardware manufacture +15%</td><td id="rEmb">0 Wh</td></tr>
+        <tr class="muted"><td>Vercel hosting &amp; network per exchange</td><td id="rHosting">0 Wh</td></tr>
         <tr><td>Electricity drawn</td><td id="rWh">0 Wh</td></tr>
         <tr><td>Grid intensity</td><td id="rGrid">480 g/kWh</td></tr>
         <tr class="total"><td>Total</td><td id="rTotal">0.00 g CO₂e</td></tr>
@@ -442,7 +492,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
     <h3>What to do about it</h3>
     <div class="offset">
       <p class="lead" id="offsetLead">Offsetting this costs about a hundredth of a penny.</p>
-      <p>At roughly £90 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
+      <p>At roughly $100 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
       <ol>
         <li><strong>Wash at 30°C</strong> — around 200 g saved per load.</li>
         <li><strong>Thermostat down 1°C</strong> — roughly 300 kg a year in a typical heated home.</li>
@@ -451,7 +501,48 @@ button, input, textarea, select { font: inherit; color: inherit; }
       <button class="act" id="planBtn">Get a plan that covers this many times over</button>
     </div>
   </div>
+
+  <div class="sect">
+    <h3>Methodology</h3>
+    <ul class="sources">
+      <li>
+        <a href="https://arxiv.org/abs/2311.16433" target="_blank" rel="noopener">Energy per token (0.05 / 0.5 mWh)</a>
+        <span>Luccioni et al. 2023 — Power Hungry Processing: Watts Driving the Cost of AI Deployment</span>
+      </li>
+      <li>
+        <a href="https://uptimeinstitute.com/2023-data-center-industry-survey-results" target="_blank" rel="noopener">Data centre overhead PUE ×1.12</a>
+        <span>Uptime Institute 2023 Global Data Center Survey — global average power usage effectiveness</span>
+      </li>
+      <li>
+        <a href="https://arxiv.org/abs/2104.10350" target="_blank" rel="noopener">Embodied hardware carbon +15%</a>
+        <span>Patterson et al. 2021 — Carbon Considerations for Large Language Model Development</span>
+      </li>
+      <li>
+        <a href="https://www.iea.org/reports/co2-emissions-in-2023" target="_blank" rel="noopener">Grid carbon intensities</a>
+        <span>IEA CO₂ Emissions in 2023 — regional average grid intensity figures used in the dropdown</span>
+      </li>
+      <li>
+        <a href="https://frontierclimate.com/writing/2024-state-of-cdr" target="_blank" rel="noopener">Carbon removal cost ~$100/tonne</a>
+        <span>Frontier 2024 State of Carbon Dioxide Removal — durable CDR market pricing</span>
+      </li>
+    </ul>
+  </div>
 </aside>
+
+<div class="feedback-drawer" id="feedbackDrawer" role="dialog" aria-modal="true" aria-label="Feedback" tabindex="-1">
+  <div class="feedback-top">
+    <h3>Share feedback</h3>
+    <button class="shut" id="feedbackClose" aria-label="Close">✕</button>
+  </div>
+  <div class="feedback-body">
+    <textarea id="feedbackText" placeholder="What's working? What should change?"></textarea>
+    <div class="feedback-actions">
+      <span class="feedback-status" id="feedbackStatus"></span>
+      <button class="feedback-cancel" id="feedbackCancelBtn">Cancel</button>
+      <button class="feedback-submit" id="feedbackSubmitBtn">Send feedback</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const MODEL = {
@@ -459,6 +550,7 @@ const MODEL = {
   whPerOutputToken: 0.0005,
   pue             : 1.12,
   embodied        : 0.15,
+  whPerExchange   : 0.003,   // Vercel function + network per round trip
   gridGPerKwh     : 480
 };
 
@@ -470,8 +562,10 @@ const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
 const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
 function energyWh() {
-  const raw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
-  return raw * MODEL.pue * (1 + MODEL.embodied);
+  const gpuRaw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
+  const gpu = gpuRaw * MODEL.pue * (1 + MODEL.embodied);
+  const hosting = state.turns * MODEL.whPerExchange;
+  return gpu + hosting;
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
@@ -502,11 +596,15 @@ function paintLedger() {
   $('rTurns').textContent = state.turns;
   $('rIn').textContent    = state.inTokens.toLocaleString();
   $('rOut').textContent   = state.outTokens.toLocaleString();
-  $('rEIn').textContent   = fmt(eIn, 3) + ' Wh';
-  $('rEOut').textContent  = fmt(eOut, 3) + ' Wh';
-  $('rPue').textContent   = fmt(pued, 3) + ' Wh';
-  $('rEmb').textContent   = fmt(wh, 3) + ' Wh';
-  $('rWh').textContent    = fmt(wh, 3) + ' Wh';
+  const hosting = state.turns * MODEL.whPerExchange;
+  const totalWh = wh + hosting;
+
+  $('rEIn').textContent      = fmt(eIn, 3) + ' Wh';
+  $('rEOut').textContent     = fmt(eOut, 3) + ' Wh';
+  $('rPue').textContent      = fmt(pued, 3) + ' Wh';
+  $('rEmb').textContent      = fmt(wh, 3) + ' Wh';
+  $('rHosting').textContent  = fmt(hosting, 3) + ' Wh';
+  $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
@@ -525,9 +623,9 @@ function paintLedger() {
     return '<li><span>' + label + '</span><b>' + v + '</b></li>';
   }).join('');
 
-  const pence = g / 1e6 * 90 * 100;
+  const dollars = g / 1e6 * 100;
   $('offsetLead').textContent = 'Offsetting this costs about ' +
-    (pence < 0.01 ? 'a hundredth of a penny' : pence.toFixed(2) + 'p') + '.';
+    (dollars < 0.0001 ? 'under a hundredth of a cent' : '$' + dollars.toFixed(4)) + '.';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
@@ -535,7 +633,7 @@ function openLedger()  { paintLedger(); scrim.classList.add('open');    ledger.c
 function closeLedger() {               scrim.classList.remove('open'); ledger.classList.remove('open'); meter.focus(); }
 meter.addEventListener('click', openLedger);
 $('shut').addEventListener('click', closeLedger);
-scrim.addEventListener('click', closeLedger);
+scrim.addEventListener('click', () => { closeLedger(); closeFeedback(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ledger.classList.contains('open')) closeLedger(); });
 $('grid').addEventListener('change', e => { MODEL.gridGPerKwh = +e.target.value; paintLedger(); paintMeter(); });
 
@@ -656,6 +754,43 @@ $('planBtn').addEventListener('click', () => {
   closeLedger();
   send('This chat has cost about ' + grams().toFixed(2) +
        ' g CO2e. Give me three things I could do this week that each save at least a thousand times that, ranked by how little effort they take.');
+});
+
+const feedbackDrawer = $('feedbackDrawer');
+function openFeedback()  { feedbackDrawer.classList.add('open'); scrim.classList.add('open'); $('feedbackText').focus(); }
+function closeFeedback() { feedbackDrawer.classList.remove('open'); scrim.classList.remove('open'); }
+
+$('feedbackBtn').addEventListener('click', openFeedback);
+$('feedbackClose').addEventListener('click', closeFeedback);
+$('feedbackCancelBtn').addEventListener('click', closeFeedback);
+
+$('feedbackSubmitBtn').addEventListener('click', async () => {
+  const text = $('feedbackText').value.trim();
+  const status = $('feedbackStatus');
+  if (!text) { status.textContent = 'Add some text first.'; status.className = 'feedback-status err'; return; }
+
+  $('feedbackSubmitBtn').disabled = true;
+  status.textContent = 'Sending…';
+  status.className = 'feedback-status';
+
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, grams: grams() })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    status.textContent = 'Sent — thanks.';
+    status.className = 'feedback-status ok';
+    $('feedbackText').value = '';
+    setTimeout(closeFeedback, 1400);
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'feedback-status err';
+  } finally {
+    $('feedbackSubmitBtn').disabled = false;
+  }
 });
 
 paintLedger();
