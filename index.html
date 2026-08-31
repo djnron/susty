@@ -764,33 +764,19 @@ $('feedbackBtn').addEventListener('click', openFeedback);
 $('feedbackClose').addEventListener('click', closeFeedback);
 $('feedbackCancelBtn').addEventListener('click', closeFeedback);
 
-$('feedbackSubmitBtn').addEventListener('click', async () => {
+$('feedbackSubmitBtn').addEventListener('click', () => {
   const text = $('feedbackText').value.trim();
   const status = $('feedbackStatus');
   if (!text) { status.textContent = 'Add some text first.'; status.className = 'feedback-status err'; return; }
 
-  $('feedbackSubmitBtn').disabled = true;
-  status.textContent = 'Sending…';
-  status.className = 'feedback-status';
+  const body = text + '\n\n— sent from susty (' + grams().toFixed(2) + ' g CO₂e this session)';
+  const mailto = 'mailto:perlin.daniel@gmail.com'
+    + '?subject=' + encodeURIComponent('Susty feedback')
+    + '&body=' + encodeURIComponent(body);
 
-  try {
-    const res = await fetch('/api/feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, grams: grams() })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-    status.textContent = 'Sent — thanks.';
-    status.className = 'feedback-status ok';
-    $('feedbackText').value = '';
-    setTimeout(closeFeedback, 1400);
-  } catch (err) {
-    status.textContent = err.message;
-    status.className = 'feedback-status err';
-  } finally {
-    $('feedbackSubmitBtn').disabled = false;
-  }
+  window.location.href = mailto;
+  $('feedbackText').value = '';
+  setTimeout(closeFeedback, 400);
 });
 
 paintLedger();
