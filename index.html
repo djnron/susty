@@ -3,146 +3,359 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tare — sustainability advice that weighs itself</title>
-<meta name="description" content="Practical sustainability advice, with a running count of the carbon the conversation itself costs.">
+<title>susty — sustainability advice that knows what it costs</title>
+<meta name="description" content="Practical sustainability advice with real numbers, and a live count of what the conversation itself costs.">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
-:root{
-  --paper:#E7E4DC;
-  --surface:#F3F1EB;
-  --ink:#2B3134;
-  --ink-soft:#5E6265;
-  --rule:#C9C4B6;
-  --meter:#AE3826;
-  --moss:#41604A;
-  --pad:clamp(18px,4vw,34px);
+:root {
+  --bg: #F4F4F5;
+  --surface: #FFFFFF;
+  --ink: #18181B;
+  --ink-soft: #71717A;
+  --rule: #E4E4E7;
+  --accent: #22C55E;
+  --accent-dark: #16A34A;
+  --accent-light: #DCFCE7;
+  --accent-border: #BBF7D0;
+  --meter: #EA580C;
+  --meter-bg: #FFF7ED;
+  --meter-border: #FED7AA;
+  --pad: clamp(16px, 3.5vw, 28px);
 }
 
-*{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{
-  background:var(--paper);
-  color:var(--ink);
-  font-family:"Instrument Sans",system-ui,sans-serif;
-  font-size:16px;line-height:1.55;
-  -webkit-font-smoothing:antialiased;
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
-button,input,textarea,select{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-.frame{
-  max-width:820px;margin:0 auto;height:100%;
-  display:flex;flex-direction:column;
-  border-left:1px solid var(--rule);border-right:1px solid var(--rule);
-  background:var(--surface);
+.frame {
+  max-width: 780px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  background: var(--surface);
 }
 
-.masthead{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
-  padding:var(--pad);border-bottom:1px solid var(--rule);flex:none;
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px var(--pad);
+  border-bottom: 1px solid var(--rule);
+  flex: none;
 }
-.wordmark{font-family:"Instrument Serif",Georgia,serif;font-size:34px;line-height:1;margin:0 0 6px;letter-spacing:-.01em;font-weight:400}
-.tagline{margin:0;font-size:13.5px;color:var(--ink-soft);max-width:30ch}
 
-.meter{
-  border:1px solid var(--rule);border-radius:2px;background:var(--paper);
-  padding:10px 14px 8px;cursor:pointer;text-align:right;min-width:132px;
-  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
-  transition:border-color .18s,background .18s;
+.wordmark {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.03em;
+  color: var(--ink);
 }
-.meter:hover{border-color:var(--ink);background:#EFECE3}
-.meter-read{font-family:"Instrument Serif",Georgia,serif;font-size:40px;line-height:.92;color:var(--meter);font-variant-numeric:tabular-nums}
-.meter-unit{font-size:12px;color:var(--ink-soft)}
-.meter-hint{font-size:11px;color:var(--ink-soft);text-decoration:underline;text-underline-offset:2px}
-.meter.pulse{animation:tick .5s ease}
-@keyframes tick{0%{background:#F7E9E5}100%{background:var(--paper)}}
 
-.transcript{flex:1;overflow-y:auto;padding:var(--pad);display:flex;flex-direction:column;gap:26px}
-.turn{max-width:64ch}
-.turn.user{align-self:flex-end;max-width:52ch}
-.who{font-size:12px;color:var(--ink-soft);margin-bottom:5px}
-.turn.user .who{text-align:right}
-.bubble{background:var(--paper);border:1px solid var(--rule);border-radius:2px;padding:13px 16px;overflow-wrap:anywhere}
-.turn.user .bubble{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.bubble p{margin:0 0 .7em}
-.bubble p:last-child{margin-bottom:0}
-.bubble ul{margin:.2em 0 .7em;padding-left:1.1em}
-.bubble li{margin-bottom:.3em}
-.bubble strong{font-weight:600}
-
-.opening{max-width:56ch}
-.opening h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:27px;line-height:1.25;margin:0 0 10px}
-.opening p{margin:0 0 10px;color:var(--ink-soft);font-size:15px}
-
-.thinking{display:flex;gap:5px;align-items:center;padding:4px 0}
-.thinking span{width:6px;height:6px;border-radius:50%;background:var(--ink-soft);animation:blink 1.1s infinite ease-in-out}
-.thinking span:nth-child(2){animation-delay:.16s}
-.thinking span:nth-child(3){animation-delay:.32s}
-@keyframes blink{0%,80%,100%{opacity:.22}40%{opacity:1}}
-
-.notice{border:1px solid var(--meter);border-radius:2px;padding:11px 14px;font-size:14px;color:var(--meter);max-width:62ch}
-.notice p{margin:0 0 6px}
-.notice p:last-child{margin:0}
-
-.composer{border-top:1px solid var(--rule);padding:14px var(--pad) var(--pad);flex:none}
-.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
-.chip{border:1px solid var(--rule);background:transparent;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--ink-soft);transition:border-color .16s,color .16s}
-.chip:hover{border-color:var(--ink);color:var(--ink)}
-.entry{display:flex;gap:10px;align-items:flex-end}
-.entry textarea{flex:1;resize:none;border:1px solid var(--rule);border-radius:2px;background:var(--paper);padding:11px 13px;min-height:46px;max-height:150px;line-height:1.45}
-.entry textarea::placeholder{color:#8C8F8E}
-.send{border:1px solid var(--ink);background:var(--ink);color:var(--surface);border-radius:2px;padding:12px 20px;cursor:pointer;transition:opacity .16s}
-.send:disabled{opacity:.4;cursor:default}
-
-.scrim{position:fixed;inset:0;background:rgba(43,49,52,.42);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
-.scrim.open{opacity:1;pointer-events:auto}
-.ledger{
-  position:fixed;top:0;right:0;bottom:0;width:min(455px,100%);
-  background:var(--surface);border-left:1px solid var(--rule);z-index:30;
-  transform:translateX(101%);transition:transform .3s cubic-bezier(.4,.14,.3,1);
-  overflow-y:auto;padding:26px 26px 46px;
+.meter {
+  border: 1.5px solid var(--meter-border);
+  border-radius: 999px;
+  background: var(--meter-bg);
+  padding: 7px 16px 7px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color .18s, box-shadow .18s;
+  flex: none;
 }
-.ledger.open{transform:none}
-.ledger-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:22px}
-.ledger h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:26px;line-height:1.15;margin:0 0 5px}
-.ledger-sub{margin:0;font-size:13px;color:var(--ink-soft);max-width:34ch}
-.shut{border:1px solid var(--rule);background:transparent;border-radius:2px;width:32px;height:32px;cursor:pointer;flex:none;font-size:16px;line-height:1}
-.shut:hover{border-color:var(--ink)}
-
-.sect{margin-bottom:28px}
-.sect h3{font-size:13px;font-weight:600;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
-.rows{width:100%;border-collapse:collapse;font-size:14px}
-.rows td{padding:6px 0;border-bottom:1px dotted var(--rule);vertical-align:baseline}
-.rows td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rows tr.total td{border-bottom:none;border-top:1.5px solid var(--ink);padding-top:9px;font-weight:600}
-.rows tr.total td:last-child{color:var(--meter)}
-.rows tr.muted td{color:var(--ink-soft)}
-
-.pick{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:14px}
-.pick select{border:1px solid var(--rule);border-radius:2px;background:var(--paper);padding:6px 8px;font-size:13.5px}
-.note{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;line-height:1.5}
-
-.scale{list-style:none;margin:0;padding:0;font-size:14px}
-.scale li{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px dotted var(--rule)}
-.scale li:last-child{border-bottom:none}
-.scale b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-
-.offset{border:1px solid var(--moss);border-radius:2px;padding:15px 16px}
-.offset p{margin:0 0 11px;font-size:14px}
-.offset .lead{color:var(--moss);font-weight:600}
-.offset ol{margin:0 0 12px;padding-left:1.15em;font-size:14px}
-.offset li{margin-bottom:6px}
-.act{width:100%;border:1px solid var(--moss);background:var(--moss);color:var(--surface);border-radius:2px;padding:10px;cursor:pointer;font-size:14px}
-.act:hover{opacity:.9}
-
-@media (max-width:620px){
-  .masthead{flex-direction:column;gap:14px}
-  .meter{align-self:stretch;flex-direction:row;justify-content:space-between;align-items:baseline;text-align:left}
-  .turn.user{max-width:100%}
+.meter:hover { border-color: var(--meter); box-shadow: 0 0 0 3px rgba(234,88,12,.1); }
+.meter-read {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--meter);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
-@media (prefers-reduced-motion:reduce){
-  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+.meter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.meter-unit { font-size: 11px; font-weight: 500; color: var(--ink-soft); line-height: 1.2; }
+.meter-hint { font-size: 10px; color: var(--meter); text-decoration: underline; text-underline-offset: 2px; line-height: 1.2; }
+.meter.pulse { animation: tick .5s ease; }
+@keyframes tick { 0% { background: #FED7AA; } 100% { background: var(--meter-bg); } }
+
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.turn { max-width: 64ch; }
+.turn.user { align-self: flex-end; max-width: 54ch; }
+
+.who {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.turn.user .who { text-align: right; }
+
+.bubble {
+  border-radius: 14px;
+  padding: 12px 16px;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.turn:not(.user) .bubble {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px 14px 14px 14px;
+}
+.turn.user .bubble {
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  color: var(--ink);
+  border-radius: 14px 4px 14px 14px;
+}
+.bubble p { margin: 0 0 .6em; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble ul { margin: .2em 0 .6em; padding-left: 1.15em; }
+.bubble li { margin-bottom: .3em; }
+.bubble strong { font-weight: 600; }
+
+.opening { max-width: 52ch; }
+.opening h2 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 10px;
+  letter-spacing: -0.025em;
+}
+.opening p { margin: 0 0 8px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+
+.thinking { display: flex; gap: 5px; align-items: center; padding: 6px 0; }
+.thinking span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink-soft);
+  animation: blink 1.1s infinite ease-in-out;
+}
+.thinking span:nth-child(2) { animation-delay: .16s; }
+.thinking span:nth-child(3) { animation-delay: .32s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+
+.notice {
+  border: 1px solid var(--meter-border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--meter);
+  max-width: 62ch;
+  background: var(--meter-bg);
+}
+.notice p { margin: 0 0 5px; }
+.notice p:last-child { margin: 0; }
+
+.composer {
+  border-top: 1px solid var(--rule);
+  padding: 12px var(--pad) var(--pad);
+  flex: none;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip {
+  border: 1.5px solid var(--rule);
+  background: transparent;
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-light); }
+
+.entry { display: flex; gap: 8px; align-items: flex-end; }
+.entry textarea {
+  flex: 1;
+  resize: none;
+  border: 1.5px solid var(--rule);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px 14px;
+  min-height: 44px;
+  max-height: 150px;
+  line-height: 1.5;
+  font-size: 15px;
+  transition: border-color .15s;
+}
+.entry textarea:focus { border-color: var(--accent); outline: none; }
+.entry textarea::placeholder { color: #A1A1AA; }
+.send {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 11px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background .15s;
+  flex: none;
+}
+.send:hover { background: var(--accent-dark); }
+.send:disabled { opacity: .4; cursor: default; }
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(24,24,27,.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+  z-index: 20;
+}
+.scrim.open { opacity: 1; pointer-events: auto; }
+
+.ledger {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(460px, 100%);
+  background: var(--surface);
+  border-left: 1px solid var(--rule);
+  z-index: 30;
+  transform: translateX(101%);
+  transition: transform .3s cubic-bezier(.4,.14,.3,1);
+  overflow-y: auto;
+  padding: 24px 24px 48px;
+}
+.ledger.open { transform: none; }
+
+.ledger-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.ledger h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+.ledger-sub { margin: 0; font-size: 13px; color: var(--ink-soft); max-width: 34ch; line-height: 1.5; }
+.shut {
+  border: 1.5px solid var(--rule);
+  background: transparent;
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-soft);
+  transition: border-color .15s, color .15s;
+}
+.shut:hover { border-color: var(--ink); color: var(--ink); }
+
+.sect { margin-bottom: 26px; }
+.sect h3 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.rows { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rows td { padding: 6px 0; border-bottom: 1px dotted var(--rule); vertical-align: baseline; }
+.rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rows tr.total td { border-bottom: none; border-top: 1.5px solid var(--ink); padding-top: 9px; font-weight: 700; }
+.rows tr.total td:last-child { color: var(--meter); }
+.rows tr.muted td { color: var(--ink-soft); }
+
+.pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.pick select {
+  border: 1.5px solid var(--rule);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.note { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; line-height: 1.55; }
+
+.scale { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.scale li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.scale li:last-child { border-bottom: none; }
+.scale b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.offset {
+  border: 1.5px solid var(--accent-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--accent-light);
+}
+.offset p { margin: 0 0 10px; font-size: 14px; }
+.offset .lead { color: var(--accent-dark); font-weight: 700; font-size: 15px; }
+.offset ol { margin: 0 0 12px; padding-left: 1.15em; font-size: 14px; }
+.offset li { margin-bottom: 6px; color: var(--ink); }
+.act {
+  width: 100%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background .15s;
+}
+.act:hover { background: var(--accent-dark); }
+
+@media (max-width: 600px) {
+  .masthead { flex-wrap: wrap; }
+  .turn.user { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
 </style>
 </head>
@@ -150,14 +363,11 @@ button,input,textarea,select{font:inherit;color:inherit}
 
 <div class="frame">
   <header class="masthead">
-    <div>
-      <h1 class="wordmark">Tare</h1>
-      <p class="tagline">Sustainability advice that keeps its own weight on the scale.</p>
-    </div>
+    <h1 class="wordmark">susty</h1>
     <button class="meter" id="meter" aria-haspopup="dialog">
       <span class="meter-read" id="meterRead">0.00</span>
-      <span>
-        <span class="meter-unit">g CO₂e spent here</span><br>
+      <span class="meter-label">
+        <span class="meter-unit">g CO₂e</span>
         <span class="meter-hint">see the working</span>
       </span>
     </button>
@@ -165,16 +375,16 @@ button,input,textarea,select{font:inherit;color:inherit}
 
   <main class="transcript" id="transcript">
     <div class="opening" id="opening">
-      <h2>Ask what actually moves the needle.</h2>
-      <p>You'll get specific advice with numbers attached, including when the honest answer is that something barely matters.</p>
-      <p>Running this conversation costs energy too. The counter above tracks it. Tap it to see how it's worked out and what to do about it.</p>
+      <h2>What do you want to know?</h2>
+      <p>Ask about diet, travel, home energy — anything. You'll get specific answers with real numbers, not vague encouragement.</p>
+      <p>This conversation costs energy too. The counter above tracks it live. Tap it to see how it's worked out.</p>
     </div>
   </main>
 
   <div class="composer">
     <div class="chips" id="chips"></div>
     <div class="entry">
-      <textarea id="input" rows="1" placeholder="Is it worth switching to an induction hob?" aria-label="Your question"></textarea>
+      <textarea id="input" rows="1" placeholder="Is flying once a year a big deal?" aria-label="Your question"></textarea>
       <button class="send" id="send">Ask</button>
     </div>
   </div>
@@ -185,8 +395,8 @@ button,input,textarea,select{font:inherit;color:inherit}
 <aside class="ledger" id="ledger" role="dialog" aria-modal="true" aria-label="Carbon ledger" tabindex="-1">
   <div class="ledger-top">
     <div>
-      <h2>The working</h2>
-      <p class="ledger-sub">Every figure below is an estimate you can change. Per-query energy use isn't published, so treat this as an order of magnitude.</p>
+      <h2>How we counted this</h2>
+      <p class="ledger-sub">Estimates, not promises. Token counts come from the API; everything after is modelled.</p>
     </div>
     <button class="shut" id="shut" aria-label="Close">✕</button>
   </div>
@@ -219,221 +429,212 @@ button,input,textarea,select{font:inherit;color:inherit}
         <option value="30">Hydro / wind powered — 30 g/kWh</option>
       </select>
     </div>
-    <p class="note">Grams = (tokens × energy per token) × cooling × hardware × grid intensity. Longer chats cost more per turn, because the whole history is re-read each time you press Ask.</p>
+    <p class="note">Grams = (tokens × energy per token) × cooling × hardware × grid intensity. Longer chats cost more per turn because the whole history is re-read each time you press Ask.</p>
   </div>
 
   <div class="sect">
-    <h3>For scale</h3>
+    <h3>To put it in perspective</h3>
     <ul class="scale" id="scale"></ul>
-    <p class="note">Which is the point of showing it: the footprint of asking is small next to the footprint of what you do with the answer.</p>
+    <p class="note">The footprint of asking is small next to the footprint of what you do with the answer.</p>
   </div>
 
   <div class="sect">
-    <h3>Settling it</h3>
+    <h3>What to do about it</h3>
     <div class="offset">
       <p class="lead" id="offsetLead">Offsetting this costs about a hundredth of a penny.</p>
-      <p>At roughly £90 per tonne for verified carbon removal, this conversation is a rounding error. Buying a credit for it is fine, but it isn't the useful move.</p>
-      <p>These three take minutes and cover it thousands of times over:</p>
+      <p>At roughly £90 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
       <ol>
-        <li><b>Wash at 30°C</b> — around 200 g saved per load.</li>
-        <li><b>Thermostat down 1°C</b> — roughly 300 kg a year in a typical heated home.</li>
-        <li><b>One beef meal a week swapped</b> — on the order of 200 kg a year.</li>
+        <li><strong>Wash at 30°C</strong> — around 200 g saved per load.</li>
+        <li><strong>Thermostat down 1°C</strong> — roughly 300 kg a year in a typical heated home.</li>
+        <li><strong>One beef meal a week swapped</strong> — on the order of 200 kg a year.</li>
       </ol>
-      <button class="act" id="planBtn">Ask for a plan that covers this many times over</button>
+      <button class="act" id="planBtn">Get a plan that covers this many times over</button>
     </div>
   </div>
 </aside>
 
 <script>
-/* ---------------- carbon model ----------------
-   All constants are estimates. Published per-query energy figures vary by
-   more than an order of magnitude, so these are deliberately editable. */
 const MODEL = {
-  whPerInputToken : 0.00005,  // prefill is cheap per token
-  whPerOutputToken: 0.0005,   // generation dominates
-  pue             : 1.12,     // data-centre cooling and overhead
-  embodied        : 0.15,     // amortised hardware manufacture
-  gridGPerKwh     : 480       // selectable in the ledger
+  whPerInputToken : 0.00005,
+  whPerOutputToken: 0.0005,
+  pue             : 1.12,
+  embodied        : 0.15,
+  gridGPerKwh     : 480
 };
 
-const ENDPOINT = '/api/chat';   // the server proxy that holds the API key
+const ENDPOINT = '/api/chat';
 
-const state = { turns:0, inTokens:0, outTokens:0, history:[], busy:false };
+const state = { turns: 0, inTokens: 0, outTokens: 0, history: [], busy: false };
 const $ = id => document.getElementById(id);
 const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
-const fmt = (n,d=2) => n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
-function energyWh(){
-  const raw = state.inTokens*MODEL.whPerInputToken + state.outTokens*MODEL.whPerOutputToken;
+function energyWh() {
+  const raw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
   return raw * MODEL.pue * (1 + MODEL.embodied);
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
-/* ---------------- meter ---------------- */
 const meter = $('meter'), meterRead = $('meterRead');
 let shown = 0;
-function paintMeter(){
+function paintMeter() {
   const target = grams();
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     shown = target; meterRead.textContent = target.toFixed(2); return;
   }
   const from = shown, start = performance.now();
   meter.classList.remove('pulse'); void meter.offsetWidth; meter.classList.add('pulse');
-  (function step(now){
-    const t = Math.min(1,(now-start)/650);
-    shown = from + (target-from)*(1-Math.pow(1-t,3));
+  (function step(now) {
+    const t = Math.min(1, (now - start) / 650);
+    shown = from + (target - from) * (1 - Math.pow(1 - t, 3));
     meterRead.textContent = shown.toFixed(2);
-    if (t<1) requestAnimationFrame(step);
+    if (t < 1) requestAnimationFrame(step);
   })(performance.now());
 }
 
-/* ---------------- ledger ---------------- */
-function paintLedger(){
-  const eIn = state.inTokens*MODEL.whPerInputToken;
-  const eOut = state.outTokens*MODEL.whPerOutputToken;
-  const pued = (eIn+eOut)*MODEL.pue;
-  const wh = pued*(1+MODEL.embodied);
-  const g = grams();
+function paintLedger() {
+  const eIn  = state.inTokens  * MODEL.whPerInputToken;
+  const eOut = state.outTokens * MODEL.whPerOutputToken;
+  const pued = (eIn + eOut) * MODEL.pue;
+  const wh   = pued * (1 + MODEL.embodied);
+  const g    = grams();
 
   $('rTurns').textContent = state.turns;
   $('rIn').textContent    = state.inTokens.toLocaleString();
   $('rOut').textContent   = state.outTokens.toLocaleString();
-  $('rEIn').textContent   = fmt(eIn,3)+' Wh';
-  $('rEOut').textContent  = fmt(eOut,3)+' Wh';
-  $('rPue').textContent   = fmt(pued,3)+' Wh';
-  $('rEmb').textContent   = fmt(wh,3)+' Wh';
-  $('rWh').textContent    = fmt(wh,3)+' Wh';
-  $('rGrid').textContent  = MODEL.gridGPerKwh+' g/kWh';
-  $('rTotal').textContent = fmt(g)+' g CO₂e';
+  $('rEIn').textContent   = fmt(eIn, 3) + ' Wh';
+  $('rEOut').textContent  = fmt(eOut, 3) + ' Wh';
+  $('rPue').textContent   = fmt(pued, 3) + ' Wh';
+  $('rEmb').textContent   = fmt(wh, 3) + ' Wh';
+  $('rWh').textContent    = fmt(wh, 3) + ' Wh';
+  $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
+  $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
   const comparisons = [
-    ['Driving a petrol car',         g/170*1000, 'm'],
-    ['Boiling water for tea',        g/20,       ' cups'],
-    ['A hot shower, 8 minutes',      g/500,      ' showers'],
-    ['A beef burger',                g/3000,     ' burgers'],
-    ['London to New York, one seat', g/900000,   ' flights']
+    ['Driving a petrol car',         g / 170 * 1000, 'm'],
+    ['Boiling water for tea',        g / 20,         ' cups'],
+    ['A hot shower, 8 minutes',      g / 500,        ' showers'],
+    ['A beef burger',                g / 3000,       ' burgers'],
+    ['London to New York, one seat', g / 900000,     ' flights']
   ];
-  $('scale').innerHTML = comparisons.map(([label,val,unit]) => {
+  $('scale').innerHTML = comparisons.map(([label, val, unit]) => {
     let v;
-    if (unit==='m') v = val<10 ? val.toFixed(1)+' m' : Math.round(val)+' m';
-    else if (val<0.001) v = 'under 0.001'+unit;
-    else v = val.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')+unit;
-    return '<li><span>'+label+'</span><b>'+v+'</b></li>';
+    if (unit === 'm') v = val < 10 ? val.toFixed(1) + ' m' : Math.round(val) + ' m';
+    else if (val < 0.001) v = 'under 0.001' + unit;
+    else v = val.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + unit;
+    return '<li><span>' + label + '</span><b>' + v + '</b></li>';
   }).join('');
 
-  const pence = g/1e6*90*100;  // ~£90 per tonne removal
+  const pence = g / 1e6 * 90 * 100;
   $('offsetLead').textContent = 'Offsetting this costs about ' +
-    (pence < 0.01 ? 'a hundredth of a penny' : pence.toFixed(2)+'p') + '.';
+    (pence < 0.01 ? 'a hundredth of a penny' : pence.toFixed(2) + 'p') + '.';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
-function openLedger(){ paintLedger(); scrim.classList.add('open'); ledger.classList.add('open'); ledger.focus(); }
-function closeLedger(){ scrim.classList.remove('open'); ledger.classList.remove('open'); meter.focus(); }
+function openLedger()  { paintLedger(); scrim.classList.add('open');    ledger.classList.add('open');    ledger.focus(); }
+function closeLedger() {               scrim.classList.remove('open'); ledger.classList.remove('open'); meter.focus(); }
 meter.addEventListener('click', openLedger);
 $('shut').addEventListener('click', closeLedger);
 scrim.addEventListener('click', closeLedger);
-document.addEventListener('keydown', e => { if (e.key==='Escape' && ledger.classList.contains('open')) closeLedger(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ledger.classList.contains('open')) closeLedger(); });
 $('grid').addEventListener('change', e => { MODEL.gridGPerKwh = +e.target.value; paintLedger(); paintMeter(); });
 
-/* ---------------- transcript ---------------- */
 const transcript = $('transcript');
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-function render(md){
+function render(md) {
   const lines = escapeHtml(md).split('\n');
-  let html='', list=false;
-  for (let line of lines){
-    line = line.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-    if (/^\s*[-*•]\s+/.test(line)){
-      if(!list){ html+='<ul>'; list=true; }
-      html += '<li>'+line.replace(/^\s*[-*•]\s+/,'')+'</li>';
+  let html = '', list = false;
+  for (let line of lines) {
+    line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (/^\s*[-*•]\s+/.test(line)) {
+      if (!list) { html += '<ul>'; list = true; }
+      html += '<li>' + line.replace(/^\s*[-*•]\s+/, '') + '</li>';
     } else {
-      if(list){ html+='</ul>'; list=false; }
-      if(line.trim()) html += '<p>'+line+'</p>';
+      if (list) { html += '</ul>'; list = false; }
+      if (line.trim()) html += '<p>' + line + '</p>';
     }
   }
-  if(list) html+='</ul>';
+  if (list) html += '</ul>';
   return html;
 }
-function scrollDown(){ transcript.scrollTop = transcript.scrollHeight; }
-function addTurn(role,text){
+function scrollDown() { transcript.scrollTop = transcript.scrollHeight; }
+function addTurn(role, text) {
   const el = document.createElement('div');
-  el.className = 'turn '+role;
-  el.innerHTML = '<div class="who">'+(role==='user'?'You':'Tare')+'</div>' +
-                 '<div class="bubble">'+(role==='user'?escapeHtml(text):render(text))+'</div>';
+  el.className = 'turn ' + role;
+  el.innerHTML = '<div class="who">' + (role === 'user' ? 'you' : 'susty') + '</div>' +
+                 '<div class="bubble">' + (role === 'user' ? escapeHtml(text) : render(text)) + '</div>';
   transcript.appendChild(el); scrollDown(); return el;
 }
-function addWaiting(){
+function addWaiting() {
   const el = document.createElement('div');
   el.className = 'turn';
-  el.innerHTML = '<div class="who">Tare</div><div class="thinking"><span></span><span></span><span></span></div>';
+  el.innerHTML = '<div class="who">susty</div><div class="thinking"><span></span><span></span><span></span></div>';
   transcript.appendChild(el); scrollDown(); return el;
 }
-function addNotice(main, hint){
+function addNotice(main, hint) {
   const el = document.createElement('div');
   el.className = 'notice';
-  el.innerHTML = '<p>'+escapeHtml(main)+'</p>' + (hint ? '<p>'+escapeHtml(hint)+'</p>' : '');
+  el.innerHTML = '<p>' + escapeHtml(main) + '</p>' + (hint ? '<p>' + escapeHtml(hint) + '</p>' : '');
   transcript.appendChild(el); scrollDown();
 }
 
-/* ---------------- chat ---------------- */
 const CHIPS = [
-  'Induction hob or gas?',
-  'Is my recycling doing anything?',
-  'Cheapest way to cut my home emissions',
-  'Keep my old car or buy an EV?',
-  'Are carbon offsets a scam?'
+  'Is flying once a year a big deal?',
+  'Induction hob vs gas — which wins?',
+  'How much does going vegan actually help?',
+  'Keep my petrol car or buy an EV?',
+  'What actually moves the needle?'
 ];
 CHIPS.forEach(text => {
   const b = document.createElement('button');
-  b.className='chip'; b.type='button'; b.textContent=text;
+  b.className = 'chip'; b.type = 'button'; b.textContent = text;
   b.addEventListener('click', () => send(text));
   $('chips').appendChild(b);
 });
 
 const input = $('input'), sendBtn = $('send');
 input.addEventListener('input', () => {
-  input.style.height='auto';
-  input.style.height = Math.min(input.scrollHeight,150)+'px';
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 150) + 'px';
 });
 input.addEventListener('keydown', e => {
-  if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(input.value); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input.value); }
 });
 sendBtn.addEventListener('click', () => send(input.value));
 
-async function send(raw){
-  const text = (raw||'').trim();
+async function send(raw) {
+  const text = (raw || '').trim();
   if (!text || state.busy) return;
 
   state.busy = true; sendBtn.disabled = true;
-  input.value=''; input.style.height='auto';
+  input.value = ''; input.style.height = 'auto';
   $('opening')?.remove();
   addTurn('user', text);
-  state.history.push({role:'user', content:text});
+  state.history.push({ role: 'user', content: text });
   const waiting = addWaiting();
 
   try {
     const res = await fetch(ENDPOINT, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: state.history })
     });
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || ('The server returned status '+res.status+'.'));
+    if (!res.ok) throw new Error(data.error || ('The server returned status ' + res.status + '.'));
 
-    const reply = (data.content||[])
-      .filter(b => b.type==='text').map(b => b.text).join('\n').trim();
+    const reply = (data.content || [])
+      .filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
     if (!reply) throw new Error('The reply came back empty.');
 
     waiting.remove();
     addTurn('assistant', reply);
-    state.history.push({role:'assistant', content:reply});
+    state.history.push({ role: 'assistant', content: reply });
 
-    // prefer the real usage figures the API reports; estimate only as a fallback
     const usage = data.usage || {};
-    state.inTokens  += usage.input_tokens  ?? estimateTokens(state.history.map(m=>m.content).join(' '));
+    state.inTokens  += usage.input_tokens  ?? estimateTokens(state.history.map(m => m.content).join(' '));
     state.outTokens += usage.output_tokens ?? estimateTokens(reply);
     state.turns += 1;
 
@@ -441,10 +642,10 @@ async function send(raw){
     if (ledger.classList.contains('open')) paintLedger();
   } catch (err) {
     waiting.remove();
-    state.history.pop();   // drop the unanswered turn so the next try isn't malformed
+    state.history.pop();
     addNotice(
-      "That request didn’t go through. " + err.message,
-      'Check that the server is running and that ANTHROPIC_API_KEY is set on it.'
+      "That didn't go through. " + err.message,
+      'Check that the server is running and ANTHROPIC_API_KEY is set.'
     );
   } finally {
     state.busy = false; sendBtn.disabled = false; input.focus();
