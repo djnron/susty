@@ -73,12 +73,27 @@ The endpoint spends your money, so treat it accordingly.
 
 | What | Where |
 |---|---|
-| The bot's personality and rules | `SYSTEM` at the top of `api/chat.js` |
+| The bot's personality, accuracy rules, and reference figures | `SYSTEM` at the top of `api/chat.js` |
 | Model | `ANTHROPIC_MODEL` env var, defaults to `claude-sonnet-4-6` |
 | Carbon coefficients | `MODEL` object in `index.html`, near the bottom |
 | Comparisons and offset copy | `paintLedger()` in `index.html`, and the `.offset` block in the markup |
 | Colours and type | the CSS variables at the top of `index.html` |
 | Starter questions | `CHIPS` array in `index.html` |
+
+## How the bot is kept accurate
+
+Everything the model is told lives in one place: `SYSTEM` at the top of `api/chat.js`. It is long on purpose. Most of it is not personality, it is guardrails against the specific ways sustainability answers go wrong:
+
+- **Precision rules.** One or two significant figures, ranges wherever credible estimates differ by more than about 2x, and always a stated "per what".
+- **Accounting rules.** CO2e unless CO2 is specifically meant; never blur tailpipe with lifecycle, average grid with marginal, or territorial with consumption footprints.
+- **No invention.** It may name where a well-known figure comes from, but never a fabricated page, DOI, link, or study.
+- **Anchors.** A short table of order-of-magnitude figures — grid intensity by country, a transatlantic flight, a gas-heated home, a kilo of beef — so the model can catch its own order-of-magnitude errors instead of recalling numbers cold each time.
+- **Known traps.** Food miles, cotton totes, standby power, EV battery mining, offset quality and the rest, where the intuitive answer is the wrong one.
+- **A default instead of a stall.** Where the answer depends on region, it answers on a stated assumption and offers to redo it, rather than opening with a question.
+
+The anchors are rounded and deliberately conservative. Correct them if you have better regional numbers — they are meant to be edited, not treated as canon. The format rules at the bottom match what `render()` in `index.html` can actually display: bullets and bold, nothing else.
+
+Being thorough costs something, and this app of all apps should say so. The prompt is resent with every turn, so at the coefficients in `index.html` it adds about 0.05 g CO2e per exchange — roughly half a typical reply, or half a gram over a long conversation. That is the honest price of not making numbers up.
 
 ## About the carbon figures
 
