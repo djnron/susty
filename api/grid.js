@@ -54,11 +54,25 @@ export async function fromGB(regionId) {
 // Nuclear, hydro, wind and solar are zero here because this counts operational
 // emissions only — the same basis eGRID and NESO use, so the numbers stay
 // comparable. Batteries are zero to avoid double-counting the charge.
-// BAT is deliberately absent: storage is time-shifted generation that was
-// already counted when it charged. Listing it at 0 would have credited every
-// discharged MWh as carbon-free while the charging energy stayed excluded,
-// discounting storage twice and pulling intensity down.
-const FUEL_G = { COL: 1024, NG: 443, OIL: 800, OTH: 600, NUC: 0, WAT: 0, SUN: 0, WND: 0 };
+// Every generation fuel EIA-930 reports, from the API's own fueltype facet.
+// EIA split these out further in 2024Q3, so an 8-fuel table silently dropped
+// GEO, SNB and WNB out of the denominator. Measured against live California
+// data that biased the reading high by ~3% (340 -> 330); the error scales with
+// how much geothermal and storage-paired renewable a region runs.
+// GEO is not zero: geothermal vents CO2 dissolved in the reservoir fluid.
+// ~40 g/kWh is the usual operational figure, well below any fossil source and
+// above the true zero of nuclear, hydro, wind and solar.
+const FUEL_G = {
+  COL: 1024, NG: 443, OIL: 800, OTH: 600,
+  GEO: 40,
+  NUC: 0, WAT: 0, SUN: 0, WND: 0,
+  SNB: 0, WNB: 0,          // solar / wind that happen to have storage attached
+};
+
+// Storage moves energy through time rather than making it; the carbon was
+// already counted when it charged. Counting a discharged MWh as carbon-free
+// generation would discount storage twice and drag intensity down.
+const STORAGE = new Set(['BAT', 'PS', 'OES', 'UES']);
 
 // eGRID subregion -> EIA-930 region. EIA's regions are coarser than balancing
 // authorities and line up with eGRID far better than any single BA would.
@@ -83,8 +97,9 @@ export function intensityFromFuelMix(rows) {
   for (const r of rows || []) {
     const mwh = Number(r.value);
     if (!r.period || !r.fueltype || !isFinite(mwh)) continue;
-    if (!(r.fueltype in FUEL_G)) continue;          // unknown fuel: skip, don't guess
-    if (mwh <= 0) continue;                         // net-negative rows (storage) add no generation
+    if (STORAGE.has(r.fueltype)) continue;          // time-shifted, not generated here
+    if (!(r.fueltype in FUEL_G)) continue;          // UNK or a code newer than this table
+    if (mwh <= 0) continue;                         // net-negative rows add no generation
     if (!byHour.has(r.period)) byHour.set(r.period, { gen: 0, co2: 0, fuels: new Set() });
     const h = byHour.get(r.period);
     h.gen += mwh;
