@@ -91,8 +91,16 @@ const EIA_REGION = {
   SRTV: ['TEN',  'Tennessee'],        FRCC: ['FLA',  'Florida']
 };
 
-// Exported for testing: collapse EIA rows into the newest *complete* hour.
-export function intensityFromFuelMix(rows) {
+// Exported for testing. Collapses EIA rows into one hour's intensity.
+//
+// `targetUtcHour` matters more than it looks. EIA publishes fuel-type data
+// roughly 15 hours late, so "the newest hour" is the middle of last night.
+// Measured on California: the newest published hour read 330 g/kWh while the
+// grid at that moment was near 169 — a 2x error, and further from the truth
+// than the annual average it was meant to improve on. The diurnal shape is
+// strongly periodic, so the same hour on the previous day is a far better
+// estimate of now than a fresher reading from the opposite end of the curve.
+export function intensityFromFuelMix(rows, targetUtcHour = null) {
   const byHour = new Map();
   for (const r of rows || []) {
     const mwh = Number(r.value);
@@ -116,13 +124,16 @@ export function intensityFromFuelMix(rows) {
   // trusting it, so a two-fuel snapshot is never published as "live".
   const best = Math.max(...hours.map(([, h]) => h.fuels.size));
   const need = Math.max(3, Math.ceil(best * 0.7));
-  for (const [period, h] of hours) {
-    if (h.gen > 0 && h.fuels.size >= need) {
-      return { g: Math.round(h.co2 / h.gen), period };
-    }
+  const usable = hours.filter(([, h]) => h.gen > 0 && h.fuels.size >= need);
+  if (!usable.length) return null;   // nothing complete enough to trust
+
+  const value = ([period, h]) => ({ g: Math.round(h.co2 / h.gen), period });
+
+  if (targetUtcHour !== null) {
+    const match = usable.find(([p]) => Number(p.slice(-2)) === targetUtcHour);
+    if (match) return { ...value(match), matchedHour: true };
   }
-  // Nothing complete enough: say so rather than guessing from a partial hour.
-  return null;
+  return { ...value(usable[0]), matchedHour: false };
 }
 
 export async function fromEIA(subregion) {
@@ -138,19 +149,28 @@ export async function fromEIA(subregion) {
   u.searchParams.append('facets[respondent][]', code);
   u.searchParams.set('sort[0][column]', 'period');
   u.searchParams.set('sort[0][direction]', 'desc');
-  u.searchParams.set('length', '200');   // ~8 fuels × 24h, plenty to find a full hour
+  // Must reach back more than a day: regions report up to 12 fuels an hour, so
+  // 24h alone is ~288 rows and hour-matching would often find no candidate.
+  u.searchParams.set('length', '500');
 
   const r = await fetch(u, { headers: { accept: 'application/json' } });
   if (!r.ok) return null;
   const j = await r.json();
-  const hit = intensityFromFuelMix(j && j.response && j.response.data);
+  const hit = intensityFromFuelMix(j && j.response && j.response.data, new Date().getUTCHours());
   if (!hit) return null;
+
+  const lagHours = (Date.now() - Date.parse(hit.period + ':00:00Z')) / 3.6e6;
+  const basis = lagHours < 1.5 ? 'this hour'
+              : hit.matchedHour ? 'this hour yesterday'
+              : 'most recent published hour';
   return {
     g: hit.g,
-    live: true,
-    source: 'EIA hourly fuel mix, ' + label,
+    live: true,          // an hourly figure rather than an annual mean
+    source: 'EIA hourly fuel mix, ' + label + ', ' + basis,
     at: hit.period,
-    derived: true,      // computed from the mix, not published as an intensity
+    derived: true,       // computed from the mix, not published as an intensity
+    lagHours: Math.round(lagHours),
+    matchedHour: !!hit.matchedHour,
   };
 }
 

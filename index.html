@@ -663,8 +663,8 @@ textarea, input { caret-color: var(--accent-line); }
         <span>NESO Carbon Intensity API. Half-hourly actuals for 14 distribution regions, so GB readings here are current rather than averaged. Open and keyless; nothing about you is sent with the request.</span>
       </li>
       <li>
-        <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States — live, hourly by region</a>
-        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the mix rather than read off — close, not exact, and it ignores interregional imports. Needs a free EIA key; without one we fall back to the annual figures below.</span>
+        <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States — hourly by region</a>
+        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). Two caveats worth knowing: EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the generation mix rather than read off, and the feed itself runs about a day behind. We therefore take the same hour on the previous day, which tracks the daily curve far better than their newest figure would — that one is the middle of last night. Interregional imports are ignored. Needs a free EIA key; without one we fall back to the annual figures below.</span>
       </li>
       <li>
         <a href="https://www.epa.gov/egrid/summary-data" target="_blank" rel="noopener">United States — annual, by eGRID subregion</a>
@@ -988,7 +988,12 @@ function paintLedger() {
     : gridName + '. ';
 
   if (state.live) {
-    where += 'This is a live reading (' + state.live.source + '), not an annual average, so it moves with what\'s actually on the grid right now, often by two or three times between a sunny afternoon and evening peak. ';
+    where += 'That comes from ' + state.live.source + ', so it follows the day rather than flattening it: intensity swings by two or three times between a sunny afternoon and the evening peak. ';
+    if (state.live.matchedHour) {
+      where += 'EIA publishes about a day behind, so this is the same hour on the previous day, not this minute. That beats using their freshest figure, which would hand you the middle of last night. ';
+    } else if (state.live.lagHours > 2) {
+      where += 'It is the most recent hour EIA has published, about ' + state.live.lagHours + ' hours old, because no closer match was available. ';
+    }
     if (state.live.derived) {
       where += 'It\'s worked out from the hour\'s generation mix rather than published as an intensity, since that\'s the only hourly US figure available free, so treat it as close rather than exact. It also ignores power imported from neighbouring regions. ';
     }
@@ -1138,7 +1143,10 @@ async function refreshLiveGrid() {
     const r = await fetch('/api/grid?' + q);
     const j = await r.json();
     if (seq !== gridSeq) return;                    // a newer selection won
-    if (j && j.live && typeof j.g === 'number') state.live = { g: j.g, source: j.source, derived: !!j.derived };
+    if (j && j.live && typeof j.g === 'number') state.live = {
+      g: j.g, source: j.source, derived: !!j.derived,
+      lagHours: j.lagHours || 0, matchedHour: !!j.matchedHour
+    };
   } catch { /* offline or blocked; static table is fine */ }
   if (seq !== gridSeq) return;
   applyGrid();
@@ -1158,7 +1166,9 @@ function markLiveRegion() {
   // ("New York — upstate", "Pennsylvania — east (Philadelphia, Harrisburg)").
   const cut = base.lastIndexOf(' — ');
   const name = cut === -1 ? base : base.slice(0, cut);
-  opt.textContent = state.live ? name + ' — ' + state.live.g + ' g/kWh now' : base;
+  // "now" would overclaim on a figure matched to this hour a day ago.
+  const when = state.live && state.live.matchedHour ? ' g/kWh this hour' : ' g/kWh now';
+  opt.textContent = state.live ? name + ' — ' + state.live.g + when : base;
 }
 
 function applyGrid() {
