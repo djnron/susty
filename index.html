@@ -640,7 +640,7 @@ textarea, input { caret-color: var(--accent-line); }
     <h3>Notes</h3>
     <p class="note" id="gridNote"></p>
     <p class="note" id="screenNote"></p>
-    <p class="note">Grams = ((tokens × energy per token) × cooling × hardware, plus hosting per exchange) × grid intensity. The total covers the conversation only; the screen row is there for scale and isn't added in. Longer chats cost more per turn because the whole history is re-read each time you press Ask.</p>
+    <p class="note">Grams = energy used × how dirty the grid is. The total is the conversation only; your screen is listed for comparison. Long chats cost more per answer, because the whole history is re-read each time.</p>
   </div>
 
   <div class="sect">
@@ -985,32 +985,23 @@ function paintLedger() {
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
 
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
+  // Plain language, three short sentences at most. The full reasoning lives in
+  // METHODOLOGY.md; this is the version a reader actually gets through.
   let where = state.gridGuessed
-    ? 'Guessed ' + gridName + ' from your time zone. Nothing left your browser to work that out. '
-    : gridName + '. ';
+    ? 'We guessed ' + gridName + ' from your time zone. Nothing was sent anywhere. '
+    : 'Using ' + gridName + '. ';
 
-  if (state.live) {
-    where += 'That comes from ' + state.live.source + ', so it follows the day rather than flattening it: intensity swings by two or three times between a sunny afternoon and the evening peak. ';
-    if (state.live.matchedHour) {
-      where += 'EIA publishes about a day behind, so this is the same hour on the previous day, not this minute. That beats using their freshest figure, which would hand you the middle of last night. ';
-    } else if (state.live.lagHours > 2) {
-      where += 'It is the most recent hour EIA has published, about ' + state.live.lagHours + ' hours old, because no closer match was available. ';
-    }
-    if (state.live.derived) {
-      where += 'It\'s worked out from the hour\'s generation mix rather than published as an intensity, since that\'s the only hourly US figure available free, so treat it as close rather than exact. It also ignores power imported from neighbouring regions. ';
-    }
-    if (state.live.g <= 5) {
-      where += 'A figure this close to zero is real, not a bug: that region is running almost entirely on hydro and wind at the moment, and this counts operational emissions only. ';
-    }
-  } else if (state.grid === 'US' && state.region) {
-    where += 'That\'s the EPA eGRID subregion for your state: a 2023 annual average, and far closer than the national figure. It still smooths over the day, which swings two or three times between a sunny afternoon and evening peak. ';
-  } else if (state.grid === 'US') {
-    where += 'That\'s the national average, which describes almost nobody: US subregions run from about 110 g/kWh in upstate New York to 700 in Puerto Rico. Pick your state under “Narrow it down” for a much closer figure. ';
+  if (state.live && state.live.matchedHour) {
+    where += 'This is your grid at this hour, not a yearly average: cleaner in afternoon sun, dirtier at the evening peak. It\'s yesterday\'s figure, because US data runs a day behind. ';
+  } else if (state.live) {
+    where += 'This is a live reading, updated through the day. ';
+  } else if (state.grid === 'US' && !state.region) {
+    where += 'That\'s the national average, which fits almost nobody. US regions run from 110 to 700, so pick your state above. ';
   } else {
-    where += 'That\'s an annual average, so it smooths over the day, which swings two or three times between a sunny afternoon and evening peak. ';
+    where += 'That\'s a yearly average, so it misses the daily swing. An evening peak can be two or three times a sunny afternoon. ';
   }
 
-  where += 'It sets the total in the table, and separately the screen figure, which is a fair fit for you but a guess for the data centre, since those servers could be in another country on a cleaner or dirtier grid and we have no way to see which.';
+  where += 'The data centre may sit on a different grid.';
   $('gridNote').textContent = where;
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
@@ -1045,14 +1036,14 @@ function paintScreen() {
   $('rScreenNow').textContent   = fmt(s.now, 3) + ' Wh';
 
   const savedG = gramsFor(s.saved);
-  const amount = savedG < 0.005 ? 'under 0.01 g' : 'about ' + fmt(savedG) + ' g';
+  const amount = savedG < 0.005 ? 'a tiny amount' : 'about ' + fmt(savedG) + ' g';
   // "is saving" only holds in dark mode. In light the same figure is what dark
   // mode *would have* saved, and claiming otherwise credits a saving the
   // reader isn't getting.
-  const verb = theme() === 'dark' ? 'dark mode is saving ' : 'dark mode would save ';
+  const verb = theme() === 'dark' ? 'dark mode saves ' : 'dark mode would save ';
   $('screenNote').textContent = s.flat
-    ? 'The screen figure assumes a backlit panel, which draws the same whatever\'s on it, so the theme changes nothing there. Turning the brightness down does.'
-    : 'The screen figure assumes an OLED panel, where black pixels switch off, so ' + verb + amount + ' of it. Brightness would save more.';
+    ? 'Backlit screens use the same power whatever\'s on them, so dark mode saves nothing here. Turning the brightness down does.'
+    : 'OLED screens switch black pixels off, so ' + verb + amount + ' here. Turning the brightness down saves more.';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
