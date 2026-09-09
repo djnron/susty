@@ -1,4 +1,4 @@
-# Tare
+# susty
 
 A sustainability chatbot that keeps a running count of the carbon its own conversation costs. Click the counter to see the arithmetic and what to do about it.
 

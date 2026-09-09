@@ -131,5 +131,5 @@ server.listen(PORT, () => {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn("Warning: ANTHROPIC_API_KEY isn't set. The page will load but every reply will fail.");
   }
-  console.log(`Tare is running at http://localhost:${PORT}`);
+  console.log(`susty is running at http://localhost:${PORT}`);
 });
