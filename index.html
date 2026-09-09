@@ -1144,8 +1144,26 @@ async function refreshLiveGrid() {
   applyGrid();
 }
 
+// Option labels carry annual reference figures, which is useful for comparing
+// regions. But when a live reading is in force the selected one would sit there
+// advertising a number the app isn't using — the picker saying "California —
+// 195" while the row below reads 340. Restate the selected option so the two
+// can't disagree.
+function markLiveRegion() {
+  const opt = $('region').selectedOptions[0];
+  if (!opt) return;
+  if (opt.dataset.base === undefined) opt.dataset.base = opt.textContent;
+  const base = opt.dataset.base;
+  // Split on the LAST separator: several labels carry one in the name itself
+  // ("New York — upstate", "Pennsylvania — east (Philadelphia, Harrisburg)").
+  const cut = base.lastIndexOf(' — ');
+  const name = cut === -1 ? base : base.slice(0, cut);
+  opt.textContent = state.live ? name + ' — ' + state.live.g + ' g/kWh now' : base;
+}
+
 function applyGrid() {
   MODEL.gridGPerKwh = state.live ? state.live.g : staticGrid();
+  markLiveRegion();
   paintLedger(); paintMeter();
 }
 
