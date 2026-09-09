@@ -2,13 +2,19 @@
 
 A sustainability chatbot that keeps a running count of the carbon its own conversation costs. Click the counter to see the arithmetic and what to do about it.
 
-No build step, no framework, no dependencies. Three files do the work.
+No build step, no framework, no dependencies. Four files do the work.
 
 ```
 index.html      the whole front end
 api/chat.js     serverless proxy that holds the API key
+api/grid.js     live grid carbon intensity, with static fallbacks
 server.js       plain Node server, same logic, for local or VPS hosting
 ```
+
+- [METHODOLOGY.md](METHODOLOGY.md) — every constant, source, and acknowledged
+  approximation behind the carbon figures and the chat
+- [HANDOFF.md](HANDOFF.md) — orientation for picking the project up fresh
+- [PRODUCT.md](PRODUCT.md) — users, positioning, principles
 
 ## Get a key
 
