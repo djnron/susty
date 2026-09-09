@@ -947,7 +947,9 @@ function paintMeter() {
   // Cancel any in-flight tween, so rapid changes don't leave two loops
   // writing `shown` in the same frame.
   if (meterRaf !== null) { cancelAnimationFrame(meterRaf); meterRaf = null; }
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  // No tween when there is nobody to watch it, and none in a hidden tab, where
+  // rAF never runs and the reading would otherwise stay frozen at its old value.
+  if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     shown = target; meterRead.textContent = target.toFixed(2); return;
   }
   const from = shown, start = performance.now();
@@ -1300,16 +1302,22 @@ async function send(raw) {
 
   // One render per frame. Re-parsing the whole message on every delta is
   // quadratic, and a fast stream lands several deltas inside a single frame.
-  let renderQueued = false;
+  let renderRaf = null;
   const paintReply = () => {
-    if (renderQueued || !bubbleEl) return;
-    renderQueued = true;
-    requestAnimationFrame(() => {
-      renderQueued = false;
+    if (renderRaf !== null || !bubbleEl) return;
+    renderRaf = requestAnimationFrame(() => {
+      renderRaf = null;
       if (!bubbleEl) return;
       bubbleEl.innerHTML = render(fullText);
       scrollDown();
     });
+  };
+  // requestAnimationFrame does not run in a hidden tab, so coalescing alone
+  // would leave the bubble empty for anyone who switches away mid-reply — the
+  // text would sit in history having never been drawn. Always finish by hand.
+  const flushReply = () => {
+    if (renderRaf !== null) { cancelAnimationFrame(renderRaf); renderRaf = null; }
+    if (bubbleEl) { bubbleEl.innerHTML = render(fullText); scrollDown(); }
   };
 
   try {
@@ -1363,6 +1371,7 @@ async function send(raw) {
     }
     buf += decoder.decode();      // flush a trailing multi-byte sequence
     if (buf.trim()) handleLine(buf);  // and a final frame that arrived unterminated
+    flushReply();                 // draw the finished text, frame or no frame
 
     if (!fullText) throw new Error(streamError || 'The reply came back empty.');
 
