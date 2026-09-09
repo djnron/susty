@@ -589,10 +589,10 @@ textarea, input { caret-color: var(--accent-line); }
         <tr class="muted"><td>Cooling &amp; overhead ×1.12</td><td id="rPue">0 Wh</td></tr>
         <tr class="muted"><td>Hardware manufacture +15%</td><td id="rEmb">0 Wh</td></tr>
         <tr class="muted"><td>Vercel hosting &amp; network per exchange</td><td id="rHosting">0 Wh</td></tr>
+        <tr class="muted"><td id="rScreenLabel">Your screen</td><td id="rScreenNow">0 Wh</td></tr>
         <tr><td>Electricity drawn</td><td id="rWh">0 Wh</td></tr>
         <tr><td>Grid intensity</td><td id="rGrid">473 g/kWh</td></tr>
         <tr class="total"><td>Total</td><td id="rTotal">0.00 g CO₂e</td></tr>
-        <tr class="muted"><td id="rScreenLabel">Your screen, for scale</td><td id="rScreenNow">0 Wh</td></tr>
       </tbody>
     </table>
 
@@ -641,7 +641,7 @@ textarea, input { caret-color: var(--accent-line); }
     <h3>Notes</h3>
     <p class="note">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
-    <p class="note">The sum itself is simple: energy used × how dirty the electricity is. The total covers the conversation only, so your screen is listed alongside for comparison rather than added in. And longer chats cost more per answer, because we send the whole conversation back every time you ask something new.</p>
+    <p class="note">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
   <div class="sect">
@@ -893,7 +893,9 @@ function energyWh() {
   const gpuRaw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
   const gpu = gpuRaw * MODEL.pue * (1 + MODEL.embodied);
   const hosting = state.turns * MODEL.whPerExchange;
-  return gpu + hosting;
+  // The screen you are reading this on is part of what the chat costs, so it
+  // belongs in the total rather than beside it.
+  return gpu + hosting + screenEnergy().now;
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
@@ -935,7 +937,9 @@ function fmtDuration(s) {
 
 const meter = $('meter'), meterRead = $('meterRead');
 let shown = 0, meterRaf = null;
-function paintMeter() {
+// `pulse` is false for the passive tick: the flash marks an exchange, not the
+// steady drift of screen time.
+function paintMeter(pulse = true) {
   const target = grams();
   // Cancel any in-flight tween, so rapid changes don't leave two loops
   // writing `shown` in the same frame.
@@ -946,7 +950,7 @@ function paintMeter() {
     shown = target; meterRead.textContent = target.toFixed(2); return;
   }
   const from = shown, start = performance.now();
-  meter.classList.remove('pulse'); void meter.offsetWidth; meter.classList.add('pulse');
+  if (pulse) { meter.classList.remove('pulse'); void meter.offsetWidth; meter.classList.add('pulse'); }
   const step = now => {
     const t = Math.min(1, (now - start) / 650);
     shown = from + (target - from) * (1 - Math.pow(1 - t, 3));
@@ -967,7 +971,7 @@ function paintLedger() {
   $('rIn').textContent    = state.inTokens.toLocaleString();
   $('rOut').textContent   = state.outTokens.toLocaleString();
   const hosting = state.turns * MODEL.whPerExchange;
-  const totalWh = wh + hosting;
+  const totalWh = wh + hosting + screenEnergy().now;
 
   $('rEIn').textContent      = fmt(eIn, 3) + ' Wh';
   $('rEOut').textContent     = fmt(eOut, 3) + ' Wh';
@@ -1050,22 +1054,25 @@ function paintScreen() {
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
-let ledgerTimer = null;
 function openLedger() {
-  clearInterval(ledgerTimer);   // a second open would orphan the first interval,
-                                // leaving it repainting once a second forever
   paintLedger();
   scrim.classList.add('open'); ledger.classList.add('open'); ledger.focus();
-  // Only the screen-on figures move between messages, so tick the cheap
-  // function rather than rebuilding the whole ledger every second.
-  ledgerTimer = setInterval(paintScreen, 1000);
 }
 function closeLedger() {
   ledger.classList.remove('open');
   if (!feedbackDrawer.classList.contains('open')) scrim.classList.remove('open');
-  clearInterval(ledgerTimer); ledgerTimer = null;
   meter.focus();
 }
+
+// Screen time is part of the total now, so the figures drift upward even when
+// nobody is typing. One timer covers both surfaces: the meter always, and the
+// ledger only while it is open. Skipped entirely while the tab is hidden,
+// where the clock is paused and nobody is looking.
+setInterval(() => {
+  if (document.hidden) return;
+  paintMeter(false);
+  if (ledger.classList.contains('open')) paintLedger();
+}, 2000);
 meter.addEventListener('click', openLedger);
 $('shut').addEventListener('click', closeLedger);
 scrim.addEventListener('click', () => {

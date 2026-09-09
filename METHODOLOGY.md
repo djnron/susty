@@ -87,7 +87,8 @@ box.
 
 ```
 grams CO₂e = ( (tokens × energy per token) × PUE × (1 + embodied)
-              + exchanges × hosting ) × grid intensity
+              + exchanges × hosting
+              + screen watts × hours on screen ) × grid intensity
 ```
 
 ### Constants
@@ -131,7 +132,6 @@ measured path is the normal one.
 
 ### What the total excludes
 
-- **Your screen.** Listed separately for scale, never added in (§4).
 - **Training.** This measures inference only. Amortised training cost per query
   is real and not counted here.
 - **Your device's CPU, network, and router.** Only the display is modelled.
@@ -265,9 +265,20 @@ way to see which from the browser.
 
 ## 4. Your screen
 
-Reported for scale and **not added to the total**, because it mixes a measured
-quantity with a declared one and would degrade the number the product's
-credibility rests on.
+Included in the total. The screen you are reading on is part of what the
+conversation costs, so leaving it out would understate the answer — and by a
+wide margin. Ten minutes on a backlit laptop is about 0.26 g, while a typical
+exchange is nearer 0.03 g: the screen runs roughly nine times the AI.
+
+It does mix a measured quantity (time) with a declared one (panel type), so the
+picker always defaults to a backlit panel and the figure is shown on its own row
+rather than buried in the sum.
+
+Because screen time accrues whether or not anyone is typing, the meter drifts
+upward while the page sits open. That is the honest behaviour: the tab really is
+costing something. A 2-second tick keeps the meter current, without the pulse
+animation, which is reserved for an actual exchange, and pauses entirely while
+the tab is hidden.
 
 **Measured:** screen-on time, via the Page Visibility API. The clock pauses when
 the tab is not visible. (It cannot detect a covered window or a closed lid —
