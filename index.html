@@ -402,6 +402,7 @@ textarea, input { caret-color: var(--accent-line); }
 }
 .note { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; line-height: 1.55; }
 .sect h3 + .note { margin-top: 0; }
+.note a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 
 .scale { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .scale li {
@@ -638,9 +639,10 @@ textarea, input { caret-color: var(--accent-line); }
 
   <div class="sect">
     <h3>Notes</h3>
+    <p class="note">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
     <p class="note" id="screenNote"></p>
-    <p class="note">Grams = energy used × how dirty the grid is. The total is the conversation only; your screen is listed for comparison. Long chats cost more per answer, because the whole history is re-read each time.</p>
+    <p class="note">The sum itself is simple: energy used × how dirty the electricity is. The total covers the conversation only, so your screen is listed alongside for comparison rather than added in. And longer chats cost more per answer, because we send the whole conversation back every time you ask something new.</p>
   </div>
 
   <div class="sect">
@@ -987,22 +989,41 @@ function paintLedger() {
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
   // Plain language, three short sentences at most. The full reasoning lives in
   // METHODOLOGY.md; this is the version a reader actually gets through.
-  let where = state.gridGuessed
-    ? 'We guessed ' + gridName + ' from your time zone. Nothing was sent anywhere. '
-    : 'Using ' + gridName + '. ';
+  // Built as HTML so the data source can be a link. Every interpolated value
+  // comes from our own tables, and gridName is escaped regardless.
+  const link = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + '</a>';
+  const EIA  = link('https://www.eia.gov/opendata/', 'US Energy Information Administration');
+  const NESO = link('https://www.carbonintensity.org.uk/', 'the UK grid operator');
+  const EGRID = link('https://www.epa.gov/egrid/summary-data', 'the EPA');
+  const EMBER = link('https://ember-energy.org/data/yearly-electricity-data/', 'Ember');
 
-  if (state.live && state.live.matchedHour) {
-    where += 'This is your grid at this hour, not a yearly average: cleaner in afternoon sun, dirtier at the evening peak. It\'s yesterday\'s figure, because US data runs a day behind. ';
-  } else if (state.live) {
-    where += 'This is a live reading, updated through the day. ';
-  } else if (state.grid === 'US' && !state.region) {
-    where += 'That\'s the national average, which fits almost nobody. US regions run from 110 to 700, so pick your state above. ';
+  // "in United States" and "you're in World average" both read badly.
+  const place = /^(United|European|Netherlands|Philippines)/.test(gridName)
+    ? 'the ' + escapeHtml(gridName) : escapeHtml(gridName);
+
+  let where;
+  if (state.grid === 'world') {
+    where = 'We couldn\'t work out which country you\'re in, so this is the world average. Pick yours above for something closer. ';
+  } else if (state.gridGuessed) {
+    where = 'We think you\'re in ' + place + ', going by your computer\'s clock. We didn\'t ask your browser for your location or look your address up anywhere. ';
   } else {
-    where += 'That\'s a yearly average, so it misses the daily swing. An evening peak can be two or three times a sunny afternoon. ';
+    where = 'You\'ve set this to ' + place + '. ';
   }
 
-  where += 'The data centre may sit on a different grid.';
-  $('gridNote').textContent = where;
+  if (state.live && state.live.matchedHour) {
+    where += 'The electricity figure comes from the ' + EIA + ', which tracks what\'s actually generating power each hour. That matters more than you\'d think: a sunny California afternoon is roughly half as dirty as the evening rush. Their data runs about a day behind, so we use the same hour from yesterday. ';
+  } else if (state.live) {
+    where += 'The electricity figure comes from ' + NESO + ', updated every half hour, so it follows the real ups and downs of the day. ';
+  } else if (state.grid === 'US' && !state.region) {
+    where += 'Right now we\'re using a national average, which honestly fits almost nobody. US regions range from about 110 to 700, so pick your state above and we\'ll get a lot closer. ';
+  } else if (state.grid === 'US') {
+    where += 'The electricity figure is a yearly average for your region, from ' + EGRID + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
+  } else {
+    where += 'The electricity figure is a yearly average from ' + EMBER + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
+  }
+
+  where += 'One thing we can\'t know: the computers answering you are in a data centre somewhere else, running on their own electricity. We\'ve assumed it\'s as clean as yours, which is a guess.';
+  $('gridNote').innerHTML = where;
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
   const comparisons = [
@@ -1040,10 +1061,10 @@ function paintScreen() {
   // "is saving" only holds in dark mode. In light the same figure is what dark
   // mode *would have* saved, and claiming otherwise credits a saving the
   // reader isn't getting.
-  const verb = theme() === 'dark' ? 'dark mode saves ' : 'dark mode would save ';
+  const verb = theme() === 'dark' ? 'so dark mode is saving you ' : 'so dark mode would save you ';
   $('screenNote').textContent = s.flat
-    ? 'Backlit screens use the same power whatever\'s on them, so dark mode saves nothing here. Turning the brightness down does.'
-    : 'OLED screens switch black pixels off, so ' + verb + amount + ' here. Turning the brightness down saves more.';
+    ? 'Your screen has a backlight, which burns the same whether the page is black or white, so dark mode won\'t save you anything here. Turning the brightness down will.'
+    : 'On an OLED screen black pixels genuinely switch off, ' + verb + amount + '. Turning the brightness down would save more.';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
