@@ -641,7 +641,6 @@ textarea, input { caret-color: var(--accent-line); }
     <h3>Notes</h3>
     <p class="note">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
-    <p class="note" id="screenNote"></p>
     <p class="note">The sum itself is simple: energy used × how dirty the electricity is. The total covers the conversation only, so your screen is listed alongside for comparison rather than added in. And longer chats cost more per answer, because we send the whole conversation back every time you ask something new.</p>
   </div>
 
@@ -897,7 +896,6 @@ function energyWh() {
   return gpu + hosting;
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
-const gramsFor = wh => wh * MODEL.gridGPerKwh / 1000;
 
 const THEME_KEY = 'susty-theme';
 const theme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -905,14 +903,7 @@ const theme = () => document.documentElement.getAttribute('data-theme') === 'dar
 // Display energy for the elapsed visible time, in both themes.
 function screenEnergy() {
   const panel = PANELS[state.screen] || PANELS.lcdLaptop;
-  const hours = screenSeconds() / 3600;
-  const other = theme() === 'dark' ? 'light' : 'dark';
-  return {
-    now:   panel[theme()] * hours,
-    other: panel[other]   * hours,
-    saved: (panel.light - panel.dark) * hours,   // always dark-relative-to-light
-    flat:  panel.light === panel.dark
-  };
+  return { now: panel[theme()] * (screenSeconds() / 3600) };
 }
 
 // Device class is detectable; panel type and brightness are not. HDR support
@@ -1053,23 +1044,9 @@ function paintLedger() {
 }
 
 function paintScreen() {
-  const s = screenEnergy();
   const dev = SHORT_DEVICE[state.screen] || 'your screen';
-
   $('rScreenLabel').textContent = 'Your screen, ' + fmtDuration(screenSeconds()) + ' on ' + dev;
-  $('rScreenNow').textContent   = fmt(s.now, 3) + ' Wh';
-
-  const savedG = gramsFor(s.saved);
-  const amount = savedG < 0.005 ? 'a tiny amount' : 'about ' + fmt(savedG) + ' g';
-  // "is saving" only holds in dark mode. In light the same figure is what dark
-  // mode *would have* saved, and claiming otherwise credits a saving the
-  // reader isn't getting.
-  const verb = theme() === 'dark' ? 'so dark mode is saving you ' : 'so dark mode would save you ';
-  // We can read your screen's size but never what kind of panel it is, so this
-  // follows the picker rather than claiming to know.
-  $('screenNote').textContent = s.flat
-    ? 'We\'ve gone with a backlit screen, which is what most people are reading on. Those burn the same whether the page is black or white, so dark mode won\'t save you anything. Turning the brightness down will. If yours is OLED, say so above.'
-    : 'You\'ve told us your screen is OLED, where black pixels genuinely switch off, ' + verb + amount + '. Turning the brightness down would save more.';
+  $('rScreenNow').textContent   = fmt(screenEnergy().now, 3) + ' Wh';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
