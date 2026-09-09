@@ -10,6 +10,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { clean, rateLimited, callAnthropic } from "./api/chat.js";
+import { fromGB, fromEIA, fromElectricityMaps } from "./api/grid.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,10 @@ function json(res, status, body) {
 // an aborted connection and no error to show.
 function readBody(req, cap = 200_000) {
   return new Promise((resolve) => {
+    // Without this, each TCP chunk is decoded independently and any multi-byte
+    // character split across a boundary turns into replacement characters —
+    // silently, since the mangled text is still valid JSON.
+    req.setEncoding("utf8");
     let data = "";
     let over = false;
     req.on("data", (c) => {
@@ -64,17 +69,46 @@ const server = createServer(async (req, res) => {
 
     try {
       const upstream = await callAnthropic(messages);
-      const data = await upstream.json();
       if (!upstream.ok) {
+        const data = await upstream.json().catch(() => ({}));
         console.error("Anthropic error", upstream.status, data);
         return json(res, upstream.status, {
           error: data?.error?.message || "The model provider rejected the request.",
         });
       }
-      return json(res, 200, { content: data.content, usage: data.usage });
+      res.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        "x-accel-buffering": "no",
+      });
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(decoder.decode(value, { stream: true }));
+      }
+      return res.end();
     } catch (err) {
       console.error(err);
-      return json(res, 502, { error: "Could not reach the model provider." });
+      if (!res.headersSent) return json(res, 502, { error: "Could not reach the model provider." });
+      res.end();
+    }
+  }
+
+  if (url.pathname === "/api/grid") {
+    const country = (url.searchParams.get("country") || "").toUpperCase();
+    const region = url.searchParams.get("region") || "";
+    const zone = url.searchParams.get("zone") || "";
+    try {
+      let out = null;
+      if (country === "GB") out = await fromGB(region);
+      if (!out && country === "US") out = await fromEIA(region);
+      if (!out) out = await fromElectricityMaps(zone || country);   // match api/grid.js
+      return json(res, 200, out || { live: false });
+    } catch (err) {
+      console.error("grid lookup failed", err);
+      return json(res, 200, { live: false });
     }
   }
 

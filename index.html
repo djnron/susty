@@ -5,23 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>susty — sustainability advice that knows what it costs</title>
 <meta name="description" content="Practical sustainability advice with real numbers, and a live count of what the conversation itself costs.">
+<meta name="theme-color" content="#FFFFFF" id="themeColor">
+<script>
+  // Applied before first paint so a stored dark preference doesn't flash light.
+  try { if (localStorage.getItem('susty-theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
+  color-scheme: light;
   --bg: #F4F4F5;
   --surface: #FFFFFF;
+  --bubble-bg: #F4F4F5;
+  --field-bg: #F4F4F5;
   --ink: #18181B;
   --ink-soft: #71717A;
+  --placeholder: #6B6B73;
   --rule: #E4E4E7;
-  --accent: #22C55E;
-  --accent-dark: #16A34A;
+  /* #16A34A only reaches 3.3:1 against white — measured, not assumed. */
+  --btn-bg: #15803D;
+  --btn-bg-hover: #166534;
+  --btn-fg: #FFFFFF;
+  --accent-text: #15803D;
+  --accent-line: #16A34A;
   --accent-light: #DCFCE7;
   --accent-border: #BBF7D0;
   --meter: #EA580C;
+  --meter-text: #C2410C;
   --meter-bg: #FFF7ED;
   --meter-border: #FED7AA;
+  --meter-flash: #FED7AA;
+  --meter-glow: rgba(194,65,12,.28);
+  --scrim: rgba(24,24,27,.4);
   --pad: clamp(16px, 3.5vw, 28px);
+}
+
+/* Near-black rather than dark grey is deliberate: on OLED only true black
+   switches a pixel off, and the ledger reports a saving on that basis, so
+   the largest areas have to earn it. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #09090B;
+  --bubble-bg: #18181B;
+  --field-bg: #18181B;
+  --ink: #FAFAFA;
+  --ink-soft: #A1A1AA;
+  --placeholder: #8A8A93;
+  --rule: #27272A;
+  /* On near-black, brand green carrying dark text beats white on dark green:
+     more contrast (6.5:1) and a CTA that actually reads as primary. */
+  --btn-bg: #22C55E;
+  --btn-bg-hover: #4ADE80;
+  --btn-fg: #052E16;
+  --accent-text: #4ADE80;
+  --accent-line: #22C55E;
+  --accent-light: #052E16;
+  --accent-border: #166534;
+  --meter: #FB923C;
+  --meter-text: #FB923C;
+  --meter-bg: #1C1310;
+  --meter-border: #7C2D12;
+  --meter-flash: #7C2D12;
+  --meter-glow: rgba(251,146,60,.32);
+  --scrim: rgba(0,0,0,.65);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -35,7 +85,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 3px; }
+
+/* Surfaces the browser would otherwise style for us. */
+::selection { background: var(--accent-light); color: var(--ink); }
+textarea, input { caret-color: var(--accent-line); }
+* { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); background-clip: content-box; }
 
 .frame {
   max-width: 780px;
@@ -78,7 +137,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   transition: border-color .18s, box-shadow .18s;
   flex: none;
 }
-.meter:hover { border-color: var(--meter); box-shadow: 0 0 0 3px rgba(234,88,12,.1); }
+.meter:hover { border-color: var(--meter); box-shadow: 0 1px 3px var(--meter-glow); }
 .meter-read {
   font-size: 20px;
   font-weight: 700;
@@ -93,9 +152,28 @@ button, input, textarea, select { font: inherit; color: inherit; }
   gap: 1px;
 }
 .meter-unit { font-size: 11px; font-weight: 500; color: var(--ink-soft); line-height: 1.2; }
-.meter-hint { font-size: 10px; color: var(--meter); text-decoration: underline; text-underline-offset: 2px; line-height: 1.2; }
+.meter-hint { font-size: 11px; color: var(--meter-text); text-decoration: underline; text-underline-offset: 2px; line-height: 1.2; }
 .meter.pulse { animation: tick .5s ease; }
-@keyframes tick { 0% { background: #FED7AA; } 100% { background: var(--meter-bg); } }
+@keyframes tick { 0% { background: var(--meter-flash); } 100% { background: var(--meter-bg); } }
+
+.masthead-tools { display: flex; align-items: center; gap: 10px; flex: none; }
+.theme-toggle {
+  border: 1.5px solid var(--rule);
+  background: transparent;
+  border-radius: 999px;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  display: flex; align-items: center; justify-content: center;
+  flex: none;
+  transition: border-color .15s, color .15s;
+}
+.theme-toggle:hover { border-color: var(--ink); color: var(--ink); }
+.theme-toggle svg { width: 18px; height: 18px; display: block; }
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 .transcript {
   flex: 1;
@@ -127,7 +205,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   line-height: 1.65;
 }
 .turn:not(.user) .bubble {
-  background: var(--bg);
+  background: var(--bubble-bg);
   border: 1px solid var(--rule);
   border-radius: 4px 14px 14px 14px;
 }
@@ -144,14 +222,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .bubble strong { font-weight: 600; }
 
 .opening { max-width: 52ch; }
-.opening-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--accent-dark);
-  margin: 0 0 12px;
-}
 .opening h2 {
   font-size: 24px;
   font-weight: 700;
@@ -182,7 +252,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border-radius: 10px;
   padding: 11px 14px;
   font-size: 14px;
-  color: var(--meter);
+  color: var(--meter-text);
   max-width: 62ch;
   background: var(--meter-bg);
 }
@@ -206,7 +276,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   color: var(--ink-soft);
   transition: border-color .15s, color .15s, background .15s;
 }
-.chip:hover { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-light); }
+.chip:hover { border-color: var(--accent-line); color: var(--ink); background: var(--accent-light); }
 
 .entry { display: flex; gap: 8px; align-items: flex-end; }
 .entry textarea {
@@ -214,7 +284,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
   resize: none;
   border: 1.5px solid var(--rule);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--field-bg);
   padding: 10px 14px;
   min-height: 44px;
   max-height: 150px;
@@ -222,12 +292,12 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-size: 15px;
   transition: border-color .15s;
 }
-.entry textarea:focus { border-color: var(--accent); outline: none; }
-.entry textarea::placeholder { color: #A1A1AA; }
+.entry textarea:focus { border-color: var(--accent-line); outline: none; }
+.entry textarea::placeholder { color: var(--placeholder); }
 .send {
   border: none;
-  background: var(--accent);
-  color: #fff;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
   border-radius: 10px;
   padding: 11px 20px;
   cursor: pointer;
@@ -236,13 +306,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   transition: background .15s;
   flex: none;
 }
-.send:hover { background: var(--accent-dark); }
+.send:hover { background: var(--btn-bg-hover); }
 .send:disabled { opacity: .4; cursor: default; }
 
 .scrim {
   position: fixed;
   inset: 0;
-  background: rgba(24,24,27,.4);
+  background: var(--scrim);
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s;
@@ -282,15 +352,17 @@ button, input, textarea, select { font: inherit; color: inherit; }
   border: 1.5px solid var(--rule);
   background: transparent;
   border-radius: 8px;
-  width: 32px; height: 32px;
+  width: 36px; height: 36px;
   cursor: pointer;
   flex: none;
-  font-size: 15px;
-  line-height: 1;
   color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: border-color .15s, color .15s;
 }
 .shut:hover { border-color: var(--ink); color: var(--ink); }
+.shut svg { width: 14px; height: 14px; display: block; }
 
 .sect { margin-bottom: 26px; }
 .sect h3 {
@@ -307,7 +379,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .rows td { padding: 6px 0; border-bottom: 1px dotted var(--rule); vertical-align: baseline; }
 .rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rows tr.total td { border-bottom: none; border-top: 1.5px solid var(--ink); padding-top: 9px; font-weight: 700; }
-.rows tr.total td:last-child { color: var(--meter); }
+.rows tr.total td:last-child { color: var(--meter-text); }
 .rows tr.muted td { color: var(--ink-soft); }
 
 .pick {
@@ -321,13 +393,15 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .pick select {
   border: 1.5px solid var(--rule);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--field-bg);
   padding: 6px 8px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  max-width: 60%;
 }
 .note { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; line-height: 1.55; }
+.sect h3 + .note { margin-top: 0; }
 
 .scale { list-style: none; margin: 0; padding: 0; font-size: 14px; }
 .scale li {
@@ -347,14 +421,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   background: var(--accent-light);
 }
 .offset p { margin: 0 0 10px; font-size: 14px; }
-.offset .lead { color: var(--accent-dark); font-weight: 700; font-size: 15px; }
+.offset .lead { color: var(--accent-text); font-weight: 700; font-size: 15px; }
 .offset ol { margin: 0 0 12px; padding-left: 1.15em; font-size: 14px; }
 .offset li { margin-bottom: 6px; color: var(--ink); }
 .act {
   width: 100%;
   border: none;
-  background: var(--accent);
-  color: #fff;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
   border-radius: 8px;
   padding: 10px;
   cursor: pointer;
@@ -362,13 +436,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
   font-weight: 600;
   transition: background .15s;
 }
-.act:hover { background: var(--accent-dark); }
+.act:hover { background: var(--btn-bg-hover); }
 
 .sources { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .sources li { padding: 6px 0; border-bottom: 1px dotted var(--rule); line-height: 1.5; }
 .sources li:last-child { border-bottom: none; }
-.sources a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 2px; }
+.sources a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 .sources span { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+.sources b { display: block; font-weight: 600; color: var(--ink); }
 
 .composer-meta { display: flex; justify-content: flex-end; padding-top: 8px; }
 .feedback-link { background: none; border: none; padding: 0; font-size: 12px; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
@@ -395,27 +470,53 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .feedback-body textarea {
   width: 100%; min-height: 90px; max-height: 180px; resize: vertical;
   border: 1.5px solid var(--rule); border-radius: 10px;
-  background: var(--bg); padding: 10px 14px;
+  background: var(--field-bg); padding: 10px 14px;
   font-size: 15px; line-height: 1.5; transition: border-color .15s;
 }
-.feedback-body textarea:focus { border-color: var(--accent); outline: none; }
-.feedback-body textarea::placeholder { color: #A1A1AA; }
+.feedback-body textarea:focus { border-color: var(--accent-line); outline: none; }
+.feedback-body textarea::placeholder { color: var(--placeholder); }
 .feedback-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .feedback-status { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
-.feedback-status.ok { color: var(--accent-dark); }
-.feedback-status.err { color: var(--meter); }
+.feedback-status.ok { color: var(--accent-text); }
+.feedback-status.err { color: var(--meter-text); }
 .feedback-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; color: var(--ink-soft); transition: border-color .15s; }
 .feedback-cancel:hover { border-color: var(--ink); color: var(--ink); }
-.feedback-submit { background: var(--accent); border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; transition: background .15s; }
-.feedback-submit:hover { background: var(--accent-dark); }
+.feedback-submit { background: var(--btn-bg); border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--btn-fg); cursor: pointer; transition: background .15s; }
+.feedback-submit:hover { background: var(--btn-bg-hover); }
 .feedback-submit:disabled { opacity: .4; cursor: default; }
 
 @media (max-width: 600px) {
   .masthead { flex-wrap: wrap; }
   .turn.user { max-width: 100%; }
 }
+
+/* Touch comfort. 34px clears the 24px WCAG 2.5.8 floor but is mean under a
+   thumb, so lift to 44px only where the pointer is actually coarse — a mouse
+   doesn't need the extra bulk. */
+@media (pointer: coarse) {
+  .chip { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; }
+  .pick select { min-height: 44px; }
+  .shut, .theme-toggle { width: 44px; height: 44px; }
+  .feedback-link { padding: 12px 4px; }
+  .feedback-cancel, .feedback-submit { min-height: 44px; }
+  .entry textarea { min-height: 48px; }
+}
+/* Standalone control, not inline in a sentence, so it owes the 24px minimum
+   on every input type. */
+.feedback-link { padding: 6px 2px; }
+/* Targeted rather than a blanket kill: collapsing every animation to .001ms
+   left the thinking dots parked on the blink keyframe's end state (opacity .2),
+   which is close to invisible. Each animation loses its motion but keeps a
+   legible resting state. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  .meter, .scrim, .ledger, .feedback-drawer,
+  .chip, .send, .act, .feedback-submit, .feedback-cancel,
+  .shut, .theme-toggle, .entry textarea, .feedback-body textarea {
+    transition: none;
+  }
+  .meter.pulse { animation: none; }
+  .thinking span { animation: none; opacity: .6; }
+  html { scroll-behavior: auto; }
 }
 </style>
 </head>
@@ -424,22 +525,31 @@ button, input, textarea, select { font: inherit; color: inherit; }
 <div class="frame">
   <header class="masthead">
     <h1 class="wordmark">susty</h1>
-    <button class="meter" id="meter" aria-haspopup="dialog">
-      <span class="meter-read" id="meterRead">0.00</span>
-      <span class="meter-label">
-        <span class="meter-unit">g CO₂e</span>
-        <span class="meter-hint">This Chat's CO₂</span>
-      </span>
-    </button>
+    <div class="masthead-tools">
+      <button class="theme-toggle" id="themeToggle" aria-label="Switch to light mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
+        </svg>
+      </button>
+      <button class="meter" id="meter" aria-haspopup="dialog">
+        <span class="meter-read" id="meterRead">0.00</span>
+        <span class="meter-label">
+          <span class="meter-unit">g CO₂e</span>
+          <span class="meter-hint">This Chat's CO₂</span>
+        </span>
+      </button>
+    </div>
   </header>
 
-  <main class="transcript" id="transcript">
+  <main class="transcript" id="transcript" aria-live="polite" aria-label="Conversation">
     <div class="opening" id="opening">
-      <p class="opening-label">Ask Susty</p>
       <h2>Got questions on what's more sustainable?</h2>
-      <p class="tagline">Susty is here with tiny ways to make the world a little less bad.</p>
-      <p>Ask about diet, travel, home energy — anything. You'll get specific answers with our best attempts at real numbers, not vague encouragement.</p>
-      <p>And of course this conversation costs energy too. The counter up top tracks it live. Tap it to see how it's worked out so far.</p>
+      <p class="tagline">Tiny ways to make the world a little less bad.</p>
+      <p>Ask about diet, travel, home energy, or anything else. The meter above tracks the carbon cost of this conversation live. Tap it to see how it's worked out.</p>
     </div>
   </main>
 
@@ -463,7 +573,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
       <h2>How we counted this</h2>
       <p class="ledger-sub">Estimates, not promises. Token counts come from the API; everything after is modelled.</p>
     </div>
-    <button class="shut" id="shut" aria-label="Close">✕</button>
+    <button class="shut" id="shut" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
 
   <div class="sect">
@@ -479,23 +589,45 @@ button, input, textarea, select { font: inherit; color: inherit; }
         <tr class="muted"><td>Hardware manufacture +15%</td><td id="rEmb">0 Wh</td></tr>
         <tr class="muted"><td>Vercel hosting &amp; network per exchange</td><td id="rHosting">0 Wh</td></tr>
         <tr><td>Electricity drawn</td><td id="rWh">0 Wh</td></tr>
-        <tr><td>Grid intensity</td><td id="rGrid">480 g/kWh</td></tr>
+        <tr><td>Grid intensity</td><td id="rGrid">473 g/kWh</td></tr>
         <tr class="total"><td>Total</td><td id="rTotal">0.00 g CO₂e</td></tr>
+        <tr class="muted"><td id="rScreenLabel">Your screen, for scale</td><td id="rScreenNow">0 Wh</td></tr>
       </tbody>
     </table>
 
     <div class="pick">
-      <label for="grid">Where the data centre sits</label>
-      <select id="grid">
-        <option value="480" selected>World average — 480 g/kWh</option>
-        <option value="370">United States — 370 g/kWh</option>
-        <option value="240">European Union — 240 g/kWh</option>
-        <option value="700">India — 700 g/kWh</option>
-        <option value="60">France — 60 g/kWh</option>
-        <option value="30">Hydro / wind powered — 30 g/kWh</option>
+      <label for="grid">Grid carbon intensity</label>
+      <select id="grid"></select>
+    </div>
+    <div class="pick" id="regionPick" hidden>
+      <label for="region">Narrow it down</label>
+      <select id="region"></select>
+    </div>
+    <div class="pick">
+      <label for="screen">Reading this on</label>
+      <select id="screen">
+        <option value="lcdLaptop" selected>Laptop, LCD / LED-backlit</option>
+        <option value="lcdMonitor">Desktop monitor, LCD / LED-backlit</option>
+        <option value="lcdPhone">Phone, LCD</option>
+        <option value="oledPhone">Phone, OLED / AMOLED</option>
+        <option value="oledLaptop">Laptop or tablet, OLED</option>
+        <option value="oledMonitor">Monitor or TV, OLED</option>
       </select>
     </div>
-    <p class="note">Grams = (tokens × energy per token) × cooling × hardware × grid intensity. Longer chats cost more per turn because the whole history is re-read each time you press Ask.</p>
+  </div>
+
+  <div class="sect">
+    <h3>What to do about it</h3>
+    <div class="offset">
+      <p class="lead" id="offsetLead">Offsetting this costs under a hundredth of a cent.</p>
+      <p>At roughly $100 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
+      <ol>
+        <li><strong>Wash clothes in cold water</strong>, around 200 g saved per load.</li>
+        <li><strong>Thermostat down 2°F</strong>, roughly 300 kg a year in a typical heated home.</li>
+        <li><strong>One beef meal a week swapped</strong>, on the order of 200 kg a year.</li>
+      </ol>
+      <button class="act" id="planBtn">Get a plan that covers this many times over</button>
+    </div>
   </div>
 
   <div class="sect">
@@ -505,17 +637,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
   </div>
 
   <div class="sect">
-    <h3>What to do about it</h3>
-    <div class="offset">
-      <p class="lead" id="offsetLead">Offsetting this costs about a hundredth of a penny.</p>
-      <p>At roughly $100 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
-      <ol>
-        <li><strong>Wash at 30°C</strong> — around 200 g saved per load.</li>
-        <li><strong>Thermostat down 1°C</strong> — roughly 300 kg a year in a typical heated home.</li>
-        <li><strong>One beef meal a week swapped</strong> — on the order of 200 kg a year.</li>
-      </ol>
-      <button class="act" id="planBtn">Get a plan that covers this many times over</button>
-    </div>
+    <h3>Notes</h3>
+    <p class="note" id="gridNote"></p>
+    <p class="note" id="screenNote"></p>
+    <p class="note">Grams = ((tokens × energy per token) × cooling × hardware, plus hosting per exchange) × grid intensity. The total covers the conversation only; the screen row is there for scale and isn't added in. Longer chats cost more per turn because the whole history is re-read each time you press Ask.</p>
   </div>
 
   <div class="sect">
@@ -534,12 +659,32 @@ button, input, textarea, select { font: inherit; color: inherit; }
         <span>Patterson et al. 2021 — Carbon Considerations for Large Language Model Development</span>
       </li>
       <li>
-        <a href="https://www.iea.org/reports/co2-emissions-in-2023" target="_blank" rel="noopener">Grid carbon intensities</a>
-        <span>IEA CO₂ Emissions in 2023 — regional average grid intensity figures used in the dropdown</span>
+        <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain — live, by region</a>
+        <span>NESO Carbon Intensity API. Half-hourly actuals for 14 distribution regions, so GB readings here are current rather than averaged. Open and keyless; nothing about you is sent with the request.</span>
+      </li>
+      <li>
+        <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States — live, hourly by region</a>
+        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the mix rather than read off — close, not exact, and it ignores interregional imports. Needs a free EIA key; without one we fall back to the annual figures below.</span>
+      </li>
+      <li>
+        <a href="https://www.epa.gov/egrid/summary-data" target="_blank" rel="noopener">United States — annual, by eGRID subregion</a>
+        <span>EPA eGRID2023 Rev 2 CO₂e output rates, converted from lb/MWh. Subregions run from 110 g/kWh in upstate New York to 680 on Oahu, so the 384 national average describes almost nobody. Used when no live reading is available.</span>
+      </li>
+      <li>
+        <a href="https://ember-energy.org/data/yearly-electricity-data/" target="_blank" rel="noopener">Everywhere else — national annual averages</a>
+        <span>2024 country figures, cross-checked against Ember's Global Electricity Review 2025. Annual means, so they miss both time-of-day swings and regional spread.</span>
       </li>
       <li>
         <a href="https://frontierclimate.com/writing/2024-state-of-cdr" target="_blank" rel="noopener">Carbon removal cost ~$100/tonne</a>
         <span>Frontier 2024 State of Carbon Dioxide Removal — durable CDR market pricing</span>
+      </li>
+      <li>
+        <a href="https://dl.acm.org/doi/10.1145/3458864.3467682" target="_blank" rel="noopener">Dark mode display power (3–9% at normal brightness)</a>
+        <span>Dash &amp; Hu, MobiSys 2021 — How much battery does dark mode save? An accurate OLED display power profiler for modern smartphones. Measured across several OLED phones: ~42% of total phone power at 100% brightness, but only 3–9% at the 30–50% brightness in normal use.</span>
+      </li>
+      <li>
+        <b>Display power — modelled, not measured</b>
+        <span>The browser can't tell us what panel you have, so the figures above come from the picker and the study beside it, not from your device. The OLED phone delta is calibrated into that 3–9% band; laptop and monitor rows scale it by panel area and are extrapolation, since only phones were measured. LCD is modelled as zero because a backlight's draw is content-independent — local dimming and mini-LED are a real exception we don't try to quantify. Screen-on time is genuinely measured, and pauses when the tab isn't visible.</span>
       </li>
     </ul>
   </div>
@@ -548,7 +693,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 <div class="feedback-drawer" id="feedbackDrawer" role="dialog" aria-modal="true" aria-label="Feedback" tabindex="-1">
   <div class="feedback-top">
     <h3>Share feedback</h3>
-    <button class="shut" id="feedbackClose" aria-label="Close">✕</button>
+    <button class="shut" id="feedbackClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <div class="feedback-body">
     <textarea id="feedbackText" placeholder="What's working? What should change?"></textarea>
@@ -567,12 +712,178 @@ const MODEL = {
   pue             : 1.12,
   embodied        : 0.15,
   whPerExchange   : 0.003,   // Vercel function + network per round trip
-  gridGPerKwh     : 480
+  gridGPerKwh     : 473      // world average; replaced at init by the guess
 };
 
-const ENDPOINT = '/api/chat';
+// Display draw in watts, per theme. The OLED phone delta (0.10 W) is set to
+// land inside the 3–9% of total phone power that Dash & Hu measured at
+// 30–50% brightness (MobiSys 2021), not the ~42% that only holds at full
+// brightness. Laptop and monitor rows scale that ratio by panel area and are
+// extrapolation, not measurement — only phones were measured. LCD is flat in
+// both themes because a backlight's draw is content-independent.
+const PANELS = {
+  lcdLaptop:   { light: 4.00,  dark: 4.00  },
+  lcdMonitor:  { light: 22.0,  dark: 22.0  },
+  lcdPhone:    { light: 0.60,  dark: 0.60  },
+  oledPhone:   { light: 0.55,  dark: 0.45  },
+  oledLaptop:  { light: 3.00,  dark: 2.40  },
+  oledMonitor: { light: 9.00,  dark: 7.20  }
+};
 
-const state = { turns: 0, inTokens: 0, outTokens: 0, history: [], busy: false };
+// Grid carbon intensity, gCO2/kWh, 2024. Cross-checked against Ember's Global
+// Electricity Review 2025 where both publish a figure (China 555/560,
+// Brazil 106/103, Japan 483/482 — all within ~1%).
+const GRIDS = {
+  world: { name: 'World average',        g: 473 },
+  EU:    { name: 'European Union',       g: 213 },
+  AR:    { name: 'Argentina',            g: 345 },
+  AU:    { name: 'Australia',            g: 554 },
+  AT:    { name: 'Austria',              g: 103 },
+  BE:    { name: 'Belgium',              g: 127 },
+  BR:    { name: 'Brazil',               g: 106 },
+  CA:    { name: 'Canada',               g: 185 },
+  CN:    { name: 'China',                g: 555 },
+  DK:    { name: 'Denmark',              g: 131 },
+  EG:    { name: 'Egypt',                g: 575 },
+  FI:    { name: 'Finland',              g:  67 },
+  FR:    { name: 'France',               g:  41 },
+  DE:    { name: 'Germany',              g: 338 },
+  GR:    { name: 'Greece',               g: 322 },
+  IN:    { name: 'India',                g: 708 },
+  ID:    { name: 'Indonesia',            g: 680 },
+  IE:    { name: 'Ireland',              g: 273 },
+  IT:    { name: 'Italy',                g: 282 },
+  JP:    { name: 'Japan',                g: 483 },
+  MY:    { name: 'Malaysia',             g: 604 },
+  MX:    { name: 'Mexico',               g: 483 },
+  NL:    { name: 'Netherlands',          g: 250 },
+  NZ:    { name: 'New Zealand',          g: 120 },
+  NG:    { name: 'Nigeria',              g: 508 },
+  NO:    { name: 'Norway',               g:  31 },
+  PH:    { name: 'Philippines',          g: 612 },
+  PL:    { name: 'Poland',               g: 612 },
+  PT:    { name: 'Portugal',             g: 111 },
+  RU:    { name: 'Russia',               g: 446 },
+  SA:    { name: 'Saudi Arabia',         g: 692 },
+  SG:    { name: 'Singapore',            g: 499 },
+  ZA:    { name: 'South Africa',         g: 713 },
+  KR:    { name: 'South Korea',          g: 416 },
+  ES:    { name: 'Spain',                g: 146 },
+  SE:    { name: 'Sweden',               g:  35 },
+  CH:    { name: 'Switzerland',          g:  30 },
+  TH:    { name: 'Thailand',             g: 555 },
+  TR:    { name: 'Turkey',               g: 470 },
+  AE:    { name: 'United Arab Emirates', g: 468 },
+  GB:    { name: 'United Kingdom',       g: 217 },
+  US:    { name: 'United States',        g: 384 },
+  VN:    { name: 'Vietnam',              g: 484 },
+  renew: { name: 'Renewable tariff (hydro or wind)', g: 30 }
+};
+
+// Time zone is the only location signal that costs nothing: no permission
+// prompt, no network call, no IP handed to a third party.
+const TZ_COUNTRY = {};
+[
+  ['US','America/New_York America/Detroit America/Chicago America/Denver America/Phoenix America/Los_Angeles America/Anchorage America/Boise America/Indiana/Indianapolis America/Kentucky/Louisville Pacific/Honolulu'],
+  ['CA','America/Toronto America/Vancouver America/Edmonton America/Winnipeg America/Halifax America/St_Johns America/Regina'],
+  ['MX','America/Mexico_City America/Tijuana America/Monterrey America/Cancun'],
+  ['BR','America/Sao_Paulo America/Bahia America/Fortaleza America/Manaus America/Recife'],
+  ['AR','America/Argentina/Buenos_Aires'],
+  ['GB','Europe/London'], ['IE','Europe/Dublin'], ['FR','Europe/Paris'],
+  ['DE','Europe/Berlin'], ['NL','Europe/Amsterdam'], ['BE','Europe/Brussels'],
+  ['ES','Europe/Madrid'], ['IT','Europe/Rome'], ['PT','Europe/Lisbon'],
+  ['CH','Europe/Zurich'], ['AT','Europe/Vienna'], ['SE','Europe/Stockholm'],
+  ['NO','Europe/Oslo'], ['DK','Europe/Copenhagen'], ['FI','Europe/Helsinki'],
+  ['PL','Europe/Warsaw'], ['GR','Europe/Athens'], ['TR','Europe/Istanbul'],
+  ['RU','Europe/Moscow Asia/Yekaterinburg Asia/Novosibirsk Asia/Vladivostok'],
+  ['IN','Asia/Kolkata Asia/Calcutta'], ['CN','Asia/Shanghai Asia/Chongqing Asia/Urumqi'],
+  ['JP','Asia/Tokyo'], ['KR','Asia/Seoul'], ['SG','Asia/Singapore'],
+  ['MY','Asia/Kuala_Lumpur'], ['TH','Asia/Bangkok'], ['PH','Asia/Manila'],
+  ['ID','Asia/Jakarta Asia/Makassar'], ['VN','Asia/Ho_Chi_Minh Asia/Saigon'],
+  ['AE','Asia/Dubai'], ['SA','Asia/Riyadh'],
+  ['EG','Africa/Cairo'], ['NG','Africa/Lagos'], ['ZA','Africa/Johannesburg'],
+  ['AU','Australia/Sydney Australia/Melbourne Australia/Brisbane Australia/Perth Australia/Adelaide Australia/Hobart Australia/Darwin'],
+  ['NZ','Pacific/Auckland']
+].forEach(([cc, zones]) => zones.split(' ').forEach(z => { TZ_COUNTRY[z] = cc; }));
+
+// Sub-national data, because national averages hide enormous spreads. In the
+// US the national figure is 384 while actual subregions run 110–680.
+// eGRID2023 Rev 2 CO2e output rates, converted lb/MWh × 0.453592 → g/kWh.
+const US_SUB = {
+  NYUP: 110, CAMX: 195, AKMS: 237, NEWE: 246, SRVC: 271, RFCE: 272, NWPP: 288,
+  AZNM: 320, ERCT: 334, SRMV: 336, FRCC: 356, SRSO: 384, NYCW: 393, SPNO: 394,
+  SPSO: 397, SRTV: 410, AKGD: 411, RFCW: 416, MROW: 420, RFCM: 443, RMPA: 473,
+  HIMS: 514, NYLI: 540, SRMW: 567, MROE: 637, HIOA: 680, PRMS: 702
+};
+
+// State → dominant eGRID subregion. A few states straddle two; the picker
+// splits New York because its three subregions span 110–540.
+const US_STATES = [
+  ['Alabama','SRSO'],['Alaska','AKGD'],['Arizona','AZNM'],['Arkansas','SRMV'],
+  ['California','CAMX'],['Colorado','RMPA'],['Connecticut','NEWE'],['Delaware','RFCE'],
+  ['District of Columbia','RFCE'],['Florida','FRCC'],['Georgia','SRSO'],['Hawaii (Oahu)','HIOA'],
+  ['Hawaii (other islands)','HIMS'],['Idaho','NWPP'],
+  ['Illinois — northern (Chicago)','RFCW'],['Illinois — central & south','SRMW'],
+  ['Indiana','RFCW'],
+  ['Iowa','MROW'],['Kansas','SPNO'],['Kentucky','SRTV'],['Louisiana','SRMV'],
+  ['Maine','NEWE'],['Maryland','RFCE'],['Massachusetts','NEWE'],
+  ['Michigan — lower peninsula','RFCM'],['Michigan — upper peninsula','MROE'],
+  ['Minnesota','MROW'],['Mississippi','SRMV'],['Missouri','SRMW'],
+  ['Montana — west','NWPP'],['Montana — east','MROW'],
+  ['Nebraska','MROW'],['Nevada','NWPP'],['New Hampshire','NEWE'],['New Jersey','RFCE'],
+  ['New Mexico','AZNM'],['New York — upstate','NYUP'],['New York — NYC & Westchester','NYCW'],
+  ['New York — Long Island','NYLI'],['North Carolina','SRVC'],['North Dakota','MROW'],
+  ['Ohio','RFCW'],['Oklahoma','SPSO'],['Oregon','NWPP'],
+  ['Pennsylvania — east (Philadelphia, Harrisburg)','RFCE'],
+  ['Pennsylvania — west (Pittsburgh, Erie)','RFCW'],
+  ['Puerto Rico','PRMS'],['Rhode Island','NEWE'],['South Carolina','SRVC'],['South Dakota','MROW'],
+  ['Tennessee','SRTV'],
+  ['Texas — most of state (ERCOT)','ERCT'],['Texas — panhandle','SPSO'],['Texas — El Paso','AZNM'],
+  ['Utah','NWPP'],['Vermont','NEWE'],
+  ['Virginia','SRVC'],['Washington','NWPP'],['West Virginia','RFCW'],
+  ['Wisconsin — east','MROE'],['Wisconsin — west','MROW'],
+  ['Wyoming','RMPA']
+];
+
+// NESO regions, fetched live rather than tabled — these numbers move all day.
+const GB_REGIONS = [
+  ['North Scotland',1],['South Scotland',2],['North West England',3],['North East England',4],
+  ['Yorkshire',5],['North Wales & Merseyside',6],['South Wales',7],['West Midlands',8],
+  ['East Midlands',9],['East England',10],['South West England',11],['South England',12],
+  ['London',13],['South East England',14]
+];
+
+function guessGrid() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
+  const cc = TZ_COUNTRY[tz];
+  if (cc && GRIDS[cc]) return { key: cc, guessed: true, tz };
+  if (tz.indexOf('Europe/') === 0) return { key: 'EU', guessed: true, tz };
+  return { key: 'world', guessed: false, tz };
+}
+
+const ENDPOINT = '/api/chat';
+// The system prompt is billed as input on every turn but never appears in
+// state.history, so the estimate fallback has to add it back.
+const SYSTEM_TOKENS = 275;
+
+const state = {
+  turns: 0, inTokens: 0, outTokens: 0, history: [], busy: false,
+  screen: 'lcdLaptop',
+  grid: 'world', gridGuessed: false, region: '', live: null
+};
+
+// Screen-on time, counted only while the tab is actually visible.
+let visibleMs = 0, lastTick = null;
+function clockStart() { if (lastTick === null) lastTick = performance.now(); }
+function clockStop()  { if (lastTick !== null) { visibleMs += performance.now() - lastTick; lastTick = null; } }
+function screenSeconds() {
+  return (visibleMs + (lastTick === null ? 0 : performance.now() - lastTick)) / 1000;
+}
+if (document.visibilityState === 'visible') clockStart();
+document.addEventListener('visibilitychange', () => {
+  document.visibilityState === 'visible' ? clockStart() : clockStop();
+});
 const $ = id => document.getElementById(id);
 const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
 const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -584,22 +895,70 @@ function energyWh() {
   return gpu + hosting;
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
+const gramsFor = wh => wh * MODEL.gridGPerKwh / 1000;
+
+const THEME_KEY = 'susty-theme';
+const theme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+
+// Display energy for the elapsed visible time, in both themes.
+function screenEnergy() {
+  const panel = PANELS[state.screen] || PANELS.lcdLaptop;
+  const hours = screenSeconds() / 3600;
+  const other = theme() === 'dark' ? 'light' : 'dark';
+  return {
+    now:   panel[theme()] * hours,
+    other: panel[other]   * hours,
+    saved: (panel.light - panel.dark) * hours,   // always dark-relative-to-light
+    flat:  panel.light === panel.dark
+  };
+}
+
+// Device class is detectable; panel type and brightness are not. HDR support
+// looked like an OLED tell until it reported true on a mini-LED laptop, and
+// there is no brightness API. So we guess the class, assume the backlit
+// (zero-saving) case, and say so rather than claiming a saving we can't see.
+function guessDevice() {
+  // Test the SHORT edge for phones. Comparing the long edge classified every
+  // modern phone as a laptop (iPhone 15 is 393×852, so the long edge is 852)
+  // and billed it at 4 W instead of 0.6 W — a ~7× overstatement.
+  const short = Math.min(screen.width, screen.height);
+  const long  = Math.max(screen.width, screen.height);
+  const mobile = navigator.userAgentData
+    ? navigator.userAgentData.mobile
+    : /Android|iPhone|iPod/i.test(navigator.userAgent);
+  if (mobile && short < 600) return 'lcdPhone';
+  if (mobile || /iPad|Tablet/i.test(navigator.userAgent)) return 'lcdLaptop';
+  // Resolution alone can't separate laptop from desktop: 1920×1080 is the most
+  // common *laptop* panel, so only go to a 22 W monitor well above that.
+  return long >= 2200 ? 'lcdMonitor' : 'lcdLaptop';
+}
+
+function fmtDuration(s) {
+  if (s < 60) return Math.round(s) + 's';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ' + Math.round(s % 60) + 's';
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+}
 
 const meter = $('meter'), meterRead = $('meterRead');
-let shown = 0;
+let shown = 0, meterRaf = null;
 function paintMeter() {
   const target = grams();
+  // Cancel any in-flight tween, so rapid changes don't leave two loops
+  // writing `shown` in the same frame.
+  if (meterRaf !== null) { cancelAnimationFrame(meterRaf); meterRaf = null; }
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     shown = target; meterRead.textContent = target.toFixed(2); return;
   }
   const from = shown, start = performance.now();
   meter.classList.remove('pulse'); void meter.offsetWidth; meter.classList.add('pulse');
-  (function step(now) {
+  const step = now => {
     const t = Math.min(1, (now - start) / 650);
     shown = from + (target - from) * (1 - Math.pow(1 - t, 3));
     meterRead.textContent = shown.toFixed(2);
-    if (t < 1) requestAnimationFrame(step);
-  })(performance.now());
+    meterRaf = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  meterRaf = requestAnimationFrame(step);
 }
 
 function paintLedger() {
@@ -622,14 +981,38 @@ function paintLedger() {
   $('rHosting').textContent  = fmt(hosting, 3) + ' Wh';
   $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
+
+  const gridName = (GRIDS[state.grid] || GRIDS.world).name;
+  let where = state.gridGuessed
+    ? 'Guessed ' + gridName + ' from your time zone. Nothing left your browser to work that out. '
+    : gridName + '. ';
+
+  if (state.live) {
+    where += 'This is a live reading (' + state.live.source + '), not an annual average, so it moves with what\'s actually on the grid right now, often by two or three times between a sunny afternoon and evening peak. ';
+    if (state.live.derived) {
+      where += 'It\'s worked out from the hour\'s generation mix rather than published as an intensity, since that\'s the only hourly US figure available free, so treat it as close rather than exact. It also ignores power imported from neighbouring regions. ';
+    }
+    if (state.live.g <= 5) {
+      where += 'A figure this close to zero is real, not a bug: that region is running almost entirely on hydro and wind at the moment, and this counts operational emissions only. ';
+    }
+  } else if (state.grid === 'US' && state.region) {
+    where += 'That\'s the EPA eGRID subregion for your state: a 2023 annual average, and far closer than the national figure. It still smooths over the day, which swings two or three times between a sunny afternoon and evening peak. ';
+  } else if (state.grid === 'US') {
+    where += 'That\'s the national average, which describes almost nobody: US subregions run from about 110 g/kWh in upstate New York to 700 in Puerto Rico. Pick your state under “Narrow it down” for a much closer figure. ';
+  } else {
+    where += 'That\'s an annual average, so it smooths over the day, which swings two or three times between a sunny afternoon and evening peak. ';
+  }
+
+  where += 'It sets the total in the table, and separately the screen figure, which is a fair fit for you but a guess for the data centre, since those servers could be in another country on a cleaner or dirtier grid and we have no way to see which.';
+  $('gridNote').textContent = where;
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
   const comparisons = [
-    ['Driving a petrol car',         g / 170 * 1000, 'm'],
+    ['Driving a gas car',             g / 170 * 1000, 'm'],
     ['Boiling water for tea',        g / 20,         ' cups'],
     ['A hot shower, 8 minutes',      g / 500,        ' showers'],
     ['A beef burger',                g / 3000,       ' burgers'],
-    ['London to New York, one seat', g / 900000,     ' flights']
+    ['New York to LA, one seat',     g / 250000,     ' flights']
   ];
   $('scale').innerHTML = comparisons.map(([label, val, unit]) => {
     let v;
@@ -640,18 +1023,170 @@ function paintLedger() {
   }).join('');
 
   const dollars = g / 1e6 * 100;
-  $('offsetLead').textContent = 'Offsetting this costs about ' +
-    (dollars < 0.0001 ? 'under a hundredth of a cent' : '$' + dollars.toFixed(4)) + '.';
+  $('offsetLead').textContent = dollars < 0.0001
+    ? 'Offsetting this costs under a hundredth of a cent.'
+    : 'Offsetting this costs about $' + dollars.toFixed(4) + '.';
+
+  paintScreen();
+}
+
+function paintScreen() {
+  const s = screenEnergy();
+  const dev = SHORT_DEVICE[state.screen] || 'your screen';
+
+  $('rScreenLabel').textContent = 'Your screen, ' + fmtDuration(screenSeconds()) + ' on ' + dev;
+  $('rScreenNow').textContent   = fmt(s.now, 3) + ' Wh';
+
+  const savedG = gramsFor(s.saved);
+  const amount = savedG < 0.005 ? 'under 0.01 g' : 'about ' + fmt(savedG) + ' g';
+  // "is saving" only holds in dark mode. In light the same figure is what dark
+  // mode *would have* saved, and claiming otherwise credits a saving the
+  // reader isn't getting.
+  const verb = theme() === 'dark' ? 'dark mode is saving ' : 'dark mode would save ';
+  $('screenNote').textContent = s.flat
+    ? 'The screen figure assumes a backlit panel, which draws the same whatever\'s on it, so the theme changes nothing there. Turning the brightness down does.'
+    : 'The screen figure assumes an OLED panel, where black pixels switch off, so ' + verb + amount + ' of it. Brightness would save more.';
 }
 
 const scrim = $('scrim'), ledger = $('ledger');
-function openLedger()  { paintLedger(); scrim.classList.add('open');    ledger.classList.add('open');    ledger.focus(); }
-function closeLedger() {               scrim.classList.remove('open'); ledger.classList.remove('open'); meter.focus(); }
+let ledgerTimer = null;
+function openLedger() {
+  clearInterval(ledgerTimer);   // a second open would orphan the first interval,
+                                // leaving it repainting once a second forever
+  paintLedger();
+  scrim.classList.add('open'); ledger.classList.add('open'); ledger.focus();
+  // Only the screen-on figures move between messages, so tick the cheap
+  // function rather than rebuilding the whole ledger every second.
+  ledgerTimer = setInterval(paintScreen, 1000);
+}
+function closeLedger() {
+  ledger.classList.remove('open');
+  if (!feedbackDrawer.classList.contains('open')) scrim.classList.remove('open');
+  clearInterval(ledgerTimer); ledgerTimer = null;
+  meter.focus();
+}
 meter.addEventListener('click', openLedger);
 $('shut').addEventListener('click', closeLedger);
-scrim.addEventListener('click', () => { closeLedger(); closeFeedback(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && ledger.classList.contains('open')) closeLedger(); });
-$('grid').addEventListener('change', e => { MODEL.gridGPerKwh = +e.target.value; paintLedger(); paintMeter(); });
+scrim.addEventListener('click', () => {
+  if (feedbackDrawer.classList.contains('open')) closeFeedback();
+  if (ledger.classList.contains('open')) closeLedger();
+});
+
+// Keep Tab inside whichever drawer is open. Both declare aria-modal="true",
+// which tells assistive tech the rest of the page is inert — without this the
+// promise was false, and tabbing out let the meter re-open the ledger.
+function trapTab(container, e) {
+  const nodes = [...container.querySelectorAll(
+    'a[href], button:not([disabled]), select, textarea, input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter(el => el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  if (!nodes.length) return;
+  const first = nodes[0], last = nodes[nodes.length - 1];
+  const here = document.activeElement;
+  if (e.shiftKey && (here === first || here === container)) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && here === last) { e.preventDefault(); first.focus(); }
+}
+
+document.addEventListener('keydown', e => {
+  const open = feedbackDrawer.classList.contains('open') ? feedbackDrawer
+             : ledger.classList.contains('open') ? ledger : null;
+  if (!open) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    open === ledger ? closeLedger() : closeFeedback();
+  } else if (e.key === 'Tab') {
+    trapTab(open, e);
+  }
+});
+// Which countries we can go finer-grained on, and how.
+function subOptionsFor(country) {
+  if (country === 'US') return US_STATES.map(([n, k]) => [n + ' — ' + US_SUB[k] + ' g/kWh', k]);
+  if (country === 'GB') return GB_REGIONS.map(([n, id]) => [n, String(id)]);
+  return null;
+}
+
+function syncRegionPicker() {
+  const opts = subOptionsFor(state.grid);
+  const pick = $('regionPick'), sel = $('region');
+  if (!opts) { pick.hidden = true; state.region = ''; return; }
+  pick.hidden = false;
+  const head = state.grid === 'GB' ? 'All of Great Britain (live)' : 'Country average — ' + GRIDS.US.g + ' g/kWh';
+  sel.innerHTML = '<option value="">' + head + '</option>' +
+    opts.map(([label, val]) => '<option value="' + val + '">' + label + '</option>').join('');
+  sel.value = state.region || '';
+}
+
+// Static intensity for the current country/region selection.
+function staticGrid() {
+  if (state.grid === 'US' && state.region && US_SUB[state.region]) return US_SUB[state.region];
+  return (GRIDS[state.grid] || GRIDS.world).g;
+}
+
+// Ask the server whether a live figure exists. Silent no-op when it doesn't.
+// Sequence-guarded: a slow response for a country the user has since changed
+// away from must not overwrite the newer selection, or the ledger would print
+// "live reading, NESO Great Britain" next to a France figure.
+let gridSeq = 0;
+async function refreshLiveGrid() {
+  const seq = ++gridSeq;
+  const q = 'country=' + encodeURIComponent(state.grid) +
+            // The region matters for GB (per-DNO live) and US (eGRID subregion
+            // -> EIA region). Omitting it for the US made fromEIA() bail before
+            // it ever called EIA, leaving the whole hourly feature dead.
+            '&region=' + encodeURIComponent(state.region || '') +
+            '&zone=' + encodeURIComponent(state.grid);
+  try {
+    const r = await fetch('/api/grid?' + q);
+    const j = await r.json();
+    if (seq !== gridSeq) return;                    // a newer selection won
+    if (j && j.live && typeof j.g === 'number') state.live = { g: j.g, source: j.source, derived: !!j.derived };
+  } catch { /* offline or blocked; static table is fine */ }
+  if (seq !== gridSeq) return;
+  applyGrid();
+}
+
+function applyGrid() {
+  MODEL.gridGPerKwh = state.live ? state.live.g : staticGrid();
+  paintLedger(); paintMeter();
+}
+
+$('grid').addEventListener('change', e => {
+  state.grid = e.target.value;
+  state.region = '';
+  state.live = null;           // drop the old country's live reading up front,
+                               // so applyGrid() can't bill France at GB's rate
+  state.gridGuessed = false;   // they told us; stop hedging
+  try { localStorage.setItem('susty-grid', state.grid); localStorage.removeItem('susty-region'); } catch {}
+  syncRegionPicker();
+  applyGrid();
+  refreshLiveGrid();
+});
+
+$('region').addEventListener('change', e => {
+  state.region = e.target.value;
+  state.live = null;
+  try { localStorage.setItem('susty-region', state.region); } catch {}
+  applyGrid();
+  refreshLiveGrid();          // US regions drive the EIA lookup too, not just GB
+});
+const SHORT_DEVICE = {
+  lcdLaptop:   'a laptop',  lcdMonitor:  'a monitor',      lcdPhone:    'a phone',
+  oledPhone:   'an OLED phone', oledLaptop: 'an OLED laptop', oledMonitor: 'an OLED monitor'
+};
+$('screen').addEventListener('change', e => {
+  state.screen = e.target.value;
+  try { localStorage.setItem('susty-screen', state.screen); } catch {}
+  paintLedger();
+});
+
+function applyTheme(next) {
+  if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  $('themeToggle').setAttribute('aria-label', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  $('themeColor').setAttribute('content', next === 'dark' ? '#09090B' : '#FFFFFF');
+  try { localStorage.setItem(THEME_KEY, next); } catch {}
+  paintLedger();
+}
+$('themeToggle').addEventListener('click', () => applyTheme(theme() === 'dark' ? 'light' : 'dark'));
 
 const transcript = $('transcript');
 function escapeHtml(s) {
@@ -684,7 +1219,7 @@ function addTurn(role, text) {
 function addWaiting() {
   const el = document.createElement('div');
   el.className = 'turn';
-  el.innerHTML = '<div class="who">susty</div><div class="thinking"><span></span><span></span><span></span></div>';
+  el.innerHTML = '<div class="who">susty</div><div class="thinking" role="status" aria-label="susty is thinking"><span></span><span></span><span></span></div>';
   transcript.appendChild(el); scrollDown(); return el;
 }
 function addNotice(main, hint) {
@@ -696,15 +1231,19 @@ function addNotice(main, hint) {
 
 const CHIPS = [
   'Is flying once a year a big deal?',
-  'Induction hob vs gas — which wins?',
+  'Induction cooktop vs gas — which wins?',
   'How much does going vegan actually help?',
-  'Keep my petrol car or buy an EV?',
+  'Keep my gas car or buy an EV?',
   'What actually moves the needle?'
 ];
 CHIPS.forEach(text => {
   const b = document.createElement('button');
   b.className = 'chip'; b.type = 'button'; b.textContent = text;
-  b.addEventListener('click', () => send(text));
+  b.addEventListener('click', () => {
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+    input.focus();
+  });
   $('chips').appendChild(b);
 });
 
@@ -725,9 +1264,25 @@ async function send(raw) {
   state.busy = true; sendBtn.disabled = true;
   input.value = ''; input.style.height = 'auto';
   $('opening')?.remove();
-  addTurn('user', text);
+  const userEl = addTurn('user', text);
   state.history.push({ role: 'user', content: text });
   const waiting = addWaiting();
+  let turnEl = null, bubbleEl = null, committed = false;
+  let fullText = '', inputTokens = 0, outputTokens = 0, streamError = null;
+
+  // One render per frame. Re-parsing the whole message on every delta is
+  // quadratic, and a fast stream lands several deltas inside a single frame.
+  let renderQueued = false;
+  const paintReply = () => {
+    if (renderQueued || !bubbleEl) return;
+    renderQueued = true;
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      if (!bubbleEl) return;
+      bubbleEl.innerHTML = render(fullText);
+      scrollDown();
+    });
+  };
 
   try {
     const res = await fetch(ENDPOINT, {
@@ -736,31 +1291,80 @@ async function send(raw) {
       body: JSON.stringify({ messages: state.history })
     });
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || ('The server returned status ' + res.status + '.'));
-
-    const reply = (data.content || [])
-      .filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    if (!reply) throw new Error('The reply came back empty.');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || ('The server returned status ' + res.status + '.'));
+    }
 
     waiting.remove();
-    addTurn('assistant', reply);
-    state.history.push({ role: 'assistant', content: reply });
+    turnEl = addTurn('assistant', '');
+    bubbleEl = turnEl.querySelector('.bubble');
 
-    const usage = data.usage || {};
-    state.inTokens  += usage.input_tokens  ?? estimateTokens(state.history.map(m => m.content).join(' '));
-    state.outTokens += usage.output_tokens ?? estimateTokens(reply);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    const handleLine = line => {
+      if (!line.startsWith('data: ')) return;
+      const chunk = line.slice(6).trim();
+      if (!chunk || chunk === '[DONE]') return;
+      try {
+        const evt = JSON.parse(chunk);
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+          fullText += evt.delta.text;
+          paintReply();
+        } else if (evt.type === 'message_start' && evt.message?.usage) {
+          inputTokens = evt.message.usage.input_tokens ?? 0;
+        } else if (evt.type === 'message_delta' && evt.usage) {
+          outputTokens = evt.usage.output_tokens ?? 0;
+        } else if (evt.type === 'error') {
+          // Upstream can fail partway through (overloaded_error). Unhandled,
+          // a truncated reply was stored as though it were complete.
+          streamError = (evt.error && evt.error.message) || 'The model stopped partway.';
+        }
+      } catch { /* ignore malformed SSE lines */ }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) handleLine(line);
+    }
+    buf += decoder.decode();      // flush a trailing multi-byte sequence
+    if (buf.trim()) handleLine(buf);  // and a final frame that arrived unterminated
+
+    if (!fullText) throw new Error(streamError || 'The reply came back empty.');
+
+    // Estimate before pushing the reply. The old order fed the assistant's own
+    // output into the estimate for the request that produced it, and left out
+    // the system prompt, which is billed as input.
+    const estIn = estimateTokens(state.history.map(m => m.content).join(' ')) + SYSTEM_TOKENS;
+    state.inTokens  += inputTokens  || estIn;
+    state.outTokens += outputTokens || estimateTokens(fullText);
+    state.history.push({ role: 'assistant', content: fullText });
     state.turns += 1;
+    committed = true;
+
+    // Partial text is kept rather than discarded: deleting words the reader
+    // already saw would leave the model unable to refer to its own reply.
+    if (streamError) addNotice('That reply was cut off. Ask again to pick it up.', null);
 
     paintMeter();
     if (ledger.classList.contains('open')) paintLedger();
   } catch (err) {
-    waiting.remove();
-    state.history.pop();
-    addNotice(
-      "That didn't go through. " + err.message,
-      'Check that the server is running and ANTHROPIC_API_KEY is set.'
-    );
+    console.error('Chat error:', err);
+    if (!committed) {
+      // Take the exchange out of both the transcript and the history so they
+      // stay in step, and hand the question back instead of losing it.
+      if (turnEl) turnEl.remove(); else waiting.remove();
+      userEl.remove();
+      state.history.pop();
+      if (!input.value.trim()) { input.value = text; input.dispatchEvent(new Event('input')); }
+      addNotice('Something went wrong on our end. Your question is back in the box — try again.', null);
+    }
   } finally {
     state.busy = false; sendBtn.disabled = false; input.focus();
   }
@@ -773,8 +1377,19 @@ $('planBtn').addEventListener('click', () => {
 });
 
 const feedbackDrawer = $('feedbackDrawer');
-function openFeedback()  { feedbackDrawer.classList.add('open'); scrim.classList.add('open'); $('feedbackText').focus(); }
-function closeFeedback() { feedbackDrawer.classList.remove('open'); scrim.classList.remove('open'); }
+let feedbackOpener = null;
+function openFeedback()  {
+  feedbackOpener = document.activeElement;
+  feedbackDrawer.classList.add('open'); scrim.classList.add('open'); $('feedbackText').focus();
+}
+function closeFeedback() {
+  feedbackDrawer.classList.remove('open');
+  // The ledger may still be open behind this one; don't strand it without a scrim.
+  if (!ledger.classList.contains('open')) scrim.classList.remove('open');
+  const back = feedbackOpener && feedbackOpener.isConnected ? feedbackOpener : $('feedbackBtn');
+  feedbackOpener = null;
+  back.focus();
+}
 
 $('feedbackBtn').addEventListener('click', openFeedback);
 $('feedbackClose').addEventListener('click', closeFeedback);
@@ -794,6 +1409,45 @@ $('feedbackSubmitBtn').addEventListener('click', () => {
   $('feedbackText').value = '';
   setTimeout(closeFeedback, 400);
 });
+
+// Restore the screen choice, then sync the toggle's label to whatever the
+// pre-paint script already applied. Not routed through applyTheme() so a
+// first visit isn't recorded as a deliberate choice.
+// Guess the device class, then let a stored choice override it.
+state.screen = guessDevice();
+try {
+  const savedScreen = localStorage.getItem('susty-screen');
+  if (savedScreen && PANELS[savedScreen]) state.screen = savedScreen;
+} catch {}
+$('screen').value = state.screen;
+
+// Grid: World average first, then the EU aggregate, countries A–Z, tariff last.
+const gridSel = $('grid');
+const gridOrder = ['world', 'EU',
+  ...Object.keys(GRIDS).filter(k => k !== 'world' && k !== 'EU' && k !== 'renew')
+    .sort((a, b) => GRIDS[a].name.localeCompare(GRIDS[b].name)),
+  'renew'];
+gridSel.innerHTML = gridOrder.map(k =>
+  '<option value="' + k + '">' + GRIDS[k].name + ' — ' + GRIDS[k].g + ' g/kWh</option>').join('');
+
+const gGuess = guessGrid();
+state.grid = gGuess.key;
+state.gridGuessed = gGuess.guessed;
+try {
+  const savedGrid = localStorage.getItem('susty-grid');
+  if (savedGrid && GRIDS[savedGrid]) { state.grid = savedGrid; state.gridGuessed = false; }
+  // Validate the region against the restored country: a stale pairing would
+  // send NESO an eGRID code and silently lose GB's live reading.
+  const savedRegion = localStorage.getItem('susty-region');
+  const allowed = subOptionsFor(state.grid);
+  if (savedRegion && allowed && allowed.some(([, v]) => v === savedRegion)) state.region = savedRegion;
+} catch {}
+gridSel.value = state.grid;
+syncRegionPicker();
+MODEL.gridGPerKwh = staticGrid();
+refreshLiveGrid();
+$('themeToggle').setAttribute('aria-label', theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+$('themeColor').setAttribute('content', theme() === 'light' ? '#FFFFFF' : '#09090B');
 
 paintLedger();
 </script>

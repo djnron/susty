@@ -28,16 +28,33 @@ const hits = new Map(); // in-memory, so it resets on cold start — see README
 export function rateLimited(ip) {
   const now = Date.now();
   const recent = (hits.get(ip) || []).filter((t) => now - t < LIMITS.windowMs);
+  // Check before recording. Counting rejected attempts kept pushing the window
+  // forward, so a client at the limit could never recover except by going
+  // fully idle for the whole window.
+  if (recent.length >= LIMITS.perWindow) {
+    hits.set(ip, recent);
+    return true;
+  }
   recent.push(now);
   hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear();
-  return recent.length > LIMITS.perWindow;
+  // Evict the oldest slice rather than clearing the map, which would hand every
+  // tracked IP a fresh quota the moment the 5000th one showed up.
+  if (hits.size > 5000) {
+    for (const k of [...hits.keys()].slice(0, 1000)) hits.delete(k);
+  }
+  return false;
 }
 
 // Accept only what we intend to forward. Never pass the client's body through whole.
 export function clean(messages) {
   if (!Array.isArray(messages) || messages.length === 0) return null;
   const trimmed = messages.slice(-LIMITS.maxMessages);
+  // A completed history is even-length, so an odd-length window can open on an
+  // assistant turn. The Messages API rejects that outright, and because the
+  // history only grows, every later send would fail too — the chat would brick
+  // itself permanently at 20 exchanges. Drop leading non-user turns.
+  while (trimmed.length && trimmed[0].role !== "user") trimmed.shift();
+  if (trimmed.length === 0) return null;
   const out = [];
   for (const m of trimmed) {
     if (!m || (m.role !== "user" && m.role !== "assistant")) return null;
@@ -61,6 +78,7 @@ export async function callAnthropic(messages) {
       max_tokens: LIMITS.maxTokens,
       system: SYSTEM,
       messages,
+      stream: true,
     }),
   });
   return res;
@@ -89,19 +107,33 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await callAnthropic(messages);
-    const data = await upstream.json();
 
     if (!upstream.ok) {
+      const data = await upstream.json().catch(() => ({}));
       console.error("Anthropic error", upstream.status, data);
       return res
         .status(upstream.status)
         .json({ error: data?.error?.message || "The model provider rejected the request." });
     }
 
-    // Pass content and usage straight through; usage is what drives the carbon meter.
-    return res.status(200).json({ content: data.content, usage: data.usage });
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(decoder.decode(value, { stream: true }));
+    }
+    res.end();
   } catch (err) {
     console.error(err);
-    return res.status(502).json({ error: "Could not reach the model provider." });
+    if (!res.headersSent) {
+      return res.status(502).json({ error: "Could not reach the model provider." });
+    }
+    res.end();
   }
 }
