@@ -13,7 +13,6 @@ server.js       plain Node server, same logic, for local or VPS hosting
 
 - [METHODOLOGY.md](METHODOLOGY.md) — every constant, source, and acknowledged
   approximation behind the carbon figures and the chat
-- [HANDOFF.md](HANDOFF.md) — orientation for picking the project up fresh
 - [PRODUCT.md](PRODUCT.md) — users, positioning, principles
 
 ## Get a key
