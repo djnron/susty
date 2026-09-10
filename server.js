@@ -6,7 +6,7 @@
 //   → http://localhost:3000
 
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { clean, rateLimited, callAnthropic } from "./api/chat.js";
@@ -39,6 +39,83 @@ function readBody(req, cap = 200_000) {
     req.on("end", () => resolve(over ? null : data));
     req.on("error", () => resolve(null));
   });
+}
+
+/* --------------------------------------------------------------------------
+   Copy editing (dev only).
+
+   Each field is located by a unique anchor rather than a line number, so the
+   file can move around underneath it. A save refuses rather than guesses if an
+   anchor is missing or matches more than once — silently editing the wrong
+   string would be worse than failing.
+-------------------------------------------------------------------------- */
+
+// id -> { open, close }. The text between them is the editable value.
+// Anchored on the element id, never on the copy itself: anchoring on opening
+// words meant rewriting the first sentence made the field unfindable.
+const COPY_FIELDS = {
+  "note.intro":      { open: '<p class="note" id="noteIntro">', close: "</p>" },
+  "note.dataCenter": { open: '<p class="note" id="noteDataCenter">', close: "</p>" },
+  "note.sum":        { open: '<p class="note" id="noteSum">', close: "</p>" },
+};
+
+// Fields inside the COPY object are double-quoted JS strings keyed by name.
+const COPY_OBJECT_KEYS = [
+  "privacy", "guessed", "picked", "world", "refine", "worldPick",
+  "sourceHourly", "sourceLive", "usNationalAverage", "sourceAnnualUS", "sourceAnnual",
+];
+
+function copyObjectRe(key) {
+  // key: "..."  — double-quoted, so an apostrophe in the copy needs no escaping
+  return new RegExp('(\\b' + key + ':\\s*")((?:[^"\\\\]|\\\\.)*)(")');
+}
+
+export function readCopy(src) {
+  const out = {};
+  for (const [id, f] of Object.entries(COPY_FIELDS)) {
+    const i = src.indexOf(f.open);
+    if (i === -1) continue;
+    const from = i + (f.keepOpen ? f.keepOpen.length : f.open.length);
+    const to = src.indexOf(f.close, from);
+    if (to === -1) continue;
+    out[id] = src.slice(from, to);
+  }
+  for (const key of COPY_OBJECT_KEYS) {
+    const m = src.match(copyObjectRe(key));
+    if (m) out["location." + key] = m[2].replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  }
+  for (const m of src.matchAll(/(\w+):\s*\{ name: '([^']*)',\s*url: '([^']*)' \}/g)) {
+    out["sources." + m[1]] = m[2];
+  }
+  return out;
+}
+
+export function writeCopy(src, id, value) {
+  if (COPY_FIELDS[id]) {
+    const f = COPY_FIELDS[id];
+    const hits = src.split(f.open).length - 1;
+    if (hits !== 1) throw new Error(`"${id}" matched ${hits} times; not editing`);
+    const i = src.indexOf(f.open);
+    const from = i + (f.keepOpen ? f.keepOpen.length : f.open.length);
+    const to = src.indexOf(f.close, from);
+    return src.slice(0, from) + value + src.slice(to);
+  }
+  if (id.startsWith("location.")) {
+    const key = id.slice("location.".length);
+    if (!COPY_OBJECT_KEYS.includes(key)) throw new Error(`Unknown field "${id}"`);
+    const re = copyObjectRe(key);
+    if (!re.test(src)) throw new Error(`"${id}" not found`);
+    const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
+    return src.replace(re, (_, a, __, c) => a + escaped + c);
+  }
+  if (id.startsWith("sources.")) {
+    const key = id.slice("sources.".length);
+    const re = new RegExp("(\\b" + key + ":\\s*\\{ name: ')([^']*)(')");
+    if (!re.test(src)) throw new Error(`"${id}" not found`);
+    if (value.includes("'")) throw new Error("Source names cannot contain an apostrophe");
+    return src.replace(re, (_, a, __, c) => a + value + c);
+  }
+  throw new Error(`Unknown field "${id}"`);
 }
 
 const server = createServer(async (req, res) => {
@@ -110,6 +187,50 @@ const server = createServer(async (req, res) => {
       console.error("grid lookup failed", err);
       return json(res, 200, { live: false });
     }
+  }
+
+  // --- Copy editor. Local development only: this route lives in server.js and
+  // not in api/, so it is never deployed. It reads and rewrites string literals
+  // in index.html in place.
+  if (url.pathname === "/copy") {
+    try {
+      const html = await readFile(join(root, "tools/copy-editor.html"));
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end(html);
+    } catch {
+      res.writeHead(500);
+      return res.end("tools/copy-editor.html is missing.");
+    }
+  }
+
+  if (url.pathname === "/api/copy") {
+    const file = join(root, "index.html");
+    if (req.method === "GET") {
+      try {
+        return json(res, 200, { copy: readCopy(await readFile(file, "utf8")) });
+      } catch (err) {
+        return json(res, 500, { error: String(err.message || err) });
+      }
+    }
+    if (req.method === "POST") {
+      const raw = await readBody(req);
+      let edits;
+      try { edits = JSON.parse(raw || "{}").edits || {}; }
+      catch { return json(res, 400, { error: "Bad JSON." }); }
+      try {
+        let src = await readFile(file, "utf8");
+        let written = 0;
+        for (const [id, value] of Object.entries(edits)) {
+          src = writeCopy(src, id, value);   // throws if the anchor is not unique
+          written++;
+        }
+        await writeFile(file, src);
+        return json(res, 200, { written });
+      } catch (err) {
+        return json(res, 400, { error: String(err.message || err) });
+      }
+    }
+    return json(res, 405, { error: "GET or POST." });
   }
 
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {

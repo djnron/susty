@@ -639,10 +639,10 @@ textarea, input { caret-color: var(--accent-line); }
 
   <div class="sect">
     <h3>Notes</h3>
-    <p class="note">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
+    <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
-    <p class="note">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now.</p>
-    <p class="note">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
+    <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now.</p>
+    <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
   <div class="sect">
@@ -864,6 +864,37 @@ function guessGrid() {
   return { key: 'world', guessed: false, tz };
 }
 
+/* ---------------------------------------------------------------------------
+   COPY. Every sentence in the ledger's location note lives here so it can be
+   read and rewritten in one place, by hand or through /copy in local dev.
+   {place}, {level} and {source} are filled in at render time.
+   Exactly one of the four source lines is used per reader, depending on which
+   data tier applies. Keep the trailing sentence-final punctuation; spacing
+   between sentences is added when they are joined.
+--------------------------------------------------------------------------- */
+const COPY = {
+  sources: {
+    eia:   { name: 'US Energy Information Administration', url: 'https://www.eia.gov/opendata/' },
+    neso:  { name: 'the UK grid operator',                 url: 'https://www.carbonintensity.org.uk/' },
+    egrid: { name: 'the EPA',                              url: 'https://www.epa.gov/egrid/summary-data' },
+    ember: { name: 'Ember',                                url: 'https://ember-energy.org/data/yearly-electricity-data/' }
+  },
+  location: {
+    privacy:   "As a quick note, because we care about your privacy, we don't ask your browser for your location or look up your address.",
+    guessed:   "We start by guessing your country from your computer's clock, which puts you in {place}.",
+    picked:    "You've picked {place}.",
+    world:     "Your computer's clock didn't tell us much, so we've started from the world average.",
+    refine:    "If you want a more exact figure, pick your {level} above.",
+    worldPick: "Pick your country above for something closer.",
+
+    sourceHourly:     "The electricity figure comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
+    sourceLive:       "The electricity figure comes from {source}, updated every half hour, so it follows the real ups and downs of the day.",
+    usNationalAverage:"For now that means a national average, which honestly fits almost nobody: US regions range from about 110 to 700.",
+    sourceAnnualUS:   "The electricity figure is a yearly average for your region, from {source}. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon.",
+    sourceAnnual:     "The electricity figure is a yearly average from {source}. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon."
+  }
+};
+
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
 // state.history, so the estimate fallback has to add it back.
@@ -983,53 +1014,35 @@ function paintLedger() {
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
 
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
-  // Plain language, three short sentences at most. The full reasoning lives in
-  // METHODOLOGY.md; this is the version a reader actually gets through.
-  // Built as HTML so the data source can be a link. Every interpolated value
-  // comes from our own tables, and gridName is escaped regardless.
-  const link = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + '</a>';
-  const EIA  = link('https://www.eia.gov/opendata/', 'US Energy Information Administration');
-  const NESO = link('https://www.carbonintensity.org.uk/', 'the UK grid operator');
-  const EGRID = link('https://www.epa.gov/egrid/summary-data', 'the EPA');
-  const EMBER = link('https://ember-energy.org/data/yearly-electricity-data/', 'Ember');
-
   // "in United States" and "you're in World average" both read badly.
   const place = /^(United|European|Netherlands|Philippines)/.test(gridName)
     ? 'the ' + escapeHtml(gridName) : escapeHtml(gridName);
 
-  // Lead with why, not with the mechanism. The privacy choice is the reason we
-  // start from a guess at all, so it belongs first.
-  let where = 'As a quick note, because we care about your privacy, we don\'t ask your browser for your location or look up your address. ';
+  const src = k => '<a href="' + COPY.sources[k].url + '" target="_blank" rel="noopener">' + COPY.sources[k].name + '</a>';
+  const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : '');
 
-  if (state.grid === 'world') {
-    where += 'Your computer\'s clock didn\'t tell us much, so we\'ve started from the world average. ';
-  } else if (state.gridGuessed) {
-    where += 'We start by guessing your country from your computer\'s clock, which puts you in ' + place + '. ';
-  } else {
-    where += 'You\'ve picked ' + place + '. ';
-  }
+  const L = COPY.location;
+  let where = L.privacy + ' ';
+
+  if (state.grid === 'world')      where += L.world + ' ';
+  else if (state.gridGuessed)      where += fill(L.guessed, { place }) + ' ';
+  else                             where += fill(L.picked,  { place }) + ' ';
 
   // Offer to refine only where a sub-picker actually exists and is unused.
   if (subOptionsFor(state.grid) && !state.region) {
-    where += 'If you want a more exact figure, pick your ' + (state.grid === 'US' ? 'state' : 'region') + ' above. ';
+    where += fill(L.refine, { level: state.grid === 'US' ? 'state' : 'region' }) + ' ';
   } else if (state.grid === 'world') {
-    where += 'Pick your country above for something closer. ';
+    where += L.worldPick + ' ';
   }
 
-  if (state.live && state.live.matchedHour) {
-    // No region named here: the copy is shared by every US region, and the size
-    // of the daily swing varies wildly between them (solar-heavy California
-    // roughly halves in the afternoon; coal-heavy regions barely move).
-    where += 'The electricity figure comes from the ' + EIA + ', which tracks what\'s actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday. ';
-  } else if (state.live) {
-    where += 'The electricity figure comes from ' + NESO + ', updated every half hour, so it follows the real ups and downs of the day. ';
-  } else if (state.grid === 'US' && !state.region) {
-    where += 'For now that means a national average, which honestly fits almost nobody: US regions range from about 110 to 700. ';
-  } else if (state.grid === 'US') {
-    where += 'The electricity figure is a yearly average for your region, from ' + EGRID + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
-  } else {
-    where += 'The electricity figure is a yearly average from ' + EMBER + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
-  }
+  // No region named in the source sentences: they are shared across every US
+  // region, and the daily swing varies wildly between them (solar-heavy
+  // California roughly halves in the afternoon; coal-heavy regions barely move).
+  if (state.live && state.live.matchedHour)          where += fill(L.sourceHourly,  { source: src('eia') });
+  else if (state.live)                               where += fill(L.sourceLive,    { source: src('neso') });
+  else if (state.grid === 'US' && !state.region)     where += L.usNationalAverage;
+  else if (state.grid === 'US')                      where += fill(L.sourceAnnualUS, { source: src('egrid') });
+  else                                               where += fill(L.sourceAnnual,   { source: src('ember') });
 
   $('gridNote').innerHTML = where.trim();
   $('rTotal').textContent = fmt(g) + ' g CO₂e';

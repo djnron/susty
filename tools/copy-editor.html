@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>susty — copy editor</title>
+<style>
+  :root { --ink:#18181B; --soft:#71717A; --rule:#E4E4E7; --bg:#F4F4F5; --accent:#15803D; --warn:#C2410C; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.6 "Plus Jakarta Sans", system-ui, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1 { font-size:22px; letter-spacing:-.02em; margin:0 0 4px; }
+  .sub { color:var(--soft); font-size:13px; margin:0 0 4px; }
+  .devonly { color:var(--warn); font-size:12px; margin:0 0 24px; font-weight:600; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--soft);
+       margin:32px 0 10px; padding-bottom:8px; border-bottom:1px solid var(--rule); }
+  .field { background:#fff; border:1px solid var(--rule); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .label { font-size:13px; font-weight:600; margin-bottom:2px; }
+  .hint { font-size:12px; color:var(--soft); margin-bottom:8px; }
+  textarea { width:100%; border:1.5px solid var(--rule); border-radius:8px; padding:10px 12px;
+             font:inherit; font-size:14px; line-height:1.55; resize:vertical; min-height:64px; background:#fff; }
+  textarea:focus { outline:none; border-color:var(--accent); }
+  textarea.dirty { border-color:var(--warn); background:#FFFBF7; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--rule);
+         padding:12px 24px; display:flex; align-items:center; gap:12px; justify-content:center; }
+  button { border:none; border-radius:8px; padding:11px 20px; font:inherit; font-weight:600;
+           font-size:14px; cursor:pointer; background:var(--accent); color:#fff; }
+  button:disabled { opacity:.4; cursor:default; }
+  button.ghost { background:transparent; color:var(--soft); border:1.5px solid var(--rule); }
+  .status { font-size:13px; color:var(--soft); }
+  .status.ok { color:var(--accent); font-weight:600; }
+  .status.err { color:var(--warn); font-weight:600; }
+  .preview { background:#fff; border:1px solid var(--rule); border-radius:10px; padding:16px; }
+  .preview p { font-size:12px; color:var(--soft); line-height:1.55; margin:0 0 10px; }
+  .preview p:last-child { margin:0; }
+  .preview b { color:var(--ink); }
+  code { background:var(--bg); padding:1px 5px; border-radius:4px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Copy editor</h1>
+  <p class="sub">Edits <code>index.html</code> directly. Refresh the app to see changes; commit them as usual.</p>
+  <p class="devonly">Local development only — this page and its save route do not exist on the deployed site.</p>
+
+  <div id="fields"></div>
+
+  <h2>Preview — location note</h2>
+  <div class="preview" id="preview"></div>
+</div>
+
+<div class="bar">
+  <span class="status" id="status">Loading…</span>
+  <button class="ghost" id="revert" disabled>Revert</button>
+  <button id="save" disabled>Save to index.html</button>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let original = {}, fields = [];
+
+const GROUPS = [
+  { title: 'Notes — fixed paragraphs', match: id => id.startsWith('note.') },
+  { title: 'Notes — location sentences', match: id => id.startsWith('location.') },
+  { title: 'Data sources (link text)', match: id => id.startsWith('sources.') },
+  { title: 'Opening screen', match: id => id.startsWith('opening.') },
+  { title: 'Starter questions', match: id => id.startsWith('chip.') },
+];
+
+const HINTS = {
+  'location.guessed':   '{place} becomes e.g. “the United States”',
+  'location.picked':    '{place} becomes the country they chose',
+  'location.refine':    '{level} becomes “state” or “region”',
+  'location.sourceHourly':   '{source} becomes a link to the data source. Used for US readers with hourly data.',
+  'location.sourceLive':     '{source} becomes a link. Used for Great Britain.',
+  'location.sourceAnnualUS': '{source} becomes a link. Used for a US state without hourly data.',
+  'location.sourceAnnual':   '{source} becomes a link. Used everywhere else.',
+  'location.usNationalAverage': 'Used for a US reader who has not picked a state.',
+  'location.privacy':   'Always shown first.',
+  'location.world':     'Used when the time zone gives no usable country.',
+  'location.worldPick': 'Follows the world-average line.',
+};
+
+function render(data) {
+  original = JSON.parse(JSON.stringify(data));
+  fields = Object.keys(data);
+  const host = $('fields');
+  host.innerHTML = '';
+  for (const g of GROUPS) {
+    const ids = fields.filter(g.match);
+    if (!ids.length) continue;
+    const h = document.createElement('h2'); h.textContent = g.title; host.appendChild(h);
+    for (const id of ids) host.appendChild(fieldEl(id, data[id]));
+  }
+}
+
+function fieldEl(id, value) {
+  const d = document.createElement('div'); d.className = 'field';
+  const label = document.createElement('div'); label.className = 'label';
+  label.textContent = id.split('.').slice(1).join('.').replace(/([A-Z])/g, ' $1').toLowerCase();
+  d.appendChild(label);
+  if (HINTS[id]) { const h = document.createElement('div'); h.className='hint'; h.textContent = HINTS[id]; d.appendChild(h); }
+  const ta = document.createElement('textarea');
+  ta.value = value; ta.dataset.id = id;
+  ta.style.height = Math.max(64, Math.ceil(value.length / 80) * 24 + 32) + 'px';
+  ta.addEventListener('input', () => {
+    ta.classList.toggle('dirty', ta.value !== original[id]);
+    refresh();
+  });
+  d.appendChild(ta);
+  return d;
+}
+
+const current = () => Object.fromEntries(
+  [...document.querySelectorAll('textarea')].map(t => [t.dataset.id, t.value]));
+
+function changed() {
+  const c = current();
+  return fields.filter(id => c[id] !== original[id]);
+}
+
+function refresh() {
+  const n = changed().length;
+  $('save').disabled = n === 0;
+  $('revert').disabled = n === 0;
+  $('status').className = 'status';
+  $('status').textContent = n ? n + ' change' + (n > 1 ? 's' : '') + ' not saved' : 'No changes';
+  preview();
+}
+
+// Mirrors how index.html assembles the note, so you can see it before saving.
+function preview() {
+  const c = current();
+  const fill = (s, v) => (s || '').replace(/\{(\w+)\}/g, (_, k) => '<b>' + (v[k] || k) + '</b>');
+  const cases = [
+    ['US reader, no state picked', [c['location.privacy'],
+      fill(c['location.guessed'], { place: 'the United States' }),
+      fill(c['location.refine'], { level: 'state' }),
+      c['location.usNationalAverage']]],
+    ['US reader, state picked, hourly data', [c['location.privacy'],
+      fill(c['location.guessed'], { place: 'the United States' }),
+      fill(c['location.sourceHourly'], { source: 'US Energy Information Administration' })]],
+    ['Great Britain', [c['location.privacy'],
+      fill(c['location.guessed'], { place: 'the United Kingdom' }),
+      fill(c['location.refine'], { level: 'region' }),
+      fill(c['location.sourceLive'], { source: 'the UK grid operator' })]],
+    ['Anywhere else', [c['location.privacy'],
+      fill(c['location.guessed'], { place: 'France' }),
+      fill(c['location.sourceAnnual'], { source: 'Ember' })]],
+  ];
+  $('preview').innerHTML = cases
+    .map(([name, parts]) => '<p><b>' + name + '</b><br>' + parts.filter(Boolean).join(' ') + '</p>')
+    .join('');
+}
+
+$('revert').addEventListener('click', () => {
+  for (const t of document.querySelectorAll('textarea')) {
+    t.value = original[t.dataset.id]; t.classList.remove('dirty');
+  }
+  refresh();
+});
+
+$('save').addEventListener('click', async () => {
+  const edits = Object.fromEntries(changed().map(id => [id, current()[id]]));
+  $('save').disabled = true;
+  $('status').textContent = 'Saving…'; $('status').className = 'status';
+  try {
+    const r = await fetch('/api/copy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edits })
+    });
+    const j = await r.json();
+    if (!r.ok || j.error) throw new Error(j.error || 'save failed');
+    original = current();
+    for (const t of document.querySelectorAll('textarea')) t.classList.remove('dirty');
+    $('status').textContent = 'Saved ' + j.written + ' change' + (j.written > 1 ? 's' : '') + ' to index.html';
+    $('status').className = 'status ok';
+    refresh();
+  } catch (e) {
+    $('status').textContent = e.message;
+    $('status').className = 'status err';
+    $('save').disabled = false;
+  }
+});
+
+(async () => {
+  try {
+    const r = await fetch('/api/copy');
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    render(j.copy);
+    refresh();
+  } catch (e) {
+    $('status').textContent = 'Could not load copy: ' + e.message;
+    $('status').className = 'status err';
+  }
+})();
+</script>
+</body>
+</html>
