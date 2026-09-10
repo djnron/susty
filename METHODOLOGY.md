@@ -359,7 +359,7 @@ published intensity and interregional imports, all true and none of it read.
 The detail lives in this document; the ledger keeps what someone needs to judge
 the number.
 
-Three paragraphs. The first and third are fixed:
+Four paragraphs. The first, third and fourth are fixed:
 
 > We do our best to make these calculations as accurate as possible. Some of it
 > has to be estimated, so here's where the numbers come from and where we're
@@ -370,20 +370,28 @@ Three paragraphs. The first and third are fixed:
 > sits open, not just when you ask something. And longer chats cost more per
 > answer, because we send the whole conversation back each time.
 
-The middle paragraph is assembled from the reader's actual situation, in three
+The second paragraph is assembled from the reader's actual situation, in three
 parts: the privacy stance and where we think they are, an offer to narrow it
 down where one is available, and the named data source with a link. For a US
 reader who has picked a state and has an EIA key configured:
 
-> Because we care about your privacy, we don't ask your browser for your
-> location or look up your address. We start by guessing your country from your
-> computer's clock, which puts you in the United States. The electricity figure
-> comes from the **US Energy Information Administration**, which tracks what's
-> actually generating power each hour. That's worth having, because the mix
-> shifts through the day as solar comes and goes. Their data runs about a day
-> behind, so we use the same hour from yesterday. One thing we can't know: the
-> computers answering you are in a data centre somewhere else, running on their
-> own electricity. We've assumed it's as clean as yours, which is a guess.
+> As a quick note, because we care about your privacy, we don't ask your
+> browser for your location or look up your address. We start by guessing your
+> country from your computer's clock, which puts you in the United States. The
+> electricity figure comes from the **US Energy Information Administration**,
+> which tracks what's actually generating power each hour. The energy mix
+> shifts through the day as solar comes and goes, but their data runs about a
+> day behind, so we use the same hour from yesterday.
+
+The third paragraph is fixed, and is the one place the ledger names something
+it wants to know and cannot:
+
+> One thing we don't know precisely, but would be great to find out: which
+> specific servers are answering your questions, in a data center somewhere
+> else, running on their own electricity. We've assumed they're close to you
+> and on the same energy sources, which is an estimate. We'd love to know
+> exactly which servers are doing the work and what that data center draws, but
+> that isn't public information right now.
 
 The source sentence swaps with the tier: NESO for Great Britain, the EPA for a
 chosen US state without a live key, Ember for everywhere else.

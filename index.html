@@ -641,6 +641,7 @@ textarea, input { caret-color: var(--accent-line); }
     <h3>Notes</h3>
     <p class="note">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
+    <p class="note">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now.</p>
     <p class="note">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
@@ -998,7 +999,7 @@ function paintLedger() {
 
   // Lead with why, not with the mechanism. The privacy choice is the reason we
   // start from a guess at all, so it belongs first.
-  let where = 'Because we care about your privacy, we don\'t ask your browser for your location or look up your address. ';
+  let where = 'As a quick note, because we care about your privacy, we don\'t ask your browser for your location or look up your address. ';
 
   if (state.grid === 'world') {
     where += 'Your computer\'s clock didn\'t tell us much, so we\'ve started from the world average. ';
@@ -1019,7 +1020,7 @@ function paintLedger() {
     // No region named here: the copy is shared by every US region, and the size
     // of the daily swing varies wildly between them (solar-heavy California
     // roughly halves in the afternoon; coal-heavy regions barely move).
-    where += 'The electricity figure comes from the ' + EIA + ', which tracks what\'s actually generating power each hour. That\'s worth having, because the mix shifts through the day as solar comes and goes. Their data runs about a day behind, so we use the same hour from yesterday. ';
+    where += 'The electricity figure comes from the ' + EIA + ', which tracks what\'s actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday. ';
   } else if (state.live) {
     where += 'The electricity figure comes from ' + NESO + ', updated every half hour, so it follows the real ups and downs of the day. ';
   } else if (state.grid === 'US' && !state.region) {
@@ -1030,8 +1031,7 @@ function paintLedger() {
     where += 'The electricity figure is a yearly average from ' + EMBER + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
   }
 
-  where += 'One thing we can\'t know: the computers answering you are in a data centre somewhere else, running on their own electricity. We\'ve assumed it\'s as clean as yours, which is a guess.';
-  $('gridNote').innerHTML = where;
+  $('gridNote').innerHTML = where.trim();
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
   const comparisons = [
