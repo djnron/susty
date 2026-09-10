@@ -641,7 +641,7 @@ textarea, input { caret-color: var(--accent-line); }
     <h3>Notes</h3>
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
-    <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now.</p>
+    <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
     <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
@@ -881,17 +881,22 @@ const COPY = {
   },
   location: {
     privacy:   "As a quick note, because we care about your privacy, we don't ask your browser for your location or look up your address.",
-    guessed:   "We start by guessing your country from your computer's clock, which puts you in {place}.",
-    picked:    "You've picked {place}.",
-    world:     "Your computer's clock didn't tell us much, so we've started from the world average.",
-    refine:    "If you want a more exact figure, pick your {level} above.",
-    worldPick: "Pick your country above for something closer.",
+    // Two variants: {region} only exists once someone has narrowed it down, so
+    // a single string with both placeholders would read "in the United States
+    // and ." until they did.
+    guessed:       "We start by guessing your country from your computer's clock, which currently puts you in {place}. You can change this above to help make it more accurate.",
+    guessedRegion: "We start by guessing your country from your computer's clock, which currently puts you in {place} and {region}. You can change this above to help make it more accurate.",
+    picked:        "",
+    pickedRegion:  "",
+    world:     "",
+    refine:    "",
+    worldPick: "",
 
-    sourceHourly:     "The electricity figure comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
+    sourceHourly:     "Currently the electricity figure comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
     sourceLive:       "The electricity figure comes from {source}, updated every half hour, so it follows the real ups and downs of the day.",
-    usNationalAverage:"For now that means a national average, which honestly fits almost nobody: US regions range from about 110 to 700.",
-    sourceAnnualUS:   "The electricity figure is a yearly average for your region, from {source}. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon.",
-    sourceAnnual:     "The electricity figure is a yearly average from {source}. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon."
+    usNationalAverage:"We are currently using a national average. If you haven't already, pick a more specific location above to make this more accurate. ",
+    sourceAnnualUS:   "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
+    sourceAnnual:     "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region."
   }
 };
 
@@ -1021,30 +1026,37 @@ function paintLedger() {
   const src = k => '<a href="' + COPY.sources[k].url + '" target="_blank" rel="noopener">' + COPY.sources[k].name + '</a>';
   const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] != null ? vars[k] : '');
 
-  const L = COPY.location;
-  let where = L.privacy + ' ';
+  // Collected then joined, so clearing a sentence in the copy editor removes it
+  // cleanly instead of leaving the space that used to be glued to it.
+  // The human label for whatever they narrowed to, without the g/kWh suffix
+  // the picker carries.
+  const regionOpt = (subOptionsFor(state.grid) || []).find(([, v]) => v === state.region);
+  const region = regionOpt ? escapeHtml(regionOpt[0].replace(/\s*—\s*\d+\s*g\/kWh.*$/, '').trim()) : '';
 
-  if (state.grid === 'world')      where += L.world + ' ';
-  else if (state.gridGuessed)      where += fill(L.guessed, { place }) + ' ';
-  else                             where += fill(L.picked,  { place }) + ' ';
+  const L = COPY.location;
+  const parts = [L.privacy];
+
+  if (state.grid === 'world')      parts.push(L.world);
+  else if (state.gridGuessed)      parts.push(fill(region ? L.guessedRegion : L.guessed, { place, region }));
+  else                             parts.push(fill(region ? L.pickedRegion  : L.picked,  { place, region }));
 
   // Offer to refine only where a sub-picker actually exists and is unused.
   if (subOptionsFor(state.grid) && !state.region) {
-    where += fill(L.refine, { level: state.grid === 'US' ? 'state' : 'region' }) + ' ';
+    parts.push(fill(L.refine, { level: state.grid === 'US' ? 'state' : 'region' }));
   } else if (state.grid === 'world') {
-    where += L.worldPick + ' ';
+    parts.push(L.worldPick);
   }
 
   // No region named in the source sentences: they are shared across every US
   // region, and the daily swing varies wildly between them (solar-heavy
   // California roughly halves in the afternoon; coal-heavy regions barely move).
-  if (state.live && state.live.matchedHour)          where += fill(L.sourceHourly,  { source: src('eia') });
-  else if (state.live)                               where += fill(L.sourceLive,    { source: src('neso') });
-  else if (state.grid === 'US' && !state.region)     where += L.usNationalAverage;
-  else if (state.grid === 'US')                      where += fill(L.sourceAnnualUS, { source: src('egrid') });
-  else                                               where += fill(L.sourceAnnual,   { source: src('ember') });
+  if (state.live && state.live.matchedHour)          parts.push(fill(L.sourceHourly,  { source: src('eia') }));
+  else if (state.live)                               parts.push(fill(L.sourceLive,    { source: src('neso') }));
+  else if (state.grid === 'US' && !state.region)     parts.push(L.usNationalAverage);
+  else if (state.grid === 'US')                      parts.push(fill(L.sourceAnnualUS, { source: src('egrid') }));
+  else                                               parts.push(fill(L.sourceAnnual,   { source: src('ember') }));
 
-  $('gridNote').innerHTML = where.trim();
+  $('gridNote').innerHTML = parts.map(s => (s || '').trim()).filter(Boolean).join(' ');
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
 
   const comparisons = [

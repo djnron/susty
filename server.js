@@ -61,7 +61,7 @@ const COPY_FIELDS = {
 
 // Fields inside the COPY object are double-quoted JS strings keyed by name.
 const COPY_OBJECT_KEYS = [
-  "privacy", "guessed", "picked", "world", "refine", "worldPick",
+  "privacy", "guessed", "guessedRegion", "picked", "pickedRegion", "world", "refine", "worldPick",
   "sourceHourly", "sourceLive", "usNationalAverage", "sourceAnnualUS", "sourceAnnual",
 ];
 

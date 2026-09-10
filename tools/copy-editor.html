@@ -68,8 +68,10 @@ const GROUPS = [
 ];
 
 const HINTS = {
-  'location.guessed':   '{place} becomes e.g. “the United States”',
-  'location.picked':    '{place} becomes the country they chose',
+  'location.guessed':   '{place} becomes e.g. “the United States”. Used before they narrow it down.',
+  'location.guessedRegion': '{place} is the country, {region} is what they narrowed to, e.g. “California”.',
+  'location.picked':    '{place} becomes the country they chose. Used before they narrow it down.',
+  'location.pickedRegion':  '{place} is the country they chose, {region} is what they narrowed to.',
   'location.refine':    '{level} becomes “state” or “region”',
   'location.sourceHourly':   '{source} becomes a link to the data source. Used for US readers with hourly data.',
   'location.sourceLive':     '{source} becomes a link. Used for Great Britain.',
@@ -138,7 +140,7 @@ function preview() {
       fill(c['location.refine'], { level: 'state' }),
       c['location.usNationalAverage']]],
     ['US reader, state picked, hourly data', [c['location.privacy'],
-      fill(c['location.guessed'], { place: 'the United States' }),
+      fill(c['location.guessedRegion'] || c['location.guessed'], { place: 'the United States', region: 'California' }),
       fill(c['location.sourceHourly'], { source: 'US Energy Information Administration' })]],
     ['Great Britain', [c['location.privacy'],
       fill(c['location.guessed'], { place: 'the United Kingdom' }),
