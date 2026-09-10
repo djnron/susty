@@ -996,13 +996,23 @@ function paintLedger() {
   const place = /^(United|European|Netherlands|Philippines)/.test(gridName)
     ? 'the ' + escapeHtml(gridName) : escapeHtml(gridName);
 
-  let where;
+  // Lead with why, not with the mechanism. The privacy choice is the reason we
+  // start from a guess at all, so it belongs first.
+  let where = 'Because we care about your privacy, we don\'t ask your browser for your location or look up your address. ';
+
   if (state.grid === 'world') {
-    where = 'We couldn\'t work out which country you\'re in, so this is the world average. Pick yours above for something closer. ';
+    where += 'Your computer\'s clock didn\'t tell us much, so we\'ve started from the world average. ';
   } else if (state.gridGuessed) {
-    where = 'We think you\'re in ' + place + ', going by your computer\'s clock. We didn\'t ask your browser for your location or look your address up anywhere. ';
+    where += 'We start by guessing your country from your computer\'s clock, which puts you in ' + place + '. ';
   } else {
-    where = 'You\'ve set this to ' + place + '. ';
+    where += 'You\'ve picked ' + place + '. ';
+  }
+
+  // Offer to refine only where a sub-picker actually exists and is unused.
+  if (subOptionsFor(state.grid) && !state.region) {
+    where += 'If you want a more exact figure, pick your ' + (state.grid === 'US' ? 'state' : 'region') + ' above. ';
+  } else if (state.grid === 'world') {
+    where += 'Pick your country above for something closer. ';
   }
 
   if (state.live && state.live.matchedHour) {
@@ -1013,7 +1023,7 @@ function paintLedger() {
   } else if (state.live) {
     where += 'The electricity figure comes from ' + NESO + ', updated every half hour, so it follows the real ups and downs of the day. ';
   } else if (state.grid === 'US' && !state.region) {
-    where += 'Right now we\'re using a national average, which honestly fits almost nobody. US regions range from about 110 to 700, so pick your state above and we\'ll get a lot closer. ';
+    where += 'For now that means a national average, which honestly fits almost nobody: US regions range from about 110 to 700. ';
   } else if (state.grid === 'US') {
     where += 'The electricity figure is a yearly average for your region, from ' + EGRID + '. It smooths out the day, so an evening can be two or three times dirtier than a sunny afternoon. ';
   } else {
