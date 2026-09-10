@@ -36,7 +36,20 @@ Single-session, single-page. No login, no history, no account. The user arrives,
 
 - Name: **susty** (lowercase, no tagline required)
 - Voice: direct, specific, non-preachy; "tiny ways to make the world a little less bad"
-- Green accent (#22C55E) and orange meter (#EA580C) are established; Plus Jakarta Sans is the typeface
+- Palette is brutalist and closed: black #000000, white #FFFFFF, grey for
+  dividers (#3A3A3A dark / #C9C9C9 light), hot red #FF2D2D for the meter, hot
+  green #2DFF6B for the Ask button and the recommendations block, system yellow #FFE600 for inline
+  annotation only, and link blue. The three accent blocks do not invert with
+  the theme and all carry black text
+- **Dark is the default theme**, light is the alternate. It is the base palette
+  rather than an override, so the page renders dark with no JS. It is also the
+  lowest-drawing option on OLED, which is the one theme claim this product can
+  make without hedging
+- Type is Helvetica Bold all-caps for display, system monospace for body and
+  captions, Times New Roman italic for footnotes and source glosses. No
+  webfont: nothing is downloaded, which is a claim the ledger can make honestly.
+  This replaces the earlier Plus Jakarta Sans commitment, and the earlier green
+  accent (#22C55E) and orange meter (#EA580C)
 - The meter and ledger are non-negotiable product surfaces — they are not optional UI
 
 ## Evidence on Hand

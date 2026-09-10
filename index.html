@@ -5,518 +5,767 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>susty — sustainability advice that knows what it costs</title>
 <meta name="description" content="Practical sustainability advice with real numbers, and a live count of what the conversation itself costs.">
-<meta name="theme-color" content="#FFFFFF" id="themeColor">
+<meta name="theme-color" content="#000000" id="themeColor">
 <script>
   // Applied before first paint so a stored dark preference doesn't flash light.
-  try { if (localStorage.getItem('susty-theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch {}
+  try { if (localStorage.getItem('susty-theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch {}
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<!-- No webfont. Helvetica and the system mono stack are already on the
+     device, so the page costs no font transfer at all. On a product that
+     bills itself for its own footprint, that is worth more than a typeface. -->
 <style>
+/* ---------------------------------------------------------------------------
+   Brutalist. Six colours, three typefaces, no radius, no shadow, no gradient,
+   no blur. Hierarchy comes from size, weight and case; decoration does not
+   exist. Every contrast ratio in the comments below was computed, not asserted.
+--------------------------------------------------------------------------- */
 
 :root {
-  color-scheme: light;
-  --bg: #F4F4F5;
-  --surface: #FFFFFF;
-  --bubble-bg: #F4F4F5;
-  --field-bg: #F4F4F5;
-  --ink: #18181B;
-  --ink-soft: #71717A;
-  --placeholder: #6B6B73;
-  --rule: #E4E4E7;
-  /* #16A34A only reaches 3.3:1 against white — measured, not assumed. */
-  --btn-bg: #15803D;
-  --btn-bg-hover: #166534;
-  --btn-fg: #FFFFFF;
-  --accent-text: #15803D;
-  --accent-line: #16A34A;
-  --accent-light: #DCFCE7;
-  --accent-border: #BBF7D0;
-  --meter: #EA580C;
-  --meter-text: #C2410C;
-  --meter-bg: #FFF7ED;
-  --meter-border: #FED7AA;
-  --meter-flash: #FED7AA;
-  --meter-glow: rgba(194,65,12,.28);
-  --scrim: rgba(24,24,27,.4);
-  --pad: clamp(16px, 3.5vw, 28px);
-}
-
-/* Near-black rather than dark grey is deliberate: on OLED only true black
-   switches a pixel off, and the ledger reports a saving on that basis, so
-   the largest areas have to earn it. */
-[data-theme="dark"] {
+  /* Dark is the default, and the base palette rather than an override, so the
+     page renders dark with no JS and cannot flash white before a stored
+     preference is read. It is also the lowest-drawing option on OLED, which
+     is the one theme claim this product can make without hedging. */
   color-scheme: dark;
-  --bg: #000000;
-  --surface: #09090B;
-  --bubble-bg: #18181B;
-  --field-bg: #18181B;
-  --ink: #FAFAFA;
-  --ink-soft: #A1A1AA;
-  --placeholder: #8A8A93;
-  --rule: #27272A;
-  /* On near-black, brand green carrying dark text beats white on dark green:
-     more contrast (6.5:1) and a CTA that actually reads as primary. */
-  --btn-bg: #22C55E;
-  --btn-bg-hover: #4ADE80;
-  --btn-fg: #052E16;
-  --accent-text: #4ADE80;
-  --accent-line: #22C55E;
-  --accent-light: #052E16;
-  --accent-border: #166534;
-  --meter: #FB923C;
-  --meter-text: #FB923C;
-  --meter-bg: #1C1310;
-  --meter-border: #7C2D12;
-  --meter-flash: #7C2D12;
-  --meter-glow: rgba(251,146,60,.32);
-  --scrim: rgba(0,0,0,.65);
+
+  --paper:   #000000;
+  --ink:     #ffffff;   /* 21:1 on paper */
+  --rule:    #3a3a3a;   /* 1.85:1 — dividers and disabled only, never prose */
+  --scrim:   rgba(0, 0, 0, .92);
+  /* #0000ee on black is 2.23:1 and unreadable, so the browser defaults cannot
+     survive the inversion. These are the closest legible equivalents. */
+  --link:    #6699ff;   /* 7.57:1 */
+  --visited: #cc99ff;   /* 9.57:1 */
+  --caret:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23fff'/%3E%3C/svg%3E");
+
+  /* Accent blocks do not invert with the theme: they are the same object in
+     both, and both carry black. White on #ff2d2d is 3.71:1 and fails AA at
+     every size; black on it is 5.67:1. Black on the green is 15.63:1. */
+  --red:      #ff2d2d;   /* the one bleeding block, in the masthead */
+  --green:    #2dff6b;   /* the Ask button, and the recommendations block */
+  --mark:     #ffe600;   /* inline annotation only */
+  --block-ink: #000000;
+
+  --display: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --mono:    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --serif:   "Times New Roman", Times, serif;
+
+  /* 16px is the floor for prose, per the brief. Only all-caps labels, which
+     are not prose, go below it. */
+  /* cqw, not vw: the display sizes have to shrink when the shelf docks and
+     takes a third of the width off the frame. Against vw the headline kept
+     its 1200px size inside an 816px frame and ran off the bottom. */
+  --t-word:  clamp(30px, 4.4cqw, 44px);
+  --t-xl:    clamp(34px, 8.2cqw, 78px);
+  --t-l:     clamp(21px, 3.2vw, 27px);
+  --t-m:     19px;
+  --t-body:  16px;
+  --t-label: 14px;
+  --t-meter: 26px;
+  --lh:      1.55;
+
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  --rw:    2px;   /* structural rule */
+  --hair:  1px;   /* internal divider */
+  --pad:   clamp(16px, 4vw, 32px);
+  /* The reading column. Centred in whatever space is left, so it re-centres
+     by itself when the shelf docks and takes a third of the width. */
+  --measure: 66ch;
+  /* The accent block runs 10vw past the canvas edge, inside the brief's
+     5-15% band. The frame clips it, so when the shelf docks it hard-cuts
+     against the shelf rule instead of running off-screen. */
+  --bleed: calc(10vw + var(--pad));
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+/* A straight tonal inversion of the same six colours, not a second palette. */
+[data-theme="light"] {
+  color-scheme: light;
+  --paper:   #ffffff;
+  --ink:     #000000;
+  --rule:    #c9c9c9;   /* 1.66:1 on white, the analogue of #3a3a3a on black */
+  --scrim:   rgba(0, 0, 0, .86);
+  --link:    #0000ee;   /* 9.40:1 */
+  --visited: #551a8b;   /* 11.01:1 */
+  --caret:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+/* Not a per-component decision. No element in this document is rounded. */
+*, *::before, *::after { box-sizing: border-box; border-radius: 0; }
+
 html, body { height: 100%; margin: 0; }
 body {
-  background: var(--bg);
+  background: var(--paper);
   color: var(--ink);
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  line-height: var(--lh);
+  display: grid;
+  grid-template-columns: 100%;
+  grid-template-rows: 100%;
 }
-button, input, textarea, select { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 3px; }
 
-/* Surfaces the browser would otherwise style for us. */
-::selection { background: var(--accent-light); color: var(--ink); }
-textarea, input { caret-color: var(--accent-line); }
-* { scrollbar-width: thin; scrollbar-color: var(--rule) transparent; }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); background-clip: content-box; }
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+a:visited { color: var(--visited); }
+mark { background: var(--mark); color: #000000; padding: 0 3px; }
+::selection { background: var(--mark); color: #000000; }
+textarea, input { caret-color: var(--ink); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; border-left: var(--hair) solid var(--rule); }
+::-webkit-scrollbar-thumb { background: var(--ink); }
+
+/* --- shell ---------------------------------------------------------------
+   Full bleed, left-hugging. No centred card: measure is held by the text
+   blocks themselves so the page stays asymmetric at any width. */
 
 .frame {
-  max-width: 780px;
-  margin: 0 auto;
+  grid-column: 1;
+  min-width: 0;
   height: 100%;
+  /* The sizing context for the display type. --bleed stays in vw: the brief
+     measures the overhang against the canvas, not against this box. */
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--rule);
-  border-right: 1px solid var(--rule);
-  background: var(--surface);
+  /* clip, not hidden: this axis is clipped without turning the other one
+     into a scroll container, which would break the transcript. */
+  overflow-x: clip;
 }
 
 .masthead {
-  display: flex;
+  display: grid;
+  /* minmax(0,1fr) rather than 1fr: the meter overhangs its column, and a bare
+     1fr would let that overhang feed back into the track sizing. */
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px var(--pad);
-  border-bottom: 1px solid var(--rule);
+  gap: var(--s3) var(--s4);
+  padding: var(--s4) var(--pad);
+  /* Start the lockup on the same left edge as the reading column, so every
+     piece of text on the page shares one. Only the start side moves: the end
+     side still feeds the meter's negative margin, and shifting it would drag
+     the bleed off its 10vw. */
+  padding-inline-start: max(var(--pad), calc((100% - var(--measure)) / 2));
+  border-bottom: var(--rw) solid var(--ink);
   flex: none;
 }
-
+/* Wordmark and tagline are one lockup, not two elements that happen to be
+   near each other. The tagline used to open the transcript; it says what the
+   product is, so it belongs against the name. */
+.lockup { grid-column: 1; min-width: 0; }
 .wordmark {
-  font-size: 20px;
+  font-family: var(--display);
+  font-size: var(--t-word);
   font-weight: 700;
+  line-height: .92;
+  text-transform: uppercase;
+  letter-spacing: 0;
   margin: 0;
-  letter-spacing: -0.03em;
-  color: var(--ink);
+  /* Helvetica Bold is the heaviest cut in the system stack. A hairline stroke
+     in the same colour thickens it without reaching for a webfont. */
+  -webkit-text-stroke: .6px currentColor;
 }
+.wordmark-sub {
+  font-family: var(--mono);
+  font-size: 13px;
+  text-transform: uppercase;
+  line-height: 1.25;
+  margin: var(--s2) 0 0;
+  /* The lockup shares its row with the toggle and the meter, so its width
+     moves about. Balance the break rather than leaving "BAD." on its own. */
+  text-wrap: balance;
+}
+.theme-toggle { grid-column: 2; }
+
+/* The meter and the sentence explaining it are one unit.
+   On desktop the column is sized by the caption, not by the meter: the meter
+   carries --bleed as padding-right, so giving the wrap a fixed width would
+   spend most of it on padding and wrap the label onto three lines. Capping
+   the caption instead bounds the column, and the meter shrinks to its content
+   and bleeds out past it. */
+.meter-wrap { grid-column: 1 / -1; min-width: 0; }
+.meter-note {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: var(--s2) 0 0;
+}
+
+@media (min-width: 720px) {
+  /* The third track is set by the caption, so the meter's overhang cannot
+     widen it and squeeze the wordmark. */
+  .masthead { grid-template-columns: minmax(0, 1fr) auto 32ch; align-items: start; }
+  .meter-wrap { grid-column: 3; }
+}
+
+/* --- the accent block ----------------------------------------------------
+   The meter is the one hot-red block on the page, and the only one there is
+   room for: the brief allows one per viewport and this one is always on
+   screen. That is the right object to spend it on. It is the argument. */
 
 .meter {
-  border: 1.5px solid var(--meter-border);
-  border-radius: 999px;
-  background: var(--meter-bg);
-  padding: 7px 16px 7px 14px;
-  cursor: pointer;
+  width: 100%;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: border-color .18s, box-shadow .18s;
-  flex: none;
+  align-items: baseline;
+  gap: var(--s3);
+  background: var(--red);
+  color: var(--block-ink);
+  border: var(--rw) solid var(--ink);
+  border-right: none;
+  padding: var(--s3) var(--s4);
+  /* Overhangs its column by --bleed, which puts its right edge 10vw past the
+     canvas. .frame clips it, so it runs off the page when the shelf is shut
+     and hard-cuts against the shelf rule when the shelf is open. */
+  width: calc(100% + var(--bleed));
+  cursor: pointer;
+  text-align: left;
 }
-.meter:hover { border-color: var(--meter); box-shadow: 0 1px 3px var(--meter-glow); }
+/* The block is clipped at the frame edge, so an offset ring would be cut in
+   half. Inset it instead: black on red is 5.67:1 and reads clearly. */
+.meter:focus-visible { outline: 3px solid #000000; outline-offset: -7px; }
 .meter-read {
-  font-size: 20px;
+  font-family: var(--display);
+  font-size: var(--t-meter);
   font-weight: 700;
-  color: var(--meter);
-  font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
 }
-.meter-label {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+.meter-label { display: flex; flex-direction: column; gap: 1px; color: inherit; }
+.meter-unit, .meter-hint {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: inherit;
 }
-.meter-unit { font-size: 11px; font-weight: 500; color: var(--ink-soft); line-height: 1.2; }
-.meter-hint { font-size: 11px; color: var(--meter-text); text-decoration: underline; text-underline-offset: 2px; line-height: 1.2; }
-.meter.pulse { animation: tick .5s ease; }
-@keyframes tick { 0% { background: var(--meter-flash); } 100% { background: var(--meter-bg); } }
+.meter-hint { text-decoration: underline; text-underline-offset: 2px; }
+.meter-unit, .meter-hint { white-space: nowrap; }
+/* Rollover, and the same inversion the exchange flash uses, so hovering and
+   ticking read as the same object doing the same thing. Black carrying red is
+   5.67:1; the alternative, white on red, is 3.71:1 and fails. Against black
+   paper the fill goes to nothing and the rule and the figure are what is left,
+   which is a harder signal than a white flash and far less to look at. */
+.meter:hover {
+  background: var(--block-ink);
+  color: var(--red);
+}
+.meter:hover .meter-unit { color: var(--red); }
 
-.masthead-tools { display: flex; align-items: center; gap: 10px; flex: none; }
-.theme-toggle {
-  border: 1.5px solid var(--rule);
+/* A hard two-frame invert, not a glow. Marks an exchange and gets out. */
+.meter.pulse { animation: tick .36s linear; }
+@keyframes tick {
+  0%, 49%   { background: var(--block-ink); color: var(--red); }
+  50%, 100% { background: var(--red); color: var(--block-ink); }
+}
+
+/* --- flat controls -------------------------------------------------------
+   Two kinds only. Both invert on hover and do nothing else. */
+
+.chip, .feedback-cancel, .shut, .theme-toggle {
   background: transparent;
-  border-radius: 999px;
-  width: 40px; height: 40px;
+  color: var(--ink);
+  border: var(--rw) solid var(--ink);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  text-transform: uppercase;
   cursor: pointer;
-  color: var(--ink-soft);
+  padding: var(--s2) var(--s3);
+}
+.chip:hover, .feedback-cancel:hover, .shut:hover, .theme-toggle:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+.send, .act, .feedback-submit {
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--rw) solid var(--ink);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: var(--s3) var(--s5);
+}
+.send:hover, .act:hover, .feedback-submit:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Ask is the primary action on the page, so it carries the green. Black on
+   #2dff6b is 15.63:1. The fill's own edge is 1.34:1 against white paper, so
+   the rule is what contains it in the light theme; in the dark theme the rule
+   is what contains the hovered state against black paper. It earns its keep
+   in one theme or the other either way. */
+.send {
+  background: var(--green);
+  color: var(--block-ink);
+}
+.send:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+.send:disabled, .feedback-submit:disabled {
+  background: transparent;
+  color: var(--rule);
+  border-color: var(--rule);
+  cursor: default;
+}
+
+.shut, .theme-toggle {
+  width: 44px; height: 44px;
+  padding: 0;
   display: flex; align-items: center; justify-content: center;
   flex: none;
-  transition: border-color .15s, color .15s;
 }
-.theme-toggle:hover { border-color: var(--ink); color: var(--ink); }
-.theme-toggle svg { width: 18px; height: 18px; display: block; }
-.theme-toggle .icon-sun { display: none; }
-.theme-toggle .icon-moon { display: block; }
-[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
-[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+.shut svg, .theme-toggle svg { width: 16px; height: 16px; display: block; }
+.theme-toggle .icon-sun { display: block; }
+.theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+[data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
+/* --- transcript ----------------------------------------------------------
+   No bubbles. Speaker is named, not drawn. Asymmetry does the rest: susty
+   sits flush to the left margin, you sit indented behind a heavy rule. */
+
+/* The reading column is centred in whatever width is going, but the blocks
+   inside it stay left-aligned to its edge, so the asymmetry survives. Done
+   with padding rather than a wrapper: the transcript is appended to directly
+   by addTurn(), addWaiting() and addNotice(). */
 .transcript {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--pad);
+  padding-block: var(--s6) var(--s7);
+  padding-inline: max(var(--pad), calc((100% - var(--measure)) / 2));
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: var(--s6);
 }
 
-.turn { max-width: 64ch; }
-.turn.user { align-self: flex-end; max-width: 54ch; }
+.turn { max-width: 62ch; }
+.turn.user {
+  max-width: 54ch;
+  margin-left: clamp(0px, 8vw, 96px);
+  border-left: 4px solid var(--ink);
+  padding-left: var(--s4);
+}
 
 .who {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin-bottom: 5px;
-}
-.turn.user .who { text-align: right; }
-
-.bubble {
-  border-radius: 14px;
-  padding: 12px 16px;
-  overflow-wrap: anywhere;
-  font-size: 15px;
-  line-height: 1.65;
-}
-.turn:not(.user) .bubble {
-  background: var(--bubble-bg);
-  border: 1px solid var(--rule);
-  border-radius: 4px 14px 14px 14px;
-}
-.turn.user .bubble {
-  background: var(--accent-light);
-  border: 1px solid var(--accent-border);
-  color: var(--ink);
-  border-radius: 14px 4px 14px 14px;
-}
-.bubble p { margin: 0 0 .6em; }
-.bubble p:last-child { margin-bottom: 0; }
-.bubble ul { margin: .2em 0 .6em; padding-left: 1.15em; }
-.bubble li { margin-bottom: .3em; }
-.bubble strong { font-weight: 600; }
-
-.opening { max-width: 52ch; }
-.opening h2 {
-  font-size: 24px;
+  font-family: var(--display);
+  font-size: var(--t-label);
   font-weight: 700;
-  line-height: 1.25;
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  margin-bottom: var(--s2);
 }
-.opening .tagline {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0 0 14px;
+.turn.user .who {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1px var(--s2);
 }
-.opening p { margin: 0 0 8px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
 
-.thinking { display: flex; gap: 5px; align-items: center; padding: 6px 0; }
-.thinking span {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--ink-soft);
-  animation: blink 1.1s infinite ease-in-out;
+.bubble { font-size: var(--t-body); line-height: var(--lh); overflow-wrap: anywhere; }
+.bubble p { margin: 0 0 .8em; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble ul { margin: .4em 0 .8em; padding-left: 1.4em; list-style: square; }
+.bubble li { margin-bottom: .4em; }
+.bubble strong { font-weight: 700; }
+
+/* The headline runs the full width of the reading column and breaks where it
+   runs out, flush left. No balancing: an even rag pulls the block towards
+   looking centred, which is the opposite of what it should do. */
+.opening { max-width: 100%; }
+.opening h2 {
+  font-family: var(--display);
+  font-size: var(--t-xl);
+  font-weight: 700;
+  line-height: .98;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  text-align: left;
+  margin: 0 0 var(--s5);
+  max-width: none;
 }
+.opening p {
+  margin: 0 0 var(--s4);
+  max-width: 52ch;
+  font-size: var(--t-body);
+  line-height: var(--lh);
+}
+
+/* Hard on/off squares. A fade would be decoration, and a blanket
+   reduced-motion kill once parked these at near-zero opacity, so the resting
+   state is set explicitly further down rather than inherited from a keyframe. */
+.thinking { display: flex; gap: var(--s2); align-items: center; padding: var(--s2) 0; }
+.thinking span { width: 10px; height: 10px; background: var(--ink); animation: flick 1.05s infinite; }
 .thinking span:nth-child(2) { animation-delay: .16s; }
 .thinking span:nth-child(3) { animation-delay: .32s; }
-@keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+@keyframes flick { 0%, 49% { opacity: 1; } 50%, 100% { opacity: .12; } }
 
-.notice {
-  border: 1px solid var(--meter-border);
-  border-radius: 10px;
-  padding: 11px 14px;
-  font-size: 14px;
-  color: var(--meter-text);
-  max-width: 62ch;
-  background: var(--meter-bg);
+.notice { border: var(--rw) solid var(--ink); padding: var(--s3) var(--s4); max-width: 60ch; }
+.notice::before {
+  content: "Notice";
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  margin-bottom: var(--s2);
 }
-.notice p { margin: 0 0 5px; }
+.notice p { margin: 0 0 var(--s2); }
 .notice p:last-child { margin: 0; }
 
-.composer {
-  border-top: 1px solid var(--rule);
-  padding: 12px var(--pad) var(--pad);
-  flex: none;
-}
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.chip {
-  border: 1.5px solid var(--rule);
-  background: transparent;
-  border-radius: 999px;
-  padding: 5px 13px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--ink-soft);
-  transition: border-color .15s, color .15s, background .15s;
-}
-.chip:hover { border-color: var(--accent-line); color: var(--ink); background: var(--accent-light); }
+/* --- composer ------------------------------------------------------------ */
 
-.entry { display: flex; gap: 8px; align-items: flex-end; }
+.composer { border-top: var(--rw) solid var(--ink); padding: var(--s4) var(--pad) var(--pad); flex: none; }
+.composer-inner { max-width: var(--measure); margin-inline: auto; }
+
+/* Every prompt visible at once. A single scrolling row looked tidier and
+   cost less height, but a mouse wheel does not scroll horizontally, so four
+   of the five were unreachable on a desktop and the chip sliced at the edge
+   read as a rendering fault rather than an affordance. Height is bought back
+   by dropping the whole strip once there is a conversation instead. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+  /* Bounded so the composer cannot swallow the page: five wrapped chips at
+     the 44px touch floor came to 285px of a 680px screen, leaving 32px for
+     the conversation. Vertical overflow rather than horizontal, because a
+     mouse wheel scrolls this axis and does not scroll the other one. On a
+     desktop the cap is never reached and nothing scrolls. */
+  max-height: min(28vh, 220px);
+  overflow-y: auto;
+}
+/* .chips sets display:flex, which would otherwise win over the [hidden]
+   attribute's display:none. */
+.chips[hidden] { display: none; }
+
+
+.entry { display: flex; gap: var(--s2); align-items: stretch; }
 .entry textarea {
   flex: 1;
+  min-width: 0;
   resize: none;
-  border: 1.5px solid var(--rule);
-  border-radius: 10px;
-  background: var(--field-bg);
-  padding: 10px 14px;
-  min-height: 44px;
+  border: var(--rw) solid var(--ink);
+  background: transparent;
+  padding: var(--s3);
+  min-height: 48px;
   max-height: 150px;
-  line-height: 1.5;
-  font-size: 15px;
-  transition: border-color .15s;
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  line-height: var(--lh);
 }
-.entry textarea:focus { border-color: var(--accent-line); outline: none; }
-.entry textarea::placeholder { color: var(--placeholder); }
-.send {
-  border: none;
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border-radius: 10px;
-  padding: 11px 20px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: background .15s;
-  flex: none;
-}
-.send:hover { background: var(--btn-bg-hover); }
-.send:disabled { opacity: .4; cursor: default; }
+.entry textarea::placeholder { color: var(--ink); opacity: .55; }
+.entry textarea:focus { outline: 3px solid var(--ink); outline-offset: -3px; }
 
-.scrim {
-  position: fixed;
-  inset: 0;
-  background: var(--scrim);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s;
-  z-index: 20;
+.composer-meta { display: flex; justify-content: flex-start; padding-top: var(--s3); }
+.feedback-link {
+  background: none;
+  border: none;
+  padding: var(--s2) 2px;
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.scrim.open { opacity: 1; pointer-events: auto; }
+
+/* --- the shelf -----------------------------------------------------------
+   Desktop: a docked column. The page reflows around it, nothing is trapped,
+   nothing is dimmed. Below the dock width there is no room to sit beside
+   anything, so it takes the whole viewport and becomes a real modal. */
 
 .ledger {
   position: fixed;
-  top: 0; right: 0; bottom: 0;
-  width: min(460px, 100%);
-  background: var(--surface);
-  border-left: 1px solid var(--rule);
+  inset: 0;
   z-index: 30;
-  transform: translateX(101%);
-  transition: transform .3s cubic-bezier(.4,.14,.3,1);
+  display: none;
   overflow-y: auto;
-  padding: 24px 24px 48px;
+  background: var(--paper);
+  padding: var(--s5) var(--pad) var(--s8);
 }
-.ledger.open { transform: none; }
+.ledger.open { display: block; }
+
+@media (min-width: 1100px) {
+  html[data-shelf="open"] body { grid-template-columns: minmax(0, 1fr) clamp(380px, 32vw, 480px); }
+  .ledger {
+    position: static;
+    grid-column: 2;
+    min-height: 0;
+    height: 100%;
+    border-left: var(--rw) solid var(--ink);
+    padding: var(--s5) var(--s5) var(--s8);
+  }
+}
+
+/* Overlaid, the shelf gets the whole viewport, which on a tablet is far more
+   measure than a table of figures or a Times footnote wants. Hold it to a
+   column and let the rest of the width stay empty. */
+.ledger-top, .ledger .sect { max-width: 62ch; }
 
 .ledger-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 22px;
+  gap: var(--s4);
+  margin-bottom: var(--s6);
 }
 .ledger h2 {
-  font-size: 22px;
+  font-family: var(--display);
+  font-size: var(--t-l);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 4px;
-}
-.ledger-sub { margin: 0; font-size: 13px; color: var(--ink-soft); max-width: 34ch; line-height: 1.5; }
-.shut {
-  border: 1.5px solid var(--rule);
-  background: transparent;
-  border-radius: 8px;
-  width: 36px; height: 36px;
-  cursor: pointer;
-  flex: none;
-  color: var(--ink-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color .15s, color .15s;
-}
-.shut:hover { border-color: var(--ink); color: var(--ink); }
-.shut svg { width: 14px; height: 14px; display: block; }
-
-.sect { margin-bottom: 26px; }
-.sect h3 {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 0 0 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--rule);
+  letter-spacing: 0;
+  margin: 0 0 var(--s2);
 }
-.rows { width: 100%; border-collapse: collapse; font-size: 14px; }
-.rows td { padding: 6px 0; border-bottom: 1px dotted var(--rule); vertical-align: baseline; }
-.rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rows tr.total td { border-bottom: none; border-top: 1.5px solid var(--ink); padding-top: 9px; font-weight: 700; }
-.rows tr.total td:last-child { color: var(--meter-text); }
-.rows tr.muted td { color: var(--ink-soft); }
+.ledger-sub {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 36ch;
+}
 
+.sect { margin-bottom: var(--s7); }
+.sect h3 {
+  font-family: var(--display);
+  font-size: var(--t-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  margin: 0 0 var(--s4);
+  padding-bottom: var(--s2);
+  border-bottom: var(--rw) solid var(--ink);
+}
+
+.rows { width: 100%; border-collapse: collapse; font-size: var(--t-body); }
+.rows td { padding: var(--s2) 0; border-bottom: var(--hair) solid var(--rule); vertical-align: baseline; }
+.rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: var(--s4); }
+/* Component rows are indented rather than greyed. #c9c9c9 on white is 1.66:1
+   and cannot carry prose, and there is no mid-tone in this palette to reach
+   for, so the hierarchy is positional. */
+.rows tr.muted td:first-child { padding-left: var(--s4); }
+.rows tr.total td { border-bottom: none; border-top: var(--rw) solid var(--ink); padding-top: var(--s3); font-weight: 700; }
+
+/* Label above field, not beside it. Side by side, the docked shelf is narrow
+   enough that every option truncated: "New York — upstate — 2…" is worse than
+   a second line. */
 .pick {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-  font-size: 14px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s1);
+  margin-top: var(--s3);
+  font-size: var(--t-body);
 }
 .pick select {
-  border: 1.5px solid var(--rule);
-  border-radius: 8px;
-  background: var(--field-bg);
-  padding: 6px 8px;
-  font-size: 13px;
-  font-weight: 500;
+  width: 100%;
+  border: var(--rw) solid var(--ink);
+  background: transparent var(--caret) no-repeat right var(--s3) center;
+  background-size: 10px 6px;
+  padding: var(--s2) var(--s6) var(--s2) var(--s2);
+  font-family: var(--mono);
+  font-size: var(--t-label);
   cursor: pointer;
-  max-width: 60%;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.note { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; line-height: 1.55; }
-.sect h3 + .note { margin-top: 0; }
-.note a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
 
-.scale { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+/* Footnotes and glosses are set in Times, per the brief. They are the
+   qualifications, and they should not look like the figures they qualify. */
+.note {
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.45;
+  margin: var(--s4) 0 0;
+}
+.sect h3 + .note { margin-top: 0; }
+
+.scale { list-style: none; margin: 0; padding: 0; font-size: var(--t-body); }
 .scale li {
   display: flex;
   justify-content: space-between;
-  gap: 14px;
-  padding: 7px 0;
-  border-bottom: 1px dotted var(--rule);
+  gap: var(--s4);
+  padding: var(--s2) 0;
+  border-bottom: var(--hair) solid var(--rule);
 }
 .scale li:last-child { border-bottom: none; }
-.scale b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scale b { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* The second accent block, and the only other one on the page. It carries
+   black like the red does: black on #2dff6b is 15.63:1, and the block's own
+   edge against the paper is 1.34:1 in light mode, so the black rule is doing
+   the containing, not the fill. */
 .offset {
-  border: 1.5px solid var(--accent-border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  background: var(--accent-light);
+  border: var(--rw) solid var(--ink);
+  background: var(--green);
+  color: var(--block-ink);
+  padding: var(--s4);
 }
-.offset p { margin: 0 0 10px; font-size: 14px; }
-.offset .lead { color: var(--accent-text); font-weight: 700; font-size: 15px; }
-.offset ol { margin: 0 0 12px; padding-left: 1.15em; font-size: 14px; }
-.offset li { margin-bottom: 6px; color: var(--ink); }
-.act {
-  width: 100%;
-  border: none;
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background .15s;
+.offset p { margin: 0 0 var(--s3); font-size: var(--t-body); color: inherit; }
+.offset li { color: inherit; }
+/* The button sits on the green, so it inverts against that rather than the
+   page: black fill, and on hover the green shows through. */
+.offset .act { background: var(--block-ink); color: var(--green); border-color: var(--block-ink); }
+.offset .act:hover { background: var(--green); color: var(--block-ink); }
+.offset .act:focus-visible { outline-color: var(--block-ink); }
+.offset .lead {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: var(--t-m);
+  text-transform: uppercase;
+  line-height: 1.1;
 }
-.act:hover { background: var(--btn-bg-hover); }
+.offset ol { margin: 0 0 var(--s4); padding-left: 1.4em; font-size: var(--t-body); }
+.offset li { margin-bottom: var(--s2); }
+.act { width: 100%; }
 
-.sources { list-style: none; margin: 0; padding: 0; font-size: 13px; }
-.sources li { padding: 6px 0; border-bottom: 1px dotted var(--rule); line-height: 1.5; }
+.sources { list-style: none; margin: 0; padding: 0; font-size: var(--t-body); }
+.sources li { padding: var(--s3) 0; border-bottom: var(--hair) solid var(--rule); }
 .sources li:last-child { border-bottom: none; }
-.sources a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
-.sources span { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
-.sources b { display: block; font-weight: 600; color: var(--ink); }
+.sources b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: var(--t-label);
+  text-transform: uppercase;
+}
+.sources span { display: block; font-family: var(--serif); font-size: 17px; line-height: 1.4; margin-top: var(--s1); }
 
-.composer-meta { display: flex; justify-content: flex-end; padding-top: 8px; }
-.feedback-link { background: none; border: none; padding: 0; font-size: 12px; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.feedback-link:hover { color: var(--ink); }
+/* --- feedback ------------------------------------------------------------ */
+
+.scrim { position: fixed; inset: 0; background: var(--scrim); display: none; z-index: 20; }
+.scrim.open { display: block; }
 
 .feedback-drawer {
   position: fixed;
-  left: 50%; bottom: 0;
-  width: min(780px, 100%);
-  transform: translateX(-50%) translateY(101%);
-  background: var(--surface);
-  border-top: 1px solid var(--rule);
-  border-left: 1px solid var(--rule);
-  border-right: 1px solid var(--rule);
-  border-radius: 16px 16px 0 0;
+  inset: 0;
   z-index: 30;
-  transition: transform .3s cubic-bezier(.4,.14,.3,1);
-  padding: 20px var(--pad) 32px;
+  display: none;
+  overflow-y: auto;
+  background: var(--paper);
+  padding: var(--s5) var(--pad) var(--s7);
 }
-.feedback-drawer.open { transform: translateX(-50%) translateY(0); }
-.feedback-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.feedback-top h3 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
-.feedback-body { display: flex; flex-direction: column; gap: 10px; }
-.feedback-body textarea {
-  width: 100%; min-height: 90px; max-height: 180px; resize: vertical;
-  border: 1.5px solid var(--rule); border-radius: 10px;
-  background: var(--field-bg); padding: 10px 14px;
-  font-size: 15px; line-height: 1.5; transition: border-color .15s;
-}
-.feedback-body textarea:focus { border-color: var(--accent-line); outline: none; }
-.feedback-body textarea::placeholder { color: var(--placeholder); }
-.feedback-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-.feedback-status { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
-.feedback-status.ok { color: var(--accent-text); }
-.feedback-status.err { color: var(--meter-text); }
-.feedback-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; color: var(--ink-soft); transition: border-color .15s; }
-.feedback-cancel:hover { border-color: var(--ink); color: var(--ink); }
-.feedback-submit { background: var(--btn-bg); border: none; border-radius: 8px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--btn-fg); cursor: pointer; transition: background .15s; }
-.feedback-submit:hover { background: var(--btn-bg-hover); }
-.feedback-submit:disabled { opacity: .4; cursor: default; }
+.feedback-drawer.open { display: block; }
 
-@media (max-width: 600px) {
-  .masthead { flex-wrap: wrap; }
-  .turn.user { max-width: 100%; }
-}
-
-/* Touch comfort. 34px clears the 24px WCAG 2.5.8 floor but is mean under a
-   thumb, so lift to 44px only where the pointer is actually coarse — a mouse
-   doesn't need the extra bulk. */
-@media (pointer: coarse) {
-  .chip { min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; }
-  .pick select { min-height: 44px; }
-  .shut, .theme-toggle { width: 44px; height: 44px; }
-  .feedback-link { padding: 12px 4px; }
-  .feedback-cancel, .feedback-submit { min-height: 44px; }
-  .entry textarea { min-height: 48px; }
-}
-/* Standalone control, not inline in a sentence, so it owes the 24px minimum
-   on every input type. */
-.feedback-link { padding: 6px 2px; }
-/* Targeted rather than a blanket kill: collapsing every animation to .001ms
-   left the thinking dots parked on the blink keyframe's end state (opacity .2),
-   which is close to invisible. Each animation loses its motion but keeps a
-   legible resting state. */
-@media (prefers-reduced-motion: reduce) {
-  .meter, .scrim, .ledger, .feedback-drawer,
-  .chip, .send, .act, .feedback-submit, .feedback-cancel,
-  .shut, .theme-toggle, .entry textarea, .feedback-body textarea {
-    transition: none;
+@media (min-width: 720px) {
+  .feedback-drawer {
+    inset: auto auto 0 0;
+    width: min(640px, 100%);
+    border-top: var(--rw) solid var(--ink);
+    border-right: var(--rw) solid var(--ink);
   }
+}
+
+.feedback-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); margin-bottom: var(--s4); }
+.feedback-top h3 {
+  font-family: var(--display);
+  font-size: var(--t-l);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  margin: 0;
+}
+.feedback-body { display: flex; flex-direction: column; gap: var(--s3); }
+.feedback-body textarea {
+  width: 100%;
+  min-height: 120px;
+  max-height: 240px;
+  resize: vertical;
+  border: var(--rw) solid var(--ink);
+  background: transparent;
+  padding: var(--s3);
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  line-height: var(--lh);
+}
+.feedback-body textarea::placeholder { color: var(--ink); opacity: .55; }
+.feedback-body textarea:focus { outline: 3px solid var(--ink); outline-offset: -3px; }
+.feedback-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s2); }
+.feedback-status {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  text-transform: uppercase;
+  margin-right: auto;
+}
+.feedback-status.err { background: var(--mark); color: #000000; padding: 0 var(--s1); }
+
+/* --- input-conditional sizing --------------------------------------------
+   Lifted only where the pointer is actually coarse. A mouse does not need
+   the bulk, and width is a poor proxy for what is doing the pointing. */
+@media (pointer: coarse) {
+  .chip { min-height: 44px; display: inline-flex; align-items: center; }
+  .pick select { min-height: 44px; }
+  .feedback-cancel, .feedback-submit, .send { min-height: 44px; }
+  .feedback-link { padding: var(--s3) var(--s1); }
+  .entry textarea { min-height: 52px; }
+}
+
+/* Narrow enough that the placeholder needs two lines. Floor the field so it
+   is not clipped before anyone has typed a character. */
+@media (max-width: 520px) {
+  .entry textarea { min-height: 78px; }
+}
+
+/* --- phones ---------------------------------------------------------------
+   A phone has roughly 300px of vertical room to spare once the masthead and
+   composer have taken theirs, so everything that is not the conversation has
+   to give some back. The meter in particular was eating a full band of the
+   screen to say four characters. */
+@media (max-width: 640px) {
+  :root {
+    --t-meter: 20px;
+    --t-word: 30px;
+    /* Five wrapped chips at the 44px touch floor cannot be compressed further
+       without failing 2.5.8, so the room comes from everything around them.
+       Sized so the headline always completes inside the visible transcript on
+       a short phone: a heading sliced by the scroll boundary reads as a
+       rendering fault, where a paragraph continuing below it reads as a page
+       that scrolls. */
+    --t-xl: clamp(26px, 7.2cqw, 78px);
+    --s6: 24px;
+    --s7: 32px;
+  }
+  .meter-note { font-size: 12px; }
+  .masthead { padding: var(--s3) var(--pad); gap: var(--s2) var(--s3); }
+  .wordmark-sub { margin-top: var(--s1); font-size: 13px; }
+
+  /* Baseline alignment leaves the unit stack hanging below a 20px number, so
+     on a phone the label sits beside it on one line instead of stacked. */
+  .meter { align-items: center; padding: var(--s2) var(--s3); gap: var(--s2); }
+  .meter-label { flex-direction: row; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+  .meter-unit, .meter-hint { font-size: 12px; }
+
+  .transcript { padding-block: var(--s4) var(--s4); }
+  .opening h2 { margin-bottom: var(--s3); }
+
+  /* Full-size chips fit barely more than one to a screen, which reads as
+     "the questions are gone" rather than "the questions scroll". Smaller
+     labels put two and a bit in view, so the strip explains itself. */
+  .chip { font-size: 13px; padding: var(--s2); }
+  .composer { padding: var(--s3) var(--pad) var(--s4); }
+  .chips { margin-bottom: var(--s3); }
+  .send { padding: var(--s3) var(--s4); }
+}
+
+/* Targeted, never blanket. Collapsing every animation to .001ms once left the
+   thinking squares parked on the keyframe's end state, which is invisible.
+   Each animation loses its motion and is given a legible resting state. */
+@media (prefers-reduced-motion: reduce) {
   .meter.pulse { animation: none; }
-  .thinking span { animation: none; opacity: .6; }
+  .thinking span { animation: none; opacity: 1; }
   html { scroll-behavior: auto; }
 }
 </style>
@@ -525,8 +774,10 @@ textarea, input { caret-color: var(--accent-line); }
 
 <div class="frame">
   <header class="masthead">
-    <h1 class="wordmark">susty</h1>
-    <div class="masthead-tools">
+    <div class="lockup">
+      <h1 class="wordmark">susty</h1>
+      <p class="wordmark-sub">Tiny ways to make the world a little less bad.</p>
+    </div>
       <button class="theme-toggle" id="themeToggle" aria-label="Switch to light mode">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4"></circle>
@@ -536,32 +787,35 @@ textarea, input { caret-color: var(--accent-line); }
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
         </svg>
       </button>
-      <button class="meter" id="meter" aria-haspopup="dialog">
-        <span class="meter-read" id="meterRead">0.00</span>
-        <span class="meter-label">
-          <span class="meter-unit">g CO₂e</span>
-          <span class="meter-hint">This Chat's CO₂</span>
-        </span>
-      </button>
-    </div>
+      <div class="meter-wrap">
+        <button class="meter" id="meter" aria-controls="ledger" aria-expanded="false">
+          <span class="meter-read" id="meterRead">0.00</span>
+          <span class="meter-label">
+            <span class="meter-unit">g CO₂e</span>
+            <span class="meter-hint">This chat's carbon</span>
+          </span>
+        </button>
+        <p class="meter-note">The meter above tracks the carbon cost of this conversation live. Tap it to see how it's worked out.</p>
+      </div>
   </header>
 
   <main class="transcript" id="transcript" aria-live="polite" aria-label="Conversation">
     <div class="opening" id="opening">
       <h2>Got questions on what's more sustainable?</h2>
-      <p class="tagline">Tiny ways to make the world a little less bad.</p>
-      <p>Ask about diet, travel, home energy, or anything else. The meter above tracks the carbon cost of this conversation live. Tap it to see how it's worked out.</p>
+      <p>Ask about diet, travel, home energy, or anything else.</p>
     </div>
   </main>
 
   <div class="composer">
-    <div class="chips" id="chips"></div>
-    <div class="entry">
-      <textarea id="input" rows="1" placeholder="Is flying once a year a big deal?" aria-label="Your question"></textarea>
-      <button class="send" id="send">Ask</button>
-    </div>
-    <div class="composer-meta">
-      <button class="feedback-link" id="feedbackBtn">Share feedback</button>
+    <div class="composer-inner">
+      <div class="chips" id="chips"></div>
+      <div class="entry">
+        <textarea id="input" rows="1" placeholder="Is flying once a year a big deal?" aria-label="Your question"></textarea>
+        <button class="send" id="send">Ask</button>
+      </div>
+      <div class="composer-meta">
+        <button class="feedback-link" id="feedbackBtn">Share feedback</button>
+      </div>
     </div>
   </div>
 </div>
@@ -572,7 +826,7 @@ textarea, input { caret-color: var(--accent-line); }
   <div class="ledger-top">
     <div>
       <h2>How we counted this</h2>
-      <p class="ledger-sub">Estimates, not promises. Token counts come from the API; everything after is modelled.</p>
+      <p class="ledger-sub"><mark>Estimates, not promises.</mark> Token counts come from the API; everything after is modelled.</p>
     </div>
     <button class="shut" id="shut" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
@@ -937,7 +1191,8 @@ function energyWh() {
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
 const THEME_KEY = 'susty-theme';
-const theme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+// Dark is the base palette, so the attribute marks the departure from it.
+const theme = () => document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 
 // Display energy for the elapsed visible time, in both themes.
 function screenEnergy() {
@@ -1088,16 +1343,68 @@ function paintScreen() {
   $('rScreenNow').textContent   = fmt(screenEnergy().now, 3) + ' Wh';
 }
 
-const scrim = $('scrim'), ledger = $('ledger');
+const scrim = $('scrim'), ledger = $('ledger'), frame = document.querySelector('.frame');
+
+// Above this width the shelf docks beside the page: the layout reflows around
+// it, so nothing is dimmed and nothing is trapped, and the figures sit next to
+// the conversation they describe. Below it there is nowhere to dock, so the
+// shelf takes the viewport and owes the full modal contract instead.
+const DOCK = window.matchMedia('(min-width: 1100px)');
+const shelfDocked = () => DOCK.matches;
+const shelfOpen   = () => ledger.classList.contains('open');
+
+// aria-modal is a promise that the rest of the page is unavailable. That is
+// true of the overlay and false of the dock, so the attributes have to move
+// with the breakpoint rather than sit still in the markup.
+function syncShelfMode() {
+  if (shelfOpen() && !shelfDocked()) {
+    ledger.setAttribute('role', 'dialog');
+    ledger.setAttribute('aria-modal', 'true');
+    meter.setAttribute('aria-haspopup', 'dialog');
+  } else {
+    ledger.removeAttribute('role');
+    ledger.removeAttribute('aria-modal');
+    meter.removeAttribute('aria-haspopup');
+  }
+  meter.setAttribute('aria-expanded', shelfOpen() ? 'true' : 'false');
+  syncInert();
+}
+
+// Back the aria-modal claim with real inertness, which the page never had.
+// Only while something actually overlays: inerting the page behind a docked
+// shelf would make the chat unusable whenever the figures were on screen.
+function syncInert() {
+  const feedbackUp = feedbackDrawer.classList.contains('open');
+  frame.inert  = feedbackUp || (shelfOpen() && !shelfDocked());
+  // The shelf is a sibling of the frame, so inerting the frame does not reach
+  // it. When feedback opens over a docked shelf, the shelf has to go too.
+  ledger.inert = feedbackUp;
+}
+
 function openLedger() {
   paintLedger();
-  scrim.classList.add('open'); ledger.classList.add('open'); ledger.focus();
+  ledger.classList.add('open');
+  document.documentElement.setAttribute('data-shelf', 'open');
+  syncShelfMode();
+  // Docked, the shelf is just more page. Moving focus into it would pull the
+  // reader out of the composer to look at something already in front of them.
+  if (!shelfDocked()) ledger.focus();
 }
 function closeLedger() {
   ledger.classList.remove('open');
-  if (!feedbackDrawer.classList.contains('open')) scrim.classList.remove('open');
+  document.documentElement.removeAttribute('data-shelf');
+  syncShelfMode();
   meter.focus();
 }
+
+// Crossing the breakpoint with the shelf open changes what the shelf is. A
+// docked column becomes a modal takeover, or stops being one, and the
+// contract has to follow it across.
+DOCK.addEventListener('change', () => {
+  if (!shelfOpen()) return;
+  syncShelfMode();
+  if (!shelfDocked()) ledger.focus();
+});
 
 // Screen time is part of the total now, so the figures drift upward even when
 // nobody is typing. One timer covers both surfaces: the meter always, and the
@@ -1110,10 +1417,9 @@ setInterval(() => {
 }, 2000);
 meter.addEventListener('click', openLedger);
 $('shut').addEventListener('click', closeLedger);
-scrim.addEventListener('click', () => {
-  if (feedbackDrawer.classList.contains('open')) closeFeedback();
-  if (ledger.classList.contains('open')) closeLedger();
-});
+// The shelf no longer dims anything: docked it reflows, overlaid it is opaque
+// and full-bleed. Only the feedback drawer still sits over live page.
+scrim.addEventListener('click', closeFeedback);
 
 // Keep Tab inside whichever drawer is open. Both declare aria-modal="true",
 // which tells assistive tech the rest of the page is inert — without this the
@@ -1130,14 +1436,22 @@ function trapTab(container, e) {
 }
 
 document.addEventListener('keydown', e => {
-  const open = feedbackDrawer.classList.contains('open') ? feedbackDrawer
-             : ledger.classList.contains('open') ? ledger : null;
-  if (!open) return;
+  if (feedbackDrawer.classList.contains('open')) {
+    if (e.key === 'Escape') { e.preventDefault(); closeFeedback(); }
+    else if (e.key === 'Tab') trapTab(feedbackDrawer, e);
+    return;
+  }
+  if (!shelfOpen()) return;
   if (e.key === 'Escape') {
+    // Docked, the shelf is not modal, so Escape is only its key while the
+    // reader is in it. Taking Escape from the composer would shut the shelf
+    // out from under someone who was mid-sentence and pressing it for
+    // something else entirely.
+    if (shelfDocked() && !ledger.contains(document.activeElement) && document.activeElement !== meter) return;
     e.preventDefault();
-    open === ledger ? closeLedger() : closeFeedback();
-  } else if (e.key === 'Tab') {
-    trapTab(open, e);
+    closeLedger();
+  } else if (e.key === 'Tab' && !shelfDocked()) {
+    trapTab(ledger, e);
   }
 });
 // Which countries we can go finer-grained on, and how.
@@ -1212,7 +1526,11 @@ function markLiveRegion() {
 function applyGrid() {
   MODEL.gridGPerKwh = state.live ? state.live.g : staticGrid();
   markLiveRegion();
-  paintLedger(); paintMeter();
+  // No pulse. The flash marks an exchange, and this fires on load as soon as
+  // the live grid lands, so every visit opened with the meter flashing. Under
+  // the brutalist palette that flash is a full-bleed white rectangle on black,
+  // which is a lot of screen to spend on "a fetch resolved".
+  paintLedger(); paintMeter(false);
 }
 
 $('grid').addEventListener('change', e => {
@@ -1245,10 +1563,10 @@ $('screen').addEventListener('change', e => {
 });
 
 function applyTheme(next) {
-  if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  if (next === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
   $('themeToggle').setAttribute('aria-label', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-  $('themeColor').setAttribute('content', next === 'dark' ? '#09090B' : '#FFFFFF');
+  $('themeColor').setAttribute('content', next === 'dark' ? '#000000' : '#ffffff');
   try { localStorage.setItem(THEME_KEY, next); } catch {}
   paintLedger();
 }
@@ -1330,6 +1648,10 @@ async function send(raw) {
   state.busy = true; sendBtn.disabled = true;
   input.value = ''; input.style.height = 'auto';
   $('opening')?.remove();
+  // Conversation starters, so they retire once there is a conversation. They
+  // are the tallest thing in the composer, and the transcript needs that room
+  // far more than a reader four exchanges in needs prompting.
+  $('chips').hidden = true;
   const userEl = addTurn('user', text);
   state.history.push({ role: 'user', content: text });
   const waiting = addWaiting();
@@ -1453,12 +1775,18 @@ const feedbackDrawer = $('feedbackDrawer');
 let feedbackOpener = null;
 function openFeedback()  {
   feedbackOpener = document.activeElement;
-  feedbackDrawer.classList.add('open'); scrim.classList.add('open'); $('feedbackText').focus();
+  feedbackDrawer.classList.add('open');
+  scrim.classList.add('open');
+  syncInert();
+  $('feedbackText').focus();
 }
 function closeFeedback() {
+  if (!feedbackDrawer.classList.contains('open')) return;
   feedbackDrawer.classList.remove('open');
-  // The ledger may still be open behind this one; don't strand it without a scrim.
-  if (!ledger.classList.contains('open')) scrim.classList.remove('open');
+  scrim.classList.remove('open');
+  // Lift inertness before restoring focus: an inert element cannot take it,
+  // and the opener is very often inside the frame we just inerted.
+  syncInert();
   const back = feedbackOpener && feedbackOpener.isConnected ? feedbackOpener : $('feedbackBtn');
   feedbackOpener = null;
   back.focus();
@@ -1520,8 +1848,9 @@ syncRegionPicker();
 MODEL.gridGPerKwh = staticGrid();
 refreshLiveGrid();
 $('themeToggle').setAttribute('aria-label', theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-$('themeColor').setAttribute('content', theme() === 'light' ? '#FFFFFF' : '#09090B');
+$('themeColor').setAttribute('content', theme() === 'light' ? '#ffffff' : '#000000');
 
+syncShelfMode();
 paintLedger();
 </script>
 </body>

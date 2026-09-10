@@ -324,8 +324,18 @@ Three honest conclusions from that work:
 2. **Brightness beats theme.** Their data has 20% brightness in light mode
    drawing about as much as 50% in dark.
 3. **Near-black versus pure black is under 1%.** A near-black already emits well
-   under 1% of a white screen's light. susty's dark theme uses near-black for
-   legibility, not for the meter.
+   under 1% of a white screen's light, so pure black wins only marginally.
+   susty's dark theme is pure #000000, which is the floor, but the ledger claims
+   no saving for that choice specifically: the figure it reports is the panel's
+   dark-theme draw, and a near-black would have reported effectively the same.
+   The theme is pure black because the design is a tonal inversion of a
+   two-colour palette, not because of the reading below it.
+
+Dark is now the **default** theme, so most readers see the dark figure in the
+screen row unless they switch. That is the lower of the two on OLED and
+identical on a backlit panel, which is the honest way round: the default should
+not be the one that flatters the total. The picker and the row both name which
+panel and which theme the figure assumes.
 
 Laptop and monitor rows are extrapolated from the phone measurements by panel
 area. Only phones were measured.
