@@ -256,6 +256,14 @@ Timezone is permissionless, instant, offline, and nothing leaves the browser.
 Unlisted European zones fall back to the EU average; anything else to the world
 average.
 
+The ledger frames this as a deliberate tradeoff rather than a limitation,
+because that is what it is: privacy is the *reason* the country starts as a
+guess, so the note leads with it and treats the guess as a starting point the
+reader can improve. The offer to narrow it down appears only where it is
+actionable — a sub-picker exists for that country and has not been used yet — so
+France stays quiet and picking a US state removes the prompt rather than
+repeating it.
+
 **One acknowledged approximation.** The same figure is applied to the reader's
 screen, where it fits, and to the data centre, where it probably does not. Those
 servers may sit in another country on a cleaner or dirtier grid, and there is no
@@ -341,6 +349,58 @@ asking is small next to the footprint of what you do with the answer — which i
 the product's actual argument, not a disclaimer on it.
 
 ---
+
+## 6. What the ledger tells the reader
+
+The Notes section is the honest summary of everything above, in language that
+does not assume a background in grid accounting. It is deliberately short: an
+earlier version ran to seven sentences covering publication lag, derived-versus-
+published intensity and interregional imports, all true and none of it read.
+The detail lives in this document; the ledger keeps what someone needs to judge
+the number.
+
+Three paragraphs. The first and third are fixed:
+
+> We do our best to make these calculations as accurate as possible. Some of it
+> has to be estimated, so here's where the numbers come from and where we're
+> guessing. The **full method** has all of it.
+
+> The sum itself is simple: energy used × how dirty the electricity is. That
+> includes the screen you're reading on, so the total creeps up while the page
+> sits open, not just when you ask something. And longer chats cost more per
+> answer, because we send the whole conversation back each time.
+
+The middle paragraph is assembled from the reader's actual situation, in three
+parts: the privacy stance and where we think they are, an offer to narrow it
+down where one is available, and the named data source with a link. For a US
+reader who has picked a state and has an EIA key configured:
+
+> Because we care about your privacy, we don't ask your browser for your
+> location or look up your address. We start by guessing your country from your
+> computer's clock, which puts you in the United States. The electricity figure
+> comes from the **US Energy Information Administration**, which tracks what's
+> actually generating power each hour. That's worth having, because the mix
+> shifts through the day as solar comes and goes. Their data runs about a day
+> behind, so we use the same hour from yesterday. One thing we can't know: the
+> computers answering you are in a data centre somewhere else, running on their
+> own electricity. We've assumed it's as clean as yours, which is a guess.
+
+The source sentence swaps with the tier: NESO for Great Britain, the EPA for a
+chosen US state without a live key, Ember for everywhere else.
+
+Two rules this copy follows, both learned by getting them wrong:
+
+- **No region names in shared copy.** An earlier draft said "a sunny California
+  afternoon is roughly half as dirty as the evening rush" to every US reader,
+  including in Wisconsin. The ratio was also California-specific: its solar-heavy
+  grid roughly halves in the afternoon while coal-heavy regions barely move. Copy
+  shared across regions describes the effect without naming one or quoting a
+  figure that only holds in some.
+- **Assumptions are labelled as assumptions.** The panel type is guessed from
+  screen size and defaults to backlit, so the ledger never asserted it as fact.
+  That note was later removed entirely: the picker names the panel and the row
+  shows the number, so a paragraph explaining both was narrating the interface
+  back at the reader.
 
 ## Sources
 
