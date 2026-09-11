@@ -244,6 +244,20 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  // The brand PNGs. Vercel serves everything at the root statically, so these
+  // need no route in production; without them here the favicon and the share
+  // card 404 in local dev and look broken for no real reason.
+  if (req.method === "GET" && /^\/(favicon|apple-touch-icon|og)\.png$/.test(url.pathname)) {
+    try {
+      const png = await readFile(join(root, url.pathname.slice(1)));
+      res.writeHead(200, { "content-type": "image/png", "cache-control": "public, max-age=3600" });
+      return res.end(png);
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" });
+      return res.end("Not found. Run: sh tools/make-brand-assets.sh");
+    }
+  }
+
   res.writeHead(404, { "content-type": "text/plain" });
   res.end("Not found");
 });

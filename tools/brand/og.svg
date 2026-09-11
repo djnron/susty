@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <rect width="1200" height="1200" fill="#000000"/>
+  <!-- the 1200x630 card occupies y 285..915 -->
+  <g transform="translate(0,285)">
+    <!-- wordmark stamp: gold offset, then the stamp over it -->
+    <rect x="96" y="116" width="416" height="168" fill="#ffd700"/>
+    <rect x="80" y="100" width="416" height="168" fill="#ffffff"/>
+    <text x="108" y="222" font-family="Menlo" font-size="116" font-weight="700" fill="#000000">susty</text>
+
+    <text x="80" y="360" font-family="Menlo" font-size="36" fill="#ffffff">TINY WAYS TO MAKE THE WORLD A LITTLE LESS BAD.</text>
+
+    <!-- the meter, which is the product's argument -->
+    <rect x="80" y="440" width="1040" height="100" fill="#ffd700"/>
+    <text x="112" y="506" font-family="Menlo" font-size="52" font-weight="700" fill="#000000">0.00</text>
+    <text x="256" y="504" font-family="Menlo" font-size="28" fill="#000000">G CO₂E — THE CARBON COST OF THIS CHAT, LIVE</text>
+  </g>
+</svg>
