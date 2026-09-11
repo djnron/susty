@@ -745,13 +745,28 @@ textarea, input { caret-color: var(--ink); }
    continuing below it reads as a page that scrolls. */
 @media (max-width: 640px) {
   :root {
-    --t-hero: clamp(23px, 6.2cqw, 72px);
+    --t-hero: clamp(23px, 5.6cqw, 68px);
     --t-lead: 16px;
     --s7: 32px;
     --s8: 40px;
     --sh-lg: 5px;
   }
-  .masthead { padding: var(--s3) var(--pad); gap: var(--s2); }
+  /* Top-aligned so the switch sits against the logo stamp. Centring put it
+     level with the gap between the stamp and the tagline, which read as
+     misaligned with both. */
+  .masthead { padding: var(--s3) var(--pad); gap: var(--s2); align-items: start; }
+  .theme-switch { margin-top: var(--s2); }
+  /* 80x40 is a lot of furniture on a phone. The ::before is an invisible hit
+     area extender, so a 34px control still answers a 46px touch target. */
+  .theme-toggle { width: 64px; height: 34px; box-shadow: var(--sh-sm) var(--sh-sm) 0 var(--ink); }
+  .theme-toggle::before { content: ""; position: absolute; inset: -6px -2px; }
+  .theme-toggle::after { width: 30px; height: 28px; }
+  :root:not([data-theme="light"]) .theme-toggle::after { left: 28px; }
+
+  /* The masthead carries four pieces of prose before the conversation starts.
+     Tighten the two that are not the wordmark. */
+  .wordmark-sub { margin-top: var(--s2); font-size: 13px; }
+  .meter-note { font-size: 12px; margin-top: var(--s2); }
   .meter { align-items: center; gap: var(--s3); }
   .meter-read { font-size: 22px; }
   .meter-label { flex-direction: row; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
@@ -767,11 +782,15 @@ textarea, input { caret-color: var(--ink); }
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .chips { max-height: min(22vh, 180px); }
-  .transcript { padding-block: var(--s4); gap: var(--s6); }
+  .chips { max-height: min(27vh, 210px); margin-bottom: var(--s3); }
+  .transcript { padding-block: var(--s3); gap: var(--s5); }
   .opening { padding: var(--s3); }
   .turn.user { margin-left: 0; }
-  .composer { padding: var(--s3) var(--pad) var(--s4); }
+  .composer { padding: var(--s3) var(--pad) var(--s3); }
+  .composer-meta { padding-top: var(--s2); }
+  .feedback-link { padding: var(--s2) 2px; }
+  .entry textarea { min-height: 72px; }
+  .opening { padding: var(--s3); }
 }
 
 /* The smallest screens still in circulation. The masthead now carries a
@@ -784,15 +803,27 @@ textarea, input { caret-color: var(--ink); }
   .opening { padding: var(--s2) var(--s3); }
 }
 
+/* Four chips at the 44px touch floor want 200px. A tall phone can spare that;
+   a 667px one cannot, and giving it up there left the hero heading sliced at
+   the scroll boundary. Height, not width, is what decides this. */
+@media (max-width: 640px) and (max-height: 720px) {
+  .chips { max-height: 140px; }
+}
+
 @media (pointer: coarse) {
   .chip { min-height: 44px; display: inline-flex; align-items: center; }
   .pick select { min-height: 44px; }
   .feedback-cancel, .feedback-submit, .send { min-height: 44px; }
-  .feedback-link { padding: var(--s3) var(--s1); }
   .entry textarea { min-height: 54px; }
 }
 @media (max-width: 520px) {
   .entry textarea { min-height: 80px; }
+}
+
+/* Restores the comfortable touch target on tablets. Phones deliberately keep
+   the tighter one: the link was 54px of composer for a single 12px word. */
+@media (pointer: coarse) and (min-width: 641px) {
+  .feedback-link { padding: var(--s3) var(--s1); }
 }
 
 /* Targeted, never blanket. Collapsing every animation to .001ms once parked
@@ -1655,7 +1686,7 @@ function addNotice(main, hint) {
 const CHIPS = [
   'Is flying once a year a big deal?',
   'Induction cooktop vs gas — which wins?',
-  'How much does going vegan actually help?',
+  'How much does going vegan help?',
   'Keep my gas car or buy an EV?'
 ];
 CHIPS.forEach(text => {
