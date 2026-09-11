@@ -798,7 +798,7 @@ textarea, input { caret-color: var(--ink); }
     </div>
       <div class="theme-switch">
         <span class="theme-switch-label" id="themeLabel">Dark mode</span>
-        <button class="theme-toggle" id="themeToggle" role="switch" aria-checked="true" aria-labelledby="themeLabel"></button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Dark mode. Switch to light mode."></button>
       </div>
       <div class="meter-wrap">
         <button class="meter" id="meter" aria-controls="ledger" aria-expanded="false">
@@ -1575,10 +1575,19 @@ $('screen').addEventListener('change', e => {
   paintLedger();
 });
 
+// The visible label names the mode you are in; the button's name repeats it
+// and adds what pressing it does, so the two never disagree.
+function syncThemeLabel(t) {
+  const dark = t === 'dark';
+  $('themeLabel').textContent = dark ? 'Dark mode' : 'Light mode';
+  $('themeToggle').setAttribute('aria-label',
+    dark ? 'Dark mode. Switch to light mode.' : 'Light mode. Switch to dark mode.');
+}
+
 function applyTheme(next) {
   if (next === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
-  $('themeToggle').setAttribute('aria-checked', next === 'dark' ? 'true' : 'false');
+  syncThemeLabel(next);
   $('themeColor').setAttribute('content', next === 'dark' ? '#000000' : '#ffffff');
   try { localStorage.setItem(THEME_KEY, next); } catch {}
   paintLedger();
@@ -1859,7 +1868,7 @@ gridSel.value = state.grid;
 syncRegionPicker();
 MODEL.gridGPerKwh = staticGrid();
 refreshLiveGrid();
-$('themeToggle').setAttribute('aria-checked', theme() === 'dark' ? 'true' : 'false');
+syncThemeLabel(theme());
 $('themeColor').setAttribute('content', theme() === 'light' ? '#ffffff' : '#000000');
 
 syncShelfMode();
