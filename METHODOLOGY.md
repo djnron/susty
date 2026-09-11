@@ -288,9 +288,103 @@ costing something. A 2-second tick keeps the meter current, without the pulse
 animation, which is reserved for an actual exchange, and pauses entirely while
 the tab is hidden.
 
-**Measured:** screen-on time, via the Page Visibility API. The clock pauses when
-the tab is not visible. (It cannot detect a covered window or a closed lid —
-inherent to the API.)
+**Boundary: the whole end-user device.** Every published framework counts the
+device, not the screen alone; counting the panel only understated this row by
+roughly 2–3×. The panel is a *component* of that figure rather than a line of
+its own — it is what makes the theme move the number at all, but the ledger
+reports one device row rather than itemising the screen inside it.
+
+Whole-device power is `base + panel`, so the theme still moves the total:
+
+| Configuration | Device | of which panel |
+|---|---|---|
+| Phone, OLED (dark) — **the default** | 1.35 W | 0.45 W |
+| Phone, LCD | 1.50 W | 0.60 W |
+| Tablet, OLED (dark) | 4.62 W | 1.32 W |
+| Tablet, LCD | 5.50 W | 2.20 W |
+| Laptop, OLED (dark) | 8.40 W | 2.40 W |
+| Laptop, LCD | 10.00 W | 4.00 W |
+| Desktop + monitor, LCD | 90.00 W | 22.0 W |
+
+Calibrated on measurement rather than on the reporting frameworks. Kirkeby &
+Lagermann measured **9–13 W typical** across ten participants, eight user flows
+and four laptops (best fit 9.17 / 9.56 / 9.74 / 12.43 W), against the fixed
+**15–22 W** that Digst and DIMPACT assume; they conclude the frameworks
+overestimate and, critically for a running meter, that *the error scales with
+task duration*. A 6 W non-panel base also sits inside the 4.88–6.53 W Energy
+Star idle range reported for those same machines. Phone, tablet and desktop come from
+[DIMPACT Methodology v1.0](https://dimpact.org/downloadResourceFile?resource=2)
+(smartphone 1–2 W via the Carbon Trust white paper; tablet 5.5 W via the BBC
+White Paper 2020; desktop + monitor 77–100 W). The measured range is for LCD
+machines, so an OLED panel in dark mode sits below it by design.
+
+**Tablets have their own class.** They were previously billed as laptops, at
+10 W against DIMPACT's 5.5 W — a 1.8× overstatement and the largest single
+error in the table. The panel takes the same ~40% share of the device total
+that the phone and laptop rows use, and the OLED tablet keeps the laptop's
+OLED-to-LCD ratio.
+
+**Phones default to OLED.** Panel type is not detectable and never will be —
+HDR support looked like a tell until it read `true` on a mini-LED laptop — so
+the default is a prior, and on phones that prior is now firmly OLED: around 57%
+of smartphone shipments, and every current iPhone. The previous LCD default
+meant most mobile readers saw dark mode save nothing on a device where it
+genuinely saves something. This is the one place in the document where a
+default errs *downward* — by 11% for a reader who really is on an LCD phone —
+and the picker is how they correct it. Laptops and monitors stay LCD, where
+notebook OLED is still under 5% and monitors 2.1%.
+
+Detection is a guess at the device *class* only, made once at load, and a
+picker choice overrides it permanently. `guessDevice()` tests the short screen
+edge, not the long one: comparing the long edge classified every modern phone
+as a laptop (an iPhone 15 is 393×852) and billed it at 10 W instead of 1.35 W.
+It also treats a Macintosh reporting touch points as an iPad, because iPadOS 13
+and later identify as macOS for desktop-class browsing and the user agent alone
+misses every modern iPad.
+
+**Estimated: attended time, on a "duration of use" footing.** The row says `~`
+because it is an estimate. The clock runs while susty is the visible tab *and*
+there has been a keystroke, pointer move, wheel or scroll inside a **75-second
+grace window**. An unbroken absence therefore costs 75 s and nothing more. A
+`blur` stops it immediately where the browser sends one.
+
+The grace window is the only parameter and it is anchored: a susty reply runs
+roughly 150–350 words, and 200–250 words a minute puts reading it at 40–105 s
+without touching anything.
+
+This replaced a plain visibility gate, which could not see a covered window, a
+closed lid, or a reader who had walked away: a session left in the foreground
+billed the panel for a full hour and the screen reached ~89% of the headline
+number, reporting that a tab was open rather than that a conversation happened.
+The same 55m 52s now charges 75 s, about 2% of the wall clock. The row shows the
+charged figure next to how long the page has simply been open.
+
+**No attention decay, deliberately.** An earlier version of this weighted each
+second by a decaying probability that the reader was still present. No published
+model does that, and the decay constant was invented. DIMPACT allocates a device
+to one service by the service's share of total device use duration (Eq. 19), and
+that share — a binary in or out — is the nearest established practice.
+
+**Why not the byte-based route.** The [Sustainable Web Design
+Model v4](https://sustainablewebdesign.org/estimating-digital-emissions/) gives
+the user-device segment 0.080 kWh/GB and no time term at all, deliberately, on
+the reasoning that heavier pages drive more processing and longer engagement.
+That is the mainstream for web carbon and it is a reasonable default for a page
+you read and leave. It is a poor fit here: susty is a conversation you sit with,
+its transfer is tiny, and dwell time is the thing being argued about.
+
+`document.hasFocus()` is deliberately *not* a gate. It reads false in embedded
+and second-monitor contexts where the page is genuinely being read, and gating
+on it zeroed the row outright. The Idle Detection API would give a real signal
+but needs a permission prompt and is Chrome-only — the same trade this project
+already refused for Geolocation.
+
+**Errors larger than this model.** Brightness is unknown, and the same study the
+dark-mode figures come from finds brightness matters more than theme. Device
+power is a single figure standing in for a population; the measurement paper's
+own recommendation is that reporting models be periodically recalibrated, and
+that service-category calibration beats hardware detail. Arithmetic is tested in
+`tools/clock.test.mjs`.
 
 **Declared:** panel type, from a picker. The browser cannot detect it. HDR
 support looked like a plausible OLED signal until it returned `true` on a
@@ -331,8 +425,11 @@ Three honest conclusions from that work:
    The theme is pure black because the design is a tonal inversion of a
    two-colour palette, not because of the reading below it.
 
-Dark is now the **default** theme, so most readers see the dark figure in the
-screen row unless they switch. That is the lower of the two on OLED and
+Dark is now the **default** theme, so most readers see the dark figure unless
+they switch. Note what that is worth in practice: on an LCD panel the saving is
+zero and toggling the theme does not move the ledger at all. It moves only for
+a reader who has told the picker they are on OLED — 0.60 W on an OLED laptop,
+0.10 W on an OLED phone. That is the physics, not a modelling shortcut. That is the lower of the two on OLED and
 identical on a backlit panel, which is the honest way round: the default should
 not be the one that flatters the total. The picker and the row both name which
 panel and which theme the figure assumes.
@@ -426,6 +523,11 @@ Two rules this copy follows, both learned by getting them wrong:
 - Patterson et al. 2021, *Carbon Emissions and Large Neural Network Training* — [arXiv:2104.10350](https://arxiv.org/abs/2104.10350)
 - Uptime Institute 2023 Global Data Center Survey — [PUE](https://uptimeinstitute.com/2023-data-center-industry-survey-results)
 - Dash & Hu 2021, *How much battery does dark mode save?* MobiSys — [ACM](https://dl.acm.org/doi/10.1145/3458864.3467682)
+- Kirkeby & Lagermann 2026, *Power Assumptions Matter: Evaluating End-user Laptop Energy Models for Sustainability Reporting of Browser-Based Web Services*, Roskilde University — [arXiv](https://arxiv.org/abs/2510.12566). The measured 9–13 W this row's laptop figure is built on, and the finding that constant-power error scales with session duration.
+- DIMPACT Methodology v1.0, October 2022, University of Bristol / Carbon Trust — [PDF](https://dimpact.org/downloadResourceFile?resource=2). Device power values for phone and desktop, and Eq. 19, the share-of-duration allocation rule this row follows.
+- Carbon Trust 2021, *Carbon impact of video streaming* — [PDF](https://www.carbontrust.com/sites/default/files/documents/resource/public/Carbon-impact-of-video-streaming.pdf). Origin of the 1–2 W smartphone figure, and the average-versus-marginal allocation discussion.
+- Sustainable Web Design Model v4 — [method](https://sustainablewebdesign.org/estimating-digital-emissions/). The byte-based alternative (0.080 kWh/GB for the device segment) this project deliberately does not use, and why.
+- ITU-T L.1801 (02/2026), *Guidelines for assessing the environmental impact of artificial intelligence systems* — [summary](https://www.itu.int/dms_pubrec/itu-t/rec/l/T-REC-L.1801-202602-I!!SUM-HTM-E.htm). LCA framework for AI systems, building on ITU-T L.1410. It prescribes no device coefficients; what it requires is a declared system boundary and a measurable functional unit. Only the free summary and scope were read — the normative clauses were not available.
 - NESO Carbon Intensity API — [api.carbonintensity.org.uk](https://api.carbonintensity.org.uk/)
 - EIA Open Data / EIA-930 — [eia.gov/opendata](https://www.eia.gov/opendata/)
 - EIA, CO₂ per MWh by fuel and heat rates — [Today in Energy](https://www.eia.gov/todayinenergy/detail.php?id=48296)

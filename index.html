@@ -904,7 +904,7 @@ textarea, input { caret-color: var(--ink); }
         <tr class="muted"><td>Cooling &amp; overhead ×1.12</td><td id="rPue">0 Wh</td></tr>
         <tr class="muted"><td>Hardware manufacture +15%</td><td id="rEmb">0 Wh</td></tr>
         <tr class="muted"><td>Vercel hosting &amp; network per exchange</td><td id="rHosting">0 Wh</td></tr>
-        <tr class="muted"><td id="rScreenLabel">Your screen</td><td id="rScreenNow">0 Wh</td></tr>
+        <tr class="muted"><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
         <tr><td>Electricity drawn</td><td id="rWh">0 Wh</td></tr>
         <tr><td>Grid intensity</td><td id="rGrid">473 g/kWh</td></tr>
         <tr class="total"><td>Total</td><td id="rTotal">0.00 g CO₂e</td></tr>
@@ -922,11 +922,13 @@ textarea, input { caret-color: var(--ink); }
     <div class="pick">
       <label for="screen">Reading this on</label>
       <select id="screen">
-        <option value="lcdLaptop" selected>Laptop, LCD / LED-backlit</option>
-        <option value="lcdMonitor">Desktop monitor, LCD / LED-backlit</option>
-        <option value="lcdPhone">Phone, LCD</option>
         <option value="oledPhone">Phone, OLED / AMOLED</option>
-        <option value="oledLaptop">Laptop or tablet, OLED</option>
+        <option value="lcdPhone">Phone, LCD</option>
+        <option value="lcdTablet">Tablet, LCD</option>
+        <option value="oledTablet">Tablet, OLED</option>
+        <option value="lcdLaptop">Laptop, LCD / LED-backlit</option>
+        <option value="oledLaptop">Laptop, OLED</option>
+        <option value="lcdMonitor">Desktop monitor, LCD / LED-backlit</option>
         <option value="oledMonitor">Monitor or TV, OLED</option>
       </select>
     </div>
@@ -957,7 +959,7 @@ textarea, input { caret-color: var(--ink); }
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
     <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
-    <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. That includes the screen you're reading on, so the total creeps up while the page sits open, not just when you ask something. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
+    <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. That includes the device you're reading on, not just its screen, which is how the published methods count it. But only the part you were actually here for: typing and scrolling are the evidence, and once neither has happened for a while we stop counting. It's an estimate, and the row shows it next to how long the page has simply been open. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
   <div class="sect">
@@ -1039,12 +1041,44 @@ const MODEL = {
 // extrapolation, not measurement — only phones were measured. LCD is flat in
 // both themes because a backlight's draw is content-independent.
 const PANELS = {
+  lcdTablet:   { light: 2.20,  dark: 2.20  },
+  oledTablet:  { light: 1.65,  dark: 1.32  },
   lcdLaptop:   { light: 4.00,  dark: 4.00  },
   lcdMonitor:  { light: 22.0,  dark: 22.0  },
   lcdPhone:    { light: 0.60,  dark: 0.60  },
   oledPhone:   { light: 0.55,  dark: 0.45  },
   oledLaptop:  { light: 3.00,  dark: 2.40  },
   oledMonitor: { light: 9.00,  dark: 7.20  }
+};
+
+// Whole-device power, minus the panel — the panel is added back from PANELS
+// below, so the theme still moves the total and the screen stays attributable.
+//
+// Totals are calibrated on measurement, not on the reporting frameworks:
+// Kirkeby & Lagermann measured 9-13 W typical across ten participants and four
+// laptops (best fit 9.17 / 9.56 / 9.74 / 12.43 W), against the fixed 15-22 W
+// that Digst and DIMPACT assume — they find the frameworks overestimate and
+// that the error grows with session length, which is exactly the failure mode
+// a running meter would accumulate. Phone and desktop come from DIMPACT v1.0
+// (smartphone 1-2 W from the Carbon Trust white paper; desktop + monitor
+// 77-100 W). A laptop base of 6 W also lands inside the 4.88-6.53 W Energy
+// Star idle range those same machines report, which is a useful check.
+const DEVICE_BASE = {   // watts, everything but the panel
+  phone:   0.9,         // 1.5 W device  - 0.6 W LCD panel
+  tablet:  3.3,         // 5.5 W device  - 2.2 W LCD panel
+  laptop:  6.0,         // 10  W device  - 4.0 W LCD panel
+  monitor: 68.0         // 90  W desktop + monitor - 22 W LCD panel
+};
+// Tablets were previously billed as laptops, at 10 W against DIMPACT's 5.5 W —
+// a 1.8x overstatement, and the worst error in the table for a mobile-first
+// product. The 5.5 W total is DIMPACT's (BBC White Paper 2020); the panel takes
+// the same ~40% share of it that the phone and laptop rows use, and the OLED
+// tablet keeps the laptop's OLED-to-LCD ratio.
+const DEVICE_CLASS = {
+  lcdPhone: 'phone',     oledPhone:   'phone',
+  lcdTablet: 'tablet',   oledTablet:  'tablet',
+  lcdLaptop: 'laptop',   oledLaptop:  'laptop',
+  lcdMonitor: 'monitor', oledMonitor: 'monitor'
 };
 
 // Grid carbon intensity, gCO2/kWh, 2024. Cross-checked against Ember's Global
@@ -1226,17 +1260,62 @@ const state = {
   grid: 'world', gridGuessed: false, region: '', live: null
 };
 
-// Screen-on time, counted only while the tab is actually visible.
-let visibleMs = 0, lastTick = null;
-function clockStart() { if (lastTick === null) lastTick = performance.now(); }
-function clockStop()  { if (lastTick !== null) { visibleMs += performance.now() - lastTick; lastTick = null; } }
-function screenSeconds() {
-  return (visibleMs + (lastTick === null ? 0 : performance.now() - lastTick)) / 1000;
+// Attended time, on the standards' "duration of use" footing rather than a
+// curve of my own invention. DIMPACT allocates a device to one service by the
+// service's share of total device use duration (Methodology v1.0, Eq. 19); no
+// published model weights by an attention decay, so this does not either.
+//
+// GRACE is the one parameter, and it is anchored: a susty reply runs roughly
+// 150-350 words, and 200-250 words a minute puts reading it at 40-105 seconds
+// without touching anything. An unbroken absence therefore costs GRACE and
+// nothing more.
+//
+// Two gates, both permissionless and offline, matching the location stance:
+//   visible  — susty is the active tab in its window   (Page Visibility API)
+//   active   — a keystroke, pointer, wheel or scroll inside GRACE
+//
+// The activity gate is what carries the multi-window case: those events only
+// fire inside susty's own document, so a reader working elsewhere generates
+// none. A `blur` is an immediate stop where the browser sends one, but focus is
+// not *required* — document.hasFocus() reads false in embedded and
+// second-monitor contexts where the page is genuinely being read, and gating on
+// it zeroed the row outright.
+const GRACE = 75000;
+let attendedMs = 0, openMs = 0, lastSlice = performance.now();
+let lastActivity = performance.now(), blurred = false, wasOn = true;
+
+const onScreen = () => document.visibilityState === 'visible' && !blurred;
+
+function clockSync() {
+  const now = performance.now();
+  const dt = now - lastSlice;
+  lastSlice = now;
+  if (dt > 0 && wasOn) {
+    openMs += dt;
+    // Credit only as far as the grace deadline, so a heartbeat that fires late
+    // cannot bill the whole gap it happens to span.
+    const cutoff = Math.max(lastSlice - dt, Math.min(now, lastActivity + GRACE));
+    attendedMs += Math.max(0, cutoff - (lastSlice - dt));
+  }
+  wasOn = onScreen();
 }
-if (document.visibilityState === 'visible') clockStart();
-document.addEventListener('visibilitychange', () => {
-  document.visibilityState === 'visible' ? clockStart() : clockStop();
-});
+
+const attendedSeconds = () => attendedMs / 1000;
+const openSeconds     = () => openMs / 1000;
+
+clockSync();
+document.addEventListener('visibilitychange', clockSync);
+window.addEventListener('blur',  () => { clockSync(); blurred = true;  wasOn = false; });
+window.addEventListener('focus', () => { clockSync(); blurred = false; wasOn = onScreen(); });
+const markActive = () => {
+  clockSync();
+  lastActivity = performance.now();
+  blurred = false;
+  wasOn = onScreen();
+};
+['pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart', 'mousemove']
+  .forEach(e => window.addEventListener(e, markActive, { passive: true }));
+
 const $ = id => document.getElementById(id);
 const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
 const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1245,9 +1324,9 @@ function energyWh() {
   const gpuRaw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
   const gpu = gpuRaw * MODEL.pue * (1 + MODEL.embodied);
   const hosting = state.turns * MODEL.whPerExchange;
-  // The screen you are reading this on is part of what the chat costs, so it
-  // belongs in the total rather than beside it.
-  return gpu + hosting + screenEnergy().now;
+  // The whole device, not just its panel: every published framework counts the
+  // end-user device, and the panel alone understated it by roughly 2-3x.
+  return gpu + hosting + deviceEnergy();
 }
 const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
@@ -1256,9 +1335,13 @@ const THEME_KEY = 'susty-theme';
 const theme = () => document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
 
 // Display energy for the elapsed visible time, in both themes.
-function screenEnergy() {
-  const panel = PANELS[state.screen] || PANELS.lcdLaptop;
-  return { now: panel[theme()] * (screenSeconds() / 3600) };
+// Whole-device energy for the attended time. The panel is a component of the
+// figure rather than a line of its own: it is what makes the theme move the
+// number at all, but the reader does not need it itemised.
+function deviceEnergy() {
+  const panelW = (PANELS[state.screen] || PANELS.lcdLaptop)[theme()];
+  const baseW  = DEVICE_BASE[DEVICE_CLASS[state.screen] || 'laptop'];
+  return (baseW + panelW) * (attendedSeconds() / 3600);
 }
 
 // Device class is detectable; panel type and brightness are not. HDR support
@@ -1268,16 +1351,32 @@ function screenEnergy() {
 function guessDevice() {
   // Test the SHORT edge for phones. Comparing the long edge classified every
   // modern phone as a laptop (iPhone 15 is 393×852, so the long edge is 852)
-  // and billed it at 4 W instead of 0.6 W — a ~7× overstatement.
+  // and billed a phone at 10 W instead of 1.35 W.
   const short = Math.min(screen.width, screen.height);
   const long  = Math.max(screen.width, screen.height);
+  const ua = navigator.userAgent;
   const mobile = navigator.userAgentData
     ? navigator.userAgentData.mobile
-    : /Android|iPhone|iPod/i.test(navigator.userAgent);
-  if (mobile && short < 600) return 'lcdPhone';
-  if (mobile || /iPad|Tablet/i.test(navigator.userAgent)) return 'lcdLaptop';
+    : /Android|iPhone|iPod/i.test(ua);
+  // iPadOS 13+ reports itself as Macintosh for desktop-class browsing, so the
+  // user agent alone misses every modern iPad. A Mac that reports touch points
+  // is an iPad.
+  const tablet = /iPad|Tablet/i.test(ua) ||
+                 (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+
+  // Phones default to OLED, not LCD. Panel type is not detectable — HDR
+  // support looked like a tell until it read true on a mini-LED laptop — so
+  // this is a prior, and on phones the prior is now firmly OLED: ~57% of
+  // smartphone shipments, and every current iPhone. The old LCD default meant
+  // most mobile readers saw dark mode save nothing on a device where it does.
+  // It errs downward by 11% for a reader who really is on an LCD phone, which
+  // the picker lets them correct.
+  if (mobile && short < 600) return 'oledPhone';
+  // Tablets stay LCD: the OLED iPad Pro is a small slice of the installed base.
+  if (tablet || mobile) return 'lcdTablet';
   // Resolution alone can't separate laptop from desktop: 1920×1080 is the most
-  // common *laptop* panel, so only go to a 22 W monitor well above that.
+  // common *laptop* panel, so only go to a monitor well above that. Laptops and
+  // monitors stay LCD too — notebook OLED is still under 5%, monitors 2.1%.
   return long >= 2200 ? 'lcdMonitor' : 'lcdLaptop';
 }
 
@@ -1324,7 +1423,7 @@ function paintLedger() {
   $('rIn').textContent    = state.inTokens.toLocaleString();
   $('rOut').textContent   = state.outTokens.toLocaleString();
   const hosting = state.turns * MODEL.whPerExchange;
-  const totalWh = wh + hosting + screenEnergy().now;
+  const totalWh = wh + hosting + deviceEnergy();
 
   $('rEIn').textContent      = fmt(eIn, 3) + ' Wh';
   $('rEOut').textContent     = fmt(eOut, 3) + ' Wh';
@@ -1399,9 +1498,13 @@ function paintLedger() {
 }
 
 function paintScreen() {
-  const dev = SHORT_DEVICE[state.screen] || 'your screen';
-  $('rScreenLabel').textContent = 'Your screen, ' + fmtDuration(screenSeconds()) + ' on ' + dev;
-  $('rScreenNow').textContent   = fmt(screenEnergy().now, 3) + ' Wh';
+  const dev = deviceName();
+  // Both durations, because the interesting question about this row is why the
+  // charged figure is smaller than the time the page has been open.
+  $('rDeviceLabel').textContent =
+    'Your device, ~' + fmtDuration(attendedSeconds()) + ' attended of ' +
+    fmtDuration(openSeconds()) + ' open, on ' + dev;
+  $('rDeviceNow').textContent = fmt(deviceEnergy(), 3) + ' Wh';
 }
 
 const scrim = $('scrim'), ledger = $('ledger'), frame = document.querySelector('.frame');
@@ -1467,12 +1570,13 @@ DOCK.addEventListener('change', () => {
   if (!shelfDocked()) ledger.focus();
 });
 
-// Screen time is part of the total now, so the figures drift upward even when
-// nobody is typing. One timer covers both surfaces: the meter always, and the
-// ledger only while it is open. Skipped entirely while the tab is hidden,
-// where the clock is paused and nobody is looking.
+// Screen time is part of the total, so the figures move even when nobody is
+// typing. One timer covers both surfaces: the meter always, and the ledger
+// only while it is open. Going idle fires no event of its own, so the clock is
+// synced here too — that is what actually stops it when a reader walks away.
 setInterval(() => {
   if (document.hidden) return;
+  clockSync();
   paintMeter(false);
   if (ledger.classList.contains('open')) paintLedger();
 }, 2000);
@@ -1613,10 +1717,14 @@ $('region').addEventListener('change', e => {
   applyGrid();
   refreshLiveGrid();          // US regions drive the EIA lookup too, not just GB
 });
+// The device row names the class, the panel sub-row names the panel, so the
+// two lines do not both say "OLED".
+const DEVICE_NAME = { phone: 'a phone', tablet: 'a tablet', laptop: 'a laptop', monitor: 'a desktop and monitor' };
 const SHORT_DEVICE = {
   lcdLaptop:   'a laptop',  lcdMonitor:  'a monitor',      lcdPhone:    'a phone',
   oledPhone:   'an OLED phone', oledLaptop: 'an OLED laptop', oledMonitor: 'an OLED monitor'
 };
+const deviceName = () => DEVICE_NAME[DEVICE_CLASS[state.screen] || 'laptop'];
 $('screen').addEventListener('change', e => {
   state.screen = e.target.value;
   try { localStorage.setItem('susty-screen', state.screen); } catch {}
