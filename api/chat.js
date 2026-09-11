@@ -23,6 +23,69 @@ export const LIMITS = {
   perWindow: 25,        // requests per IP per window
 };
 
+// Model tiers. The client sends an opaque key and *only* this map turns it into
+// a model, so a modified client cannot name an arbitrary model or switch
+// extended thinking on. Same posture as rebuilding the request from scratch.
+//
+// maxTokens is per tier because thinking tokens count against it: a thinking
+// tier on the standard 1000 ceiling would spend its budget reasoning and get
+// the answer truncated.
+//
+// Carbon, from METHODOLOGY §2: haiku ×0.52, sonnet ×1.00, opus ×1.33 per token.
+// But extended thinking is the term that matters — Oviedo et al. put a
+// reasoning-length reply at ~13× a standard one, so `opus-thinking` is roughly
+// an order of magnitude, not a third more.
+export const TIERS = {
+  haiku: {
+    model: "claude-haiku-4-5",
+    maxTokens: LIMITS.maxTokens,
+  },
+  sonnet: {
+    // ANTHROPIC_MODEL still overrides the default tier, so existing
+    // deployments keep working; it deliberately does not override the others.
+    model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
+    maxTokens: LIMITS.maxTokens,
+  },
+  opus: {
+    // Omitting `thinking` means off on 4.8. On the 5-series it means ON, so a
+    // 5-series tier added here must disable it explicitly.
+    model: "claude-opus-4-8",
+    maxTokens: LIMITS.maxTokens,
+  },
+  "opus-thinking": {
+    model: "claude-opus-4-8",
+    maxTokens: 4000,
+    // Adaptive is the only on-mode from 4.7 onward — `budget_tokens` is
+    // removed and returns a 400.
+    thinking: { type: "adaptive" },
+    effort: "low",
+    expensive: true,
+  },
+};
+export const DEFAULT_TIER = "sonnet";
+
+// Two off switches, both default-on so nothing has to be set to work:
+//   SUSTY_TIERS=off            collapses every request to the default tier
+//   SUSTY_EXPENSIVE_TIERS=off  keeps the thinking tier off the menu
+// Either way the client is not trusted: an unknown, disabled or expensive-but-
+// disabled key silently resolves to the default rather than erroring, and the
+// ledger reports whichever model actually answered.
+export const TIERS_ENABLED = process.env.SUSTY_TIERS !== "off";
+export const EXPENSIVE_TIERS_ENABLED = process.env.SUSTY_EXPENSIVE_TIERS !== "off";
+
+export function resolveTier(key) {
+  const fallback = { key: DEFAULT_TIER, ...TIERS[DEFAULT_TIER] };
+  if (!TIERS_ENABLED) return fallback;
+  // Object.hasOwn, not a bare lookup: TIERS["__proto__"] and
+  // TIERS["constructor"] resolve to inherited Object.prototype members, which
+  // are truthy, so a crafted key slipped past a `!tier` guard and built a
+  // request with model: undefined. Found by tools/tiers.test.mjs.
+  if (typeof key !== "string" || !Object.hasOwn(TIERS, key)) return fallback;
+  const tier = TIERS[key];
+  if (tier.expensive && !EXPENSIVE_TIERS_ENABLED) return fallback;
+  return { key, ...tier };
+}
+
 const hits = new Map(); // in-memory, so it resets on cold start — see README
 
 export function rateLimited(ip) {
@@ -65,7 +128,19 @@ export function clean(messages) {
   return out;
 }
 
-export async function callAnthropic(messages) {
+export async function callAnthropic(messages, tierKey) {
+  const tier = resolveTier(tierKey);
+  const body = {
+    model: tier.model,
+    max_tokens: tier.maxTokens,
+    system: SYSTEM,
+    messages,
+    stream: true,
+  };
+  if (tier.thinking) {
+    body.thinking = tier.thinking;
+    body.output_config = { effort: tier.effort };
+  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -73,13 +148,7 @@ export async function callAnthropic(messages) {
       "x-api-key": process.env.ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
-      max_tokens: LIMITS.maxTokens,
-      system: SYSTEM,
-      messages,
-      stream: true,
-    }),
+    body: JSON.stringify(body),
   });
   return res;
 }
@@ -106,7 +175,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const upstream = await callAnthropic(messages);
+    const upstream = await callAnthropic(messages, req.body?.tier);
 
     if (!upstream.ok) {
       const data = await upstream.json().catch(() => ({}));

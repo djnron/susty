@@ -598,6 +598,9 @@ textarea, input { caret-color: var(--ink); }
 .rows { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 .rows td { padding: var(--s2) 0; border-bottom: 1px solid var(--hairline); vertical-align: baseline; }
 .rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: var(--s4); }
+/* These two hold text rather than a figure, so they may wrap instead of
+   pushing the column off a narrow screen. */
+#rModel, #rThinking { white-space: normal; }
 .rows tr.muted td:first-child { padding-left: var(--s4); }
 .rows tr.total td {
   border-bottom: none;
@@ -896,6 +899,8 @@ textarea, input { caret-color: var(--ink); }
     <h3>This conversation</h3>
     <table class="rows">
       <tbody>
+        <tr class="muted"><td>Answered by</td><td id="rModel">claude-sonnet-4-6</td></tr>
+        <tr class="muted"><td>Extended thinking</td><td id="rThinking">off</td></tr>
         <tr><td>Exchanges</td><td id="rTurns">0</td></tr>
         <tr><td>Tokens sent (context)</td><td id="rIn">0</td></tr>
         <tr><td>Tokens written back</td><td id="rOut">0</td></tr>
@@ -918,6 +923,15 @@ textarea, input { caret-color: var(--ink); }
     <div class="pick" id="regionPick" hidden>
       <label for="region">Narrow it down</label>
       <select id="region"></select>
+    </div>
+    <div class="pick">
+      <label for="tier">Answer with</label>
+      <select id="tier">
+        <option value="haiku">Haiku 4.5 — about half the energy</option>
+        <option value="sonnet" selected>Sonnet 4.6 — the default</option>
+        <option value="opus">Opus 4.8 — about a third more</option>
+        <option value="opus-thinking">Opus 4.8, extended thinking — several times more</option>
+      </select>
     </div>
     <div class="pick">
       <label for="screen">Reading this on</label>
@@ -959,7 +973,7 @@ textarea, input { caret-color: var(--ink); }
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
     <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
-    <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. That includes the device you're reading on, not just its screen, which is how the published methods count it. But only the part you were actually here for: typing and scrolling are the evidence, and once neither has happened for a while we stop counting. It's an estimate, and the row shows it next to how long the page has simply been open. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
+    <p class="note" id="noteSum">The sum itself is simple: energy used × how dirty the electricity is. Extended thinking, where it is on, is counted inside the tokens written back: it is charged at the same rate, and it is the thing that decides whether an exchange costs once or several times over. The total also includes the device you're reading on, not just its screen, which is how the published methods count it. But only the part you were actually here for: typing and scrolling are the evidence, and once neither has happened for a while we stop counting. It's an estimate, and the row shows it next to how long the page has simply been open. And longer chats cost more per answer, because we send the whole conversation back each time.</p>
   </div>
 
   <div class="sect">
@@ -1025,6 +1039,47 @@ textarea, input { caret-color: var(--ink); }
 </div>
 
 <script>
+// Per-token energy scales with the model's active parameter count, and susty
+// had been applying one figure to every model. These are relative factors,
+// anchored on claude-sonnet-4-6 = 1.00, derived from EcoLogits' energy function
+//
+//   f(P_active, B) = 1.17e-6 * e^(-1.12e-2 * B) * P_active + 4.05e-5
+//
+// fitted to the ML.ENERGY measured leaderboard, evaluated at batch 32 with the
+// midpoint of their active-parameter estimate for each model.
+//
+// Relative, not absolute, on purpose. The absolute coefficients below are
+// Luccioni et al. and hold up: a measured susty exchange comes to 0.214 Wh,
+// inside the 0.16-0.60 Wh/query IQR that Oviedo et al. (Joule 2026) report for
+// frontier models. EcoLogits' own figures look ~4x lower only because they are
+// GPU-only where susty's chain is full-stack. So the absolute number stays and
+// only the spread between models is added.
+//
+// EcoLogits flags every Anthropic entry `model-arch-not-released` — the
+// parameter counts are inferred, not disclosed. Factors are therefore rounded
+// to two places and treated as a spread, not a precision.
+const MODEL_ENERGY = {
+  'claude-haiku-4-5':   { factor: 0.52, thinks: false },
+  'claude-sonnet-4-6':  { factor: 1.00, thinks: false },   // the anchor
+  'claude-opus-4-6':    { factor: 1.33, thinks: true  },
+  'claude-opus-4-7':    { factor: 1.33, thinks: true  },
+  'claude-opus-4-8':    { factor: 1.33, thinks: true  }
+};
+// Unknown or newer models fall back to the anchor rather than guessing. The
+// 5-series is deliberately absent: EcoLogits has no architecture estimate for
+// it, so a factor would be invention.
+// Longest-prefix match, because the API answers with dated ids: ask for
+// claude-haiku-4-5 and message_start reports claude-haiku-4-5-20251001. An
+// exact lookup missed that and billed Haiku at the Sonnet anchor.
+function modelEnergy() {
+  const id = state.model || '';
+  let best = null;
+  for (const key of Object.keys(MODEL_ENERGY)) {
+    if (id.startsWith(key) && (!best || key.length > best.length)) best = key;
+  }
+  return MODEL_ENERGY[best || 'claude-sonnet-4-6'];
+}
+
 const MODEL = {
   whPerInputToken : 0.00005,
   whPerOutputToken: 0.0005,
@@ -1257,6 +1312,9 @@ const SYSTEM_TOKENS = 275;
 const state = {
   turns: 0, inTokens: 0, outTokens: 0, history: [], busy: false,
   screen: 'lcdLaptop',
+  model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
+  tier: 'sonnet',               // what we asked for; the server may override
+  thinkTokens: 0,               // measured subset of outTokens
   grid: 'world', gridGuessed: false, region: '', live: null
 };
 
@@ -1321,7 +1379,8 @@ const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
 const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
 function energyWh() {
-  const gpuRaw = state.inTokens * MODEL.whPerInputToken + state.outTokens * MODEL.whPerOutputToken;
+  const gpuRaw = (state.inTokens * MODEL.whPerInputToken
+                + state.outTokens * MODEL.whPerOutputToken) * modelEnergy().factor;
   const gpu = gpuRaw * MODEL.pue * (1 + MODEL.embodied);
   const hosting = state.turns * MODEL.whPerExchange;
   // The whole device, not just its panel: every published framework counts the
@@ -1413,8 +1472,10 @@ function paintMeter(pulse = true) {
 }
 
 function paintLedger() {
-  const eIn  = state.inTokens  * MODEL.whPerInputToken;
-  const eOut = state.outTokens * MODEL.whPerOutputToken;
+  // Same factor energyWh() applies, or these rows stop summing to the total.
+  const f    = modelEnergy().factor;
+  const eIn  = state.inTokens  * MODEL.whPerInputToken  * f;
+  const eOut = state.outTokens * MODEL.whPerOutputToken * f;
   const pued = (eIn + eOut) * MODEL.pue;
   const wh   = pued * (1 + MODEL.embodied);
   const g    = grams();
@@ -1432,6 +1493,11 @@ function paintLedger() {
   $('rHosting').textContent  = fmt(hosting, 3) + ' Wh';
   $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
+  $('rModel').textContent = state.model.replace(/^claude-/, '') +
+    (f === 1 ? '' : ' \u00d7' + f.toFixed(2));
+  $('rThinking').textContent = state.thinkTokens
+    ? state.thinkTokens.toLocaleString() + ' tokens'
+    : 'off';
 
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
   // "in United States" and "you're in World average" both read badly.
@@ -1725,6 +1791,15 @@ const SHORT_DEVICE = {
   oledPhone:   'an OLED phone', oledLaptop: 'an OLED laptop', oledMonitor: 'an OLED monitor'
 };
 const deviceName = () => DEVICE_NAME[DEVICE_CLASS[state.screen] || 'laptop'];
+// The tier is a request, not a setting: the server owns the mapping and can
+// refuse or collapse it, so the ledger reports what actually answered rather
+// than what was asked for.
+$('tier').addEventListener('change', e => {
+  state.tier = e.target.value;
+  try { localStorage.setItem('susty-tier', state.tier); } catch {}
+  paintLedger();
+});
+
 $('screen').addEventListener('change', e => {
   state.screen = e.target.value;
   try { localStorage.setItem('susty-screen', state.screen); } catch {}
@@ -1834,6 +1909,7 @@ async function send(raw) {
   const waiting = addWaiting();
   let turnEl = null, bubbleEl = null, committed = false;
   let fullText = '', inputTokens = 0, outputTokens = 0, streamError = null;
+  let thinkingTokens = 0;
 
   // One render per frame. Re-parsing the whole message on every delta is
   // quadratic, and a fast stream lands several deltas inside a single frame.
@@ -1859,7 +1935,7 @@ async function send(raw) {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: state.history })
+      body: JSON.stringify({ messages: state.history, tier: state.tier })
     });
 
     if (!res.ok) {
@@ -1886,8 +1962,16 @@ async function send(raw) {
           paintReply();
         } else if (evt.type === 'message_start' && evt.message?.usage) {
           inputTokens = evt.message.usage.input_tokens ?? 0;
+          // Taken from the response, not assumed from config: ANTHROPIC_MODEL
+          // can differ between environments and the client cannot see it.
+          if (evt.message.model) state.model = evt.message.model;
         } else if (evt.type === 'message_delta' && evt.usage) {
           outputTokens = evt.usage.output_tokens ?? 0;
+          // Measured, not inferred: usage.output_tokens_details.thinking_tokens
+          // is a subset of output_tokens, so it is already billed at the output
+          // rate. Reported separately because it is the term that decides
+          // whether an exchange costs 1x or ~13x.
+          thinkingTokens = evt.usage.output_tokens_details?.thinking_tokens ?? 0;
         } else if (evt.type === 'error') {
           // Upstream can fail partway through (overloaded_error). Unhandled,
           // a truncated reply was stored as though it were complete.
@@ -1918,6 +2002,7 @@ async function send(raw) {
     state.outTokens += outputTokens || estimateTokens(fullText);
     state.history.push({ role: 'assistant', content: fullText });
     state.turns += 1;
+    state.thinkTokens += thinkingTokens;
     committed = true;
 
     // Partial text is kept rather than discarded: deleting words the reader
@@ -1998,6 +2083,12 @@ try {
   if (savedScreen && PANELS[savedScreen]) state.screen = savedScreen;
 } catch {}
 $('screen').value = state.screen;
+
+try {
+  const savedTier = localStorage.getItem('susty-tier');
+  if (savedTier && $('tier').querySelector('[value="' + savedTier + '"]')) state.tier = savedTier;
+} catch {}
+$('tier').value = state.tier;
 
 // Grid: World average first, then the EU aggregate, countries A–Z, tariff last.
 const gridSel = $('grid');

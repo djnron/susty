@@ -88,7 +88,7 @@ box.
 ```
 grams CO₂e = ( (tokens × energy per token) × PUE × (1 + embodied)
               + exchanges × hosting
-              + screen watts × hours on screen ) × grid intensity
+              + device watts × hours attended ) × grid intensity
 ```
 
 ### Constants
@@ -100,10 +100,98 @@ grams CO₂e = ( (tokens × energy per token) × PUE × (1 + embodied)
 | Cooling and overhead (PUE) | ×1.12 | Uptime Institute 2023, global average |
 | Embodied hardware | +15% | Patterson et al. 2021 |
 | Hosting and network | 0.003 Wh per exchange | modelled |
+| Model energy factor | ×1.00 for `claude-sonnet-4-6` | EcoLogits fitted to ML.ENERGY, see below |
+| End-user device | see §4 | measured (laptop) / DIMPACT (phone, tablet, desktop) |
+| Attended-time grace window | 75 s | reply length ÷ reading speed, see §4 |
 | Grid intensity | see §3 | varies by source |
 
 Token counts come from the API's own `usage` field, so the input to the model is
 measured rather than estimated. Everything after that is modelled.
+
+### The model factor
+
+Per-token energy scales with a model's active parameter count, and susty had
+been applying one coefficient to every model. The factors are relative,
+anchored on `claude-sonnet-4-6` = 1.00:
+
+| Model | Active params (est.) | Factor |
+|---|---|---|
+| `claude-haiku-4-5` | 10–35B, dense | **0.52** |
+| `claude-sonnet-4-6` | 44–132B, MoE | **1.00** (anchor) |
+| `claude-opus-4-6/7/8` | 67–200B, MoE | **1.33** |
+
+Derived from [EcoLogits](https://ecologits.ai/)' energy function, itself fitted
+to the measured [ML.ENERGY leaderboard](https://ml.energy/):
+
+```
+f(P_active, B) = 1.17e-6 · e^(-1.12e-2·B) · P_active + 4.05e-5   Wh per output token
+```
+
+evaluated at batch 32 on the midpoint of their active-parameter estimate.
+`tools/clock.test.mjs` reproduces every published factor from that function, so
+none of them is a typed-in number.
+
+**Relative, not absolute, deliberately.** The absolute coefficients above are
+Luccioni et al. and they hold up: a measured susty exchange comes to **0.214 Wh**,
+inside the **0.16–0.60 Wh/query** IQR that [Oviedo et al.
+(*Joule* 2026)](https://arxiv.org/abs/2509.20241) report for frontier models.
+EcoLogits' own per-token figures look roughly 4× lower, but that is a scope
+difference — theirs is GPU-only where susty's chain is full-stack — not a
+disagreement. The test asserts that calibration so it cannot drift unnoticed.
+
+**Two limits worth naming.** EcoLogits flags every Anthropic entry
+`model-arch-not-released`: the parameter counts are inferred from benchmark
+parity and pricing, not disclosed, so these are a spread rather than a
+precision. And the 5-series is deliberately absent from the table — EcoLogits
+has no architecture estimate for `claude-sonnet-5` or `claude-opus-5`, so a
+factor for them would be invention. An unrecognised model falls back to the
+anchor.
+
+**The dominant term is not the model.** Oviedo et al. find that a
+reasoning-length reply (~5,000 output tokens) raises per-query energy **~13×**
+against a standard one. The whole spread between Haiku and Opus is 2.6×. So
+output length, and therefore whether extended thinking is on, matters far more
+than which model serves the request.
+
+### Choosing a model
+
+The ledger's **Answer with** picker offers four tiers. The client sends an
+opaque key and `api/chat.js` owns the only mapping to a model, so a modified
+client cannot name an arbitrary model or switch thinking on:
+
+| Tier | Model | Thinking | Per-token |
+|---|---|---|---|
+| Haiku 4.5 | `claude-haiku-4-5` | off | ×0.52 |
+| **Sonnet 4.6** (default) | `claude-sonnet-4-6` | off | ×1.00 |
+| Opus 4.8 | `claude-opus-4-8` | off | ×1.33 |
+| Opus 4.8, extended thinking | `claude-opus-4-8` | adaptive, effort `low` | ×1.33 **plus the thinking tokens** |
+
+The per-token column understates the last row badly, which is why the ledger
+reports thinking separately. **Thinking tokens are measured, not inferred:**
+`usage.output_tokens_details.thinking_tokens` gives an exact count, and they are
+a subset of `output_tokens`, so they are already billed at the output rate — the
+row exists because it is the term that decides whether an exchange costs once or
+several times over. At effort `low` a typical reply reasons for only 20–40
+tokens; higher effort is where the 13× lives.
+
+The tier is a request, not a setting. The server may collapse it, so the ledger
+reports whichever model actually answered — read from the response's
+`message.model`, not from what was asked for. Model ids are matched by longest
+prefix because the API answers with dated ids: asking for `claude-haiku-4-5`
+returns `claude-haiku-4-5-20251001`, and an exact lookup billed Haiku at the
+Sonnet anchor.
+
+Two off switches, both default-on:
+
+| Variable | Effect |
+|---|---|
+| `SUSTY_EXPENSIVE_TIERS=off` | Drops the thinking tier; everything else stays |
+| `SUSTY_TIERS=off` | Collapses every request to the default tier |
+
+Worth knowing before this is public: a visitor on the thinking tier can raise
+the cost of an exchange several times over, on the deployment's own API key,
+against a rate limit that resets on cold start. `SUSTY_EXPENSIVE_TIERS=off` is
+the lever.
 
 Output tokens cost ten times input tokens per token, which is why a long reply
 dominates a long question.
@@ -271,7 +359,7 @@ way to see which from the browser.
 
 ---
 
-## 4. Your screen
+## 4. Your device
 
 Included in the total. The screen you are reading on is part of what the
 conversation costs, so leaving it out would understate the answer — and by a

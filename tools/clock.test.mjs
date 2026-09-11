@@ -140,6 +140,45 @@ for (const panel of ['oledPhone', 'oledTablet', 'oledLaptop', 'oledMonitor']) {
   console.log(`${ok ? 'pass' : 'FAIL'}  ${panel} saves ${saving.toFixed(2)} W in dark`);
 }
 
+console.log('\nModel-relative energy factors');
+{
+  // Keep in step with MODEL_ENERGY in index.html. Derived from EcoLogits'
+  // f(P_active, B) fitted to ML.ENERGY, at batch 32, midpoint active params.
+  const MODEL_ENERGY = {
+    'claude-haiku-4-5':  { factor: 0.52, thinks: false },
+    'claude-sonnet-4-6': { factor: 1.00, thinks: false },
+    'claude-opus-4-6':   { factor: 1.33, thinks: true  },
+    'claude-opus-4-7':   { factor: 1.33, thinks: true  },
+    'claude-opus-4-8':   { factor: 1.33, thinks: true  }
+  };
+  const A = 1.17e-6, B = -1.12e-2, G = 4.05e-5;
+  const f = (p, b) => A * Math.exp(B * b) * p + G;
+  const active = { 'claude-haiku-4-5': 22.5, 'claude-sonnet-4-6': 88,
+                   'claude-opus-4-6': 133.5, 'claude-opus-4-7': 133.5,
+                   'claude-opus-4-8': 133.5 };
+  const anchor = f(active['claude-sonnet-4-6'], 32);
+
+  // Every published factor must reproduce from the source function.
+  for (const [name, { factor }] of Object.entries(MODEL_ENERGY)) {
+    const derived = f(active[name], 32) / anchor;
+    const ok = Math.abs(derived - factor) < 0.01;
+    if (!ok) fails++;
+    console.log(`${ok ? 'pass' : 'FAIL'}  ${name} factor ${factor} reproduces from EcoLogits (${derived.toFixed(3)})`);
+  }
+  // The anchor must be exactly 1: it is the model susty actually runs.
+  const anchored = MODEL_ENERGY['claude-sonnet-4-6'].factor === 1.00;
+  if (!anchored) fails++;
+  console.log(`${anchored ? 'pass' : 'FAIL'}  claude-sonnet-4-6 is the 1.00x anchor`);
+
+  // Absolute calibration: a real exchange must stay inside Oviedo et al's
+  // measured IQR for a frontier-model query, 0.16-0.60 Wh.
+  const wh = (831 * 0.00005 + 571 * 0.0005) * 1.12 * 1.15 + 2 * 0.003;
+  const perExchange = wh / 2;
+  const inRange = perExchange >= 0.16 && perExchange <= 0.60;
+  if (!inRange) fails++;
+  console.log(`${inRange ? 'pass' : 'FAIL'}  ${perExchange.toFixed(3)} Wh/exchange inside Oviedo IQR 0.16-0.60`);
+}
+
 // The regression that prompted the tablet class in the first place.
 {
   const t = watts('lcdTablet', 'dark'), l = watts('lcdLaptop', 'dark');

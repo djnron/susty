@@ -145,7 +145,7 @@ const server = createServer(async (req, res) => {
     if (!messages) return json(res, 400, { error: "The conversation was malformed." });
 
     try {
-      const upstream = await callAnthropic(messages);
+      const upstream = await callAnthropic(messages, parsed?.tier);
       if (!upstream.ok) {
         const data = await upstream.json().catch(() => ({}));
         console.error("Anthropic error", upstream.status, data);
