@@ -34,22 +34,30 @@ Single-session, single-page. No login, no history, no account. The user arrives,
 
 ## Brand Commitments
 
-- Name: **susty** (lowercase, no tagline required)
+- Name: **susty** (lowercase, no tagline required). Set as a filled stamp in
+  the masthead — ink block, paper letters, 3px rule, gold offset — and it stays
+  lowercase even though every other heading in the design is uppercase
 - Voice: direct, specific, non-preachy; "tiny ways to make the world a little less bad"
-- Palette is brutalist and closed: black #000000, white #FFFFFF, grey for
-  dividers (#3A3A3A dark / #C9C9C9 light), hot red #FF2D2D for the meter, hot
-  green #2DFF6B for the Ask button and the recommendations block, system yellow #FFE600 for inline
-  annotation only, and link blue. The three accent blocks do not invert with
-  the theme and all carry black text
+- Design is **neo-brutalist**, from the Figma reference (file
+  `f5mQWmpJHDVyIXJnx6VcNd`, node `1:266`): 3px borders, hard offset shadows
+  with no blur (6px cards, 4px buttons, 3px tiles), and nothing rounded,
+  gradient or soft-shadowed anywhere
+- Palette is closed: black #000000, white #FFFFFF, grey for dividers (#3A3A3A
+  dark / #C9C9C9 light), gold #FFD700 for the meter — what the conversation
+  costs — and mint #00FF9C for actions: Ask, the plan CTA, and the
+  recommendations block. Both accents are fills, they do not invert with the
+  theme, and both carry black text. This replaces the earlier hot red
+  #FF2D2D / hot green #2DFF6B / system yellow #FFE600 set
 - **Dark is the default theme**, light is the alternate. It is the base palette
   rather than an override, so the page renders dark with no JS. It is also the
   lowest-drawing option on OLED, which is the one theme claim this product can
   make without hedging
-- Type is Helvetica Bold all-caps for display, system monospace for body and
-  captions, Times New Roman italic for footnotes and source glosses. No
-  webfont: nothing is downloaded, which is a claim the ledger can make honestly.
-  This replaces the earlier Plus Jakarta Sans commitment, and the earlier green
-  accent (#22C55E) and orange meter (#EA580C)
+- Type is monospace throughout, uppercase for every heading and label, with
+  0.8px tracking on the uppercase runs. The reference is set in Menlo; the
+  stack falls through to whatever monospace the device has. No webfont:
+  nothing is downloaded, which is a claim the ledger can make honestly. This
+  replaces the earlier Helvetica / Times pairing and, before that, Plus
+  Jakarta Sans
 - The meter and ledger are non-negotiable product surfaces — they are not optional UI
 
 ## Evidence on Hand

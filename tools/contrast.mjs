@@ -23,11 +23,10 @@ const ratio = (a, b) => {
 };
 
 // Kept in step with :root (dark, the default) and [data-theme="light"].
-const LIGHT = { paper: '#ffffff', ink: '#000000', rule: '#c9c9c9', link: '#0000ee', visited: '#551a8b' };
-const DARK  = { paper: '#000000', ink: '#ffffff', rule: '#3a3a3a', link: '#6699ff', visited: '#cc99ff' };
-// Accent blocks do not invert with the theme. They are the same object in
-// both, and all three carry black.
-const RED = '#ff2d2d', GREEN = '#2dff6b', MARK = '#ffe600';
+const LIGHT = { paper: '#ffffff', ink: '#000000', hairline: '#c9c9c9', link: '#0000ee', visited: '#551a8b' };
+const DARK  = { paper: '#000000', ink: '#ffffff', hairline: '#3a3a3a', link: '#6699ff', visited: '#cc99ff' };
+// Accents do not invert with the theme. They are fills, and both carry black.
+const GOLD = '#ffd700', MINT = '#00ff9c';
 
 // min 4.5 = AA body text. 3.0 = AA non-text/UI boundary. 1.0 = decorative
 // divider, adjacent content identifiable without it, so no floor applies.
@@ -35,32 +34,31 @@ const PAIRS = [
   ['light  body ink on paper',           LIGHT.ink,     LIGHT.paper, 4.5],
   ['light  link on paper',               LIGHT.link,    LIGHT.paper, 4.5],
   ['light  visited link on paper',       LIGHT.visited, LIGHT.paper, 4.5],
-  ['light  divider vs paper',            LIGHT.rule,    LIGHT.paper, 1.0],
+  ['light  divider vs paper',            LIGHT.hairline, LIGHT.paper, 1.0],
   ['dark   body ink on paper',           DARK.ink,      DARK.paper,  4.5],
   ['dark   link on paper',               DARK.link,     DARK.paper,  4.5],
   ['dark   visited link on paper',       DARK.visited,  DARK.paper,  4.5],
-  ['dark   divider vs paper',            DARK.rule,     DARK.paper,  1.0],
-  ['both   black on red block',          LIGHT.ink,     RED,         4.5],
-  ['both   black on green block',        LIGHT.ink,     GREEN,       4.5],
-  ['both   green on black button',       GREEN,         LIGHT.ink,   4.5],
-  ['both   black on yellow mark',        LIGHT.ink,     MARK,        4.5],
-  ['light  red block edge vs paper',     RED,           LIGHT.paper, 3.0],
-  ['dark   red block edge vs paper',     RED,           DARK.paper,  3.0],
+  ['dark   divider vs paper',            DARK.hairline, DARK.paper,  1.0],
+  ['both   black on gold fill',          LIGHT.ink,     GOLD,        4.5],
+  ['both   black on mint fill',          LIGHT.ink,     MINT,        4.5],
+  ['both   mint on black button',        MINT,          LIGHT.ink,   4.5],
+  ['dark   gold fill vs paper',          GOLD,          DARK.paper,  3.0],
+  ['dark   mint fill vs paper',          MINT,          DARK.paper,  3.0],
 ];
 
-// Why the design departs from the literal brief in two places.
+// The two places the Figma reference is not followed, and why.
 const REJECTED = [
-  ['white on red — why the red block carries black',   LIGHT.paper, RED,         4.5],
-  ['white on green — why the green block does too',    LIGHT.paper, GREEN,       4.5],
-  ['#0000ee on black — why the dark theme relinks',    LIGHT.link,  DARK.paper,  4.5],
+  ['reference: gold text on white eyebrows', GOLD,        LIGHT.paper, 4.5],
+  ['reference: mint text on white headings', MINT,        LIGHT.paper, 4.5],
+  ['white on gold - why fills carry black',  LIGHT.paper, GOLD,        4.5],
+  ['#0000ee on black - why dark relinks',    LIGHT.link,  DARK.paper,  4.5],
 ];
 
-// The green block's own edge is nearly invisible against white paper, which
-// is why it is contained by a black rule rather than by its fill. Recorded so
-// the rule does not get tidied away later.
+// Light-mode accent fills barely differ from white paper, which is why every
+// one of them is contained by a 3px black rule rather than by its fill.
 const NOTED = [
-  ['green block edge vs light paper (hence the rule)', GREEN, LIGHT.paper],
-  ['green block edge vs dark paper',                   GREEN, DARK.paper],
+  ['gold fill edge vs light paper (hence the rule)', GOLD, LIGHT.paper],
+  ['mint fill edge vs light paper (hence the rule)', MINT, LIGHT.paper],
 ];
 
 let failed = 0;
