@@ -1,1 +1,11 @@
 tools/
+
+# Local dev server only. Production is the static index.html plus api/*.js,
+# and nothing under api/ imports from here.
+#
+# Vercel's Node runtime auto-detects a root-level server.js as the application
+# entrypoint and requires a default export that is a function or a server.
+# This file has neither: it calls server.listen() itself and exports only
+# readCopy/writeCopy for the local copy editor. Uploading it takes the whole
+# site down with FUNCTION_INVOCATION_FAILED on /, so it must not be uploaded.
+server.js
