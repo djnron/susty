@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>susty — sustainability advice that knows what it costs</title>
+<title>susty: sustainability advice that knows what it costs</title>
 <meta name="description" content="Practical sustainability advice with real numbers, and a live count of what the conversation itself costs.">
 <meta name="theme-color" content="#000000" id="themeColor">
 <link rel="icon" type="image/png" href="/favicon.png">
@@ -15,13 +15,13 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://susty-tau.vercel.app/">
 <meta property="og:site_name" content="susty">
-<meta property="og:title" content="susty — sustainability advice that knows what it costs">
+<meta property="og:title" content="susty: sustainability advice that knows what it costs">
 <meta property="og:description" content="Practical sustainability advice with real numbers, and a live count of what the conversation itself costs.">
 <meta property="og:image" content="https://susty-tau.vercel.app/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="The susty wordmark on black, above the line 'tiny ways to make the world a little less bad' and a gold bar reading '0.00 g CO2e — the carbon cost of this chat, live'.">
+<meta property="og:image:alt" content="The susty wordmark on black, above the line 'tiny ways to make the world a little less bad' and a gold bar reading '0.00 g CO2e, the carbon cost of this chat, live'.">
 <meta name="twitter:card" content="summary_large_image">
 <script>
   // Applied before first paint so a stored dark preference doesn't flash light.
@@ -927,10 +927,10 @@ textarea, input { caret-color: var(--ink); }
     <div class="pick">
       <label for="tier">Answer with</label>
       <select id="tier">
-        <option value="haiku">Haiku 4.5 — about half the energy</option>
-        <option value="sonnet" selected>Sonnet 4.6 — the default</option>
-        <option value="opus">Opus 4.8 — about a third more</option>
-        <option value="opus-thinking">Opus 4.8, extended thinking — several times more</option>
+        <option value="haiku">Haiku 4.5, about half the energy</option>
+        <option value="sonnet" selected>Sonnet 4.6, the default</option>
+        <option value="opus">Opus 4.8, about a third more</option>
+        <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
       </select>
     </div>
     <div class="pick">
@@ -981,43 +981,43 @@ textarea, input { caret-color: var(--ink); }
     <ul class="sources">
       <li>
         <a href="https://arxiv.org/abs/2311.16433" target="_blank" rel="noopener">Energy per token (0.05 / 0.5 mWh)</a>
-        <span>Luccioni et al. 2023 — Power Hungry Processing: Watts Driving the Cost of AI Deployment</span>
+        <span>Luccioni et al. 2023: Power Hungry Processing, Watts Driving the Cost of AI Deployment</span>
       </li>
       <li>
         <a href="https://uptimeinstitute.com/2023-data-center-industry-survey-results" target="_blank" rel="noopener">Data centre overhead PUE ×1.12</a>
-        <span>Uptime Institute 2023 Global Data Center Survey — global average power usage effectiveness</span>
+        <span>Uptime Institute 2023 Global Data Center Survey: global average power usage effectiveness</span>
       </li>
       <li>
         <a href="https://arxiv.org/abs/2104.10350" target="_blank" rel="noopener">Embodied hardware carbon +15%</a>
-        <span>Patterson et al. 2021 — Carbon Considerations for Large Language Model Development</span>
+        <span>Patterson et al. 2021: Carbon Considerations for Large Language Model Development</span>
       </li>
       <li>
-        <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain — live, by region</a>
+        <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain: live, by region</a>
         <span>NESO Carbon Intensity API. Half-hourly actuals for 14 distribution regions, so GB readings here are current rather than averaged. Open and keyless; nothing about you is sent with the request.</span>
       </li>
       <li>
-        <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States — hourly by region</a>
-        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). Two caveats worth knowing: EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the generation mix rather than read off, and the feed itself runs about a day behind. We therefore take the same hour on the previous day, which tracks the daily curve far better than their newest figure would — that one is the middle of last night. Interregional imports are ignored. Needs a free EIA key; without one we fall back to the annual figures below.</span>
+        <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States: hourly by region</a>
+        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). Two caveats worth knowing: EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the generation mix rather than read off, and the feed itself runs about a day behind. We therefore take the same hour on the previous day, which tracks the daily curve far better than their newest figure would. That one is the middle of last night. Interregional imports are ignored. Needs a free EIA key; without one we fall back to the annual figures below.</span>
       </li>
       <li>
-        <a href="https://www.epa.gov/egrid/summary-data" target="_blank" rel="noopener">United States — annual, by eGRID subregion</a>
+        <a href="https://www.epa.gov/egrid/summary-data" target="_blank" rel="noopener">United States: annual, by eGRID subregion</a>
         <span>EPA eGRID2023 Rev 2 CO₂e output rates, converted from lb/MWh. Subregions run from 110 g/kWh in upstate New York to 680 on Oahu, so the 384 national average describes almost nobody. Used when no live reading is available.</span>
       </li>
       <li>
-        <a href="https://ember-energy.org/data/yearly-electricity-data/" target="_blank" rel="noopener">Everywhere else — national annual averages</a>
+        <a href="https://ember-energy.org/data/yearly-electricity-data/" target="_blank" rel="noopener">Everywhere else: national annual averages</a>
         <span>2024 country figures, cross-checked against Ember's Global Electricity Review 2025. Annual means, so they miss both time-of-day swings and regional spread.</span>
       </li>
       <li>
         <a href="https://frontierclimate.com/writing/2024-state-of-cdr" target="_blank" rel="noopener">Carbon removal cost ~$100/tonne</a>
-        <span>Frontier 2024 State of Carbon Dioxide Removal — durable CDR market pricing</span>
+        <span>Frontier 2024 State of Carbon Dioxide Removal: durable CDR market pricing</span>
       </li>
       <li>
         <a href="https://dl.acm.org/doi/10.1145/3458864.3467682" target="_blank" rel="noopener">Dark mode display power (3–9% at normal brightness)</a>
-        <span>Dash &amp; Hu, MobiSys 2021 — How much battery does dark mode save? An accurate OLED display power profiler for modern smartphones. Measured across several OLED phones: ~42% of total phone power at 100% brightness, but only 3–9% at the 30–50% brightness in normal use.</span>
+        <span>Dash &amp; Hu, MobiSys 2021: How much battery does dark mode save? An accurate OLED display power profiler for modern smartphones. Measured across several OLED phones: ~42% of total phone power at 100% brightness, but only 3–9% at the 30–50% brightness in normal use.</span>
       </li>
       <li>
-        <b>Display power — modelled, not measured</b>
-        <span>The browser can't tell us what panel you have, so the figures above come from the picker and the study beside it, not from your device. The OLED phone delta is calibrated into that 3–9% band; laptop and monitor rows scale it by panel area and are extrapolation, since only phones were measured. LCD is modelled as zero because a backlight's draw is content-independent — local dimming and mini-LED are a real exception we don't try to quantify. Screen-on time is genuinely measured, and pauses when the tab isn't visible.</span>
+        <b>Display power (modelled, not measured)</b>
+        <span>The browser can't tell us what panel you have, so the figures above come from the picker and the study beside it, not from your device. The OLED phone delta is calibrated into that 3–9% band; laptop and monitor rows scale it by panel area and are extrapolation, since only phones were measured. LCD is modelled as zero because a backlight's draw is content-independent. Local dimming and mini-LED are a real exception we don't try to quantify. Screen-on time is genuinely measured, and pauses when the tab isn't visible.</span>
       </li>
     </ul>
   </div>
@@ -1029,7 +1029,7 @@ textarea, input { caret-color: var(--ink); }
     <button class="shut" id="feedbackClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
   </div>
   <div class="feedback-body">
-    <textarea id="feedbackText" placeholder="What's working? What should change?"></textarea>
+    <textarea id="feedbackText" placeholder="What's working? What should change?" aria-label="Your feedback"></textarea>
     <div class="feedback-actions">
       <span class="feedback-status" id="feedbackStatus"></span>
       <button class="feedback-cancel" id="feedbackCancelBtn">Cancel</button>
