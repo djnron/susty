@@ -86,7 +86,7 @@ box.
 ### The formula
 
 ```
-grams CO₂e = ( (tokens × energy per token) × PUE × (1 + embodied)
+grams CO₂e = ( (tokens × energy per token) × PUE
               + exchanges × hosting
               + device watts × hours attended ) × grid intensity
 ```
@@ -98,7 +98,6 @@ grams CO₂e = ( (tokens × energy per token) × PUE × (1 + embodied)
 | Energy, tokens sent | 0.05 mWh/token | Luccioni et al. 2023 |
 | Energy, tokens written | 0.5 mWh/token | Luccioni et al. 2023 |
 | Cooling and overhead (PUE) | ×1.12 | Uptime Institute 2023, global average |
-| Embodied hardware | +15% | Patterson et al. 2021 |
 | Hosting and network | 0.003 Wh per exchange | modelled |
 | Model energy factor | ×1.00 for `claude-sonnet-4-6` | EcoLogits fitted to ML.ENERGY, see below |
 | End-user device | see §4 | measured (laptop) / DIMPACT (phone, tablet, desktop) |
@@ -132,7 +131,7 @@ evaluated at batch 32 on the midpoint of their active-parameter estimate.
 none of them is a typed-in number.
 
 **Relative, not absolute, deliberately.** The absolute coefficients above are
-Luccioni et al. and they hold up: a measured susty exchange comes to **0.214 Wh**,
+Luccioni et al. and they hold up: a measured susty exchange comes to **0.186 Wh**,
 inside the **0.16–0.60 Wh/query** IQR that [Oviedo et al.
 (*Joule* 2026)](https://arxiv.org/abs/2509.20241) report for frontier models.
 EcoLogits' own per-token figures look roughly 4× lower, but that is a scope
@@ -223,6 +222,18 @@ measured path is the normal one.
 - **Training.** This measures inference only. Amortised training cost per query
   is real and not counted here.
 - **Your device's CPU, network, and router.** Only the display is modelled.
+- **Embodied hardware manufacturing, on either side.** susty used to add a flat
+  +15% to electricity for this; that treated manufacturing emissions as
+  electricity, which they are not, and the multiplier has been removed rather
+  than turned into a separate term. On the AI side, a defensible per-request
+  share would need the accelerator that served the request, its manufacturing
+  footprint, and this request's slice of its lifetime throughput — none of the
+  three is knowable from outside the provider. On the device side, a real
+  figure exists (manufacturers publish per-product lifecycle reports), but
+  manufacturing is not marginal to one session the device was going to exist
+  regardless, the amortisation basis (hours of use assumed over a lifetime)
+  has no settled answer, and the result would likely dominate the page rather
+  than refine it. Not counted, on either side.
 
 ### Offset costing
 
@@ -608,7 +619,6 @@ Two rules this copy follows, both learned by getting them wrong:
 ## Sources
 
 - Luccioni, Viguier & Ligozat 2023, *Power Hungry Processing: Watts Driving the Cost of AI Deployment* — [arXiv:2311.16433](https://arxiv.org/abs/2311.16433)
-- Patterson et al. 2021, *Carbon Emissions and Large Neural Network Training* — [arXiv:2104.10350](https://arxiv.org/abs/2104.10350)
 - Uptime Institute 2023 Global Data Center Survey — [PUE](https://uptimeinstitute.com/2023-data-center-industry-survey-results)
 - Dash & Hu 2021, *How much battery does dark mode save?* MobiSys — [ACM](https://dl.acm.org/doi/10.1145/3458864.3467682)
 - Kirkeby & Lagermann 2026, *Power Assumptions Matter: Evaluating End-user Laptop Energy Models for Sustainability Reporting of Browser-Based Web Services*, Roskilde University — [arXiv](https://arxiv.org/abs/2510.12566). The measured 9–13 W this row's laptop figure is built on, and the finding that constant-power error scales with session duration.

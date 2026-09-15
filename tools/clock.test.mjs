@@ -172,7 +172,7 @@ console.log('\nModel-relative energy factors');
 
   // Absolute calibration: a real exchange must stay inside Oviedo et al's
   // measured IQR for a frontier-model query, 0.16-0.60 Wh.
-  const wh = (831 * 0.00005 + 571 * 0.0005) * 1.12 * 1.15 + 2 * 0.003;
+  const wh = (831 * 0.00005 + 571 * 0.0005) * 1.12 + 2 * 0.003;
   const perExchange = wh / 2;
   const inRange = perExchange >= 0.16 && perExchange <= 0.60;
   if (!inRange) fails++;

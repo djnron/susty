@@ -141,14 +141,14 @@ stylesheet.
 They are estimates, and the page says so. Token counts are real — the API reports them and the meter uses them. Everything after that is modelled:
 
 ```
-grams CO2e = ( (tokens × energy per token) × cooling × hardware
+grams CO2e = ( (tokens × energy per token) × cooling
              + exchanges × hosting
              + device watts × hours attended ) × grid intensity
 ```
 
 Per-query energy use isn't published by any lab, and public estimates vary by
 more than an order of magnitude. The defaults here (0.05 mWh per input token,
-0.5 mWh per output token, PUE 1.12, +15% embodied hardware, 473 g/kWh world
+0.5 mWh per output token, PUE 1.12, 473 g/kWh world
 average) sit in the middle of that range and are deliberately easy to change.
 Grid intensity is user-selectable because it alone swings the answer more than
 tenfold.

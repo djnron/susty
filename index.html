@@ -907,7 +907,6 @@ textarea, input { caret-color: var(--ink); }
         <tr class="muted"><td>Chip energy, sent @ 0.05 mWh/token</td><td id="rEIn">0 Wh</td></tr>
         <tr class="muted"><td>Chip energy, written @ 0.5 mWh/token</td><td id="rEOut">0 Wh</td></tr>
         <tr class="muted"><td>Cooling &amp; overhead ×1.12</td><td id="rPue">0 Wh</td></tr>
-        <tr class="muted"><td>Hardware manufacture +15%</td><td id="rEmb">0 Wh</td></tr>
         <tr class="muted"><td>Vercel hosting &amp; network per exchange</td><td id="rHosting">0 Wh</td></tr>
         <tr class="muted"><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
         <tr><td>Electricity drawn</td><td id="rWh">0 Wh</td></tr>
@@ -988,10 +987,6 @@ textarea, input { caret-color: var(--ink); }
         <span>Uptime Institute 2023 Global Data Center Survey: global average power usage effectiveness</span>
       </li>
       <li>
-        <a href="https://arxiv.org/abs/2104.10350" target="_blank" rel="noopener">Embodied hardware carbon +15%</a>
-        <span>Patterson et al. 2021: Carbon Considerations for Large Language Model Development</span>
-      </li>
-      <li>
         <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain: live, by region</a>
         <span>NESO Carbon Intensity API. Half-hourly actuals for 14 distribution regions, so GB readings here are current rather than averaged. Open and keyless; nothing about you is sent with the request.</span>
       </li>
@@ -1049,7 +1044,7 @@ textarea, input { caret-color: var(--ink); }
 // midpoint of their active-parameter estimate for each model.
 //
 // Relative, not absolute, on purpose. The absolute coefficients below are
-// Luccioni et al. and hold up: a measured susty exchange comes to 0.214 Wh,
+// Luccioni et al. and hold up: a measured susty exchange comes to 0.186 Wh,
 // inside the 0.16-0.60 Wh/query IQR that Oviedo et al. (Joule 2026) report for
 // frontier models. EcoLogits' own figures look ~4x lower only because they are
 // GPU-only where susty's chain is full-stack. So the absolute number stays and
@@ -1084,10 +1079,14 @@ const MODEL = {
   whPerInputToken : 0.00005,
   whPerOutputToken: 0.0005,
   pue             : 1.12,
-  embodied        : 0.15,
   whPerExchange   : 0.003,   // Vercel function + network per round trip
   gridGPerKwh     : 473      // world average; replaced at init by the guess
 };
+// No embodied-hardware term. The old +15% treated manufacturing emissions as
+// electricity, which they are not — see METHODOLOGY's "what the total
+// excludes". A defensible per-request share needs the accelerator, its
+// footprint, and this request's slice of its lifetime throughput; none of
+// those three is knowable from outside the provider.
 
 // Display draw in watts, per theme. The OLED phone delta (0.10 W) is set to
 // land inside the 3–9% of total phone power that Dash & Hu measured at
@@ -1135,6 +1134,19 @@ const DEVICE_CLASS = {
   lcdLaptop: 'laptop',   oledLaptop:  'laptop',
   lcdMonitor: 'monitor', oledMonitor: 'monitor'
 };
+
+const THEME_KEY = 'susty-theme';
+// Dark is the base palette, so the attribute marks the departure from it.
+const theme = () => document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+
+// Watts right now, for whatever screen/theme is currently selected. Called
+// from clockSync() at the moment each slice of attended time accrues, so a
+// later screen or theme change only affects future slices, never past ones.
+function deviceWattsNow() {
+  const panelW = (PANELS[state.screen] || PANELS.lcdLaptop)[theme()];
+  const baseW  = DEVICE_BASE[DEVICE_CLASS[state.screen] || 'laptop'];
+  return baseW + panelW;
+}
 
 // Grid carbon intensity, gCO2/kWh, 2024. Cross-checked against Ember's Global
 // Electricity Review 2025 where both publish a figure (China 555/560,
@@ -1315,7 +1327,15 @@ const state = {
   model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
   tier: 'sonnet',               // what we asked for; the server may override
   thinkTokens: 0,               // measured subset of outTokens
-  grid: 'world', gridGuessed: false, region: '', live: null
+  grid: 'world', gridGuessed: false, region: '', live: null,
+  // One frozen record per completed exchange (see recordRequest), priced with
+  // the model factor and grid in effect at that moment. Switching model or
+  // grid afterward changes only what NEW records use, never these.
+  requests: [],
+  // Device electricity/carbon, accrued tick by tick in clockSync() at the
+  // wattage and grid in effect during each credited slice — the same
+  // immutability, applied to a running total instead of a list.
+  deviceWh: 0, deviceG: 0
 };
 
 // Attended time, on the standards' "duration of use" footing rather than a
@@ -1353,7 +1373,16 @@ function clockSync() {
     // Credit only as far as the grace deadline, so a heartbeat that fires late
     // cannot bill the whole gap it happens to span.
     const cutoff = Math.max(lastSlice - dt, Math.min(now, lastActivity + GRACE));
-    attendedMs += Math.max(0, cutoff - (lastSlice - dt));
+    const creditedMs = Math.max(0, cutoff - (lastSlice - dt));
+    attendedMs += creditedMs;
+    // Priced immediately, at this instant's wattage and grid — not stored as
+    // raw seconds and multiplied later, which is what let a screen or grid
+    // change reprice time that had already elapsed.
+    if (creditedMs > 0) {
+      const wh = deviceWattsNow() * (creditedMs / 3600000);
+      state.deviceWh += wh;
+      state.deviceG  += wh * MODEL.gridGPerKwh / 1000;
+    }
   }
   wasOn = onScreen();
 }
@@ -1378,30 +1407,50 @@ const $ = id => document.getElementById(id);
 const estimateTokens = s => Math.max(1, Math.ceil(s.length / 4));
 const fmt = (n, d=2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
-function energyWh() {
-  const gpuRaw = (state.inTokens * MODEL.whPerInputToken
-                + state.outTokens * MODEL.whPerOutputToken) * modelEnergy().factor;
-  const gpu = gpuRaw * MODEL.pue * (1 + MODEL.embodied);
-  const hosting = state.turns * MODEL.whPerExchange;
-  // The whole device, not just its panel: every published framework counts the
-  // end-user device, and the panel alone understated it by roughly 2-3x.
-  return gpu + hosting + deviceEnergy();
+// One frozen record per completed exchange, priced with the model factor and
+// grid in effect right now — never recomputed later against whatever they
+// have become. This is what stops switching model or grid from rewriting
+// history: `state.requests` only grows, each entry immutable from the moment
+// it is pushed.
+function recordRequest(inTok, outTok) {
+  const factor    = modelEnergy().factor;
+  const eIn       = inTok  * MODEL.whPerInputToken  * factor;
+  const eOut      = outTok * MODEL.whPerOutputToken * factor;
+  const chipWh    = (eIn + eOut) * MODEL.pue;
+  const hostingWh = MODEL.whPerExchange;
+  const wh        = chipWh + hostingWh;
+  const gridGPerKwh = MODEL.gridGPerKwh;
+  state.requests.push(Object.freeze({
+    model: state.model, factor, eIn, eOut, chipWh, hostingWh, wh,
+    gridGPerKwh, grams: wh * gridGPerKwh / 1000
+  }));
 }
-const grams = () => energyWh() * MODEL.gridGPerKwh / 1000;
 
-const THEME_KEY = 'susty-theme';
-// Dark is the base palette, so the attribute marks the departure from it.
-const theme = () => document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-
+// Sums of already-priced history, plus the device total clockSync() has been
+// accruing tick by tick. Neither term is recomputed from current settings.
+function energyWh() {
+  return state.requests.reduce((sum, r) => sum + r.wh, 0) + state.deviceWh;
+}
+// The whole device, not just its panel: every published framework counts the
+// end-user device, and the panel alone understated it by roughly 2-3x.
 // Display energy for the elapsed visible time, in both themes.
 // Whole-device energy for the attended time. The panel is a component of the
 // figure rather than a line of its own: it is what makes the theme move the
 // number at all, but the reader does not need it itemised.
-function deviceEnergy() {
-  const panelW = (PANELS[state.screen] || PANELS.lcdLaptop)[theme()];
-  const baseW  = DEVICE_BASE[DEVICE_CLASS[state.screen] || 'laptop'];
-  return (baseW + panelW) * (attendedSeconds() / 3600);
-}
+//
+// Already historical, not recomputed: clockSync() adds to this at the wattage
+// and grid in effect each tick, so it is not `attendedSeconds() * current
+// wattage` the way it used to be — that recomputation is exactly what let a
+// mid-session screen or theme change reprice time that had already elapsed.
+const deviceEnergy = () => state.deviceWh;
+
+// Grams are summed from history, not computed as energyWh() * current grid —
+// that single multiplication was the other half of the retroactive-repricing
+// bug: it applied whatever grid is selected right now to every exchange
+// that has ever happened. Each request's grams were frozen at recordRequest()
+// time; the device total's grams were frozen tick by tick in clockSync().
+const grams = () =>
+  state.requests.reduce((sum, r) => sum + r.grams, 0) + state.deviceG;
 
 // Device class is detectable; panel type and brightness are not. HDR support
 // looked like an OLED tell until it reported true on a mini-LED laptop, and
@@ -1472,27 +1521,31 @@ function paintMeter(pulse = true) {
 }
 
 function paintLedger() {
-  // Same factor energyWh() applies, or these rows stop summing to the total.
-  const f    = modelEnergy().factor;
-  const eIn  = state.inTokens  * MODEL.whPerInputToken  * f;
-  const eOut = state.outTokens * MODEL.whPerOutputToken * f;
-  const pued = (eIn + eOut) * MODEL.pue;
-  const wh   = pued * (1 + MODEL.embodied);
-  const g    = grams();
+  // Summed from frozen per-request history, not recomputed against whatever
+  // model/grid is current — otherwise these breakdown rows stop matching the
+  // total the moment either changes mid-session. See recordRequest().
+  const totals = state.requests.reduce((acc, r) => {
+    acc.eIn += r.eIn; acc.eOut += r.eOut;
+    acc.chipWh += r.chipWh; acc.hostingWh += r.hostingWh;
+    return acc;
+  }, { eIn: 0, eOut: 0, chipWh: 0, hostingWh: 0 });
+  const g = grams();
 
   $('rTurns').textContent = state.turns;
   $('rIn').textContent    = state.inTokens.toLocaleString();
   $('rOut').textContent   = state.outTokens.toLocaleString();
-  const hosting = state.turns * MODEL.whPerExchange;
-  const totalWh = wh + hosting + deviceEnergy();
+  const totalWh = totals.chipWh + totals.hostingWh + deviceEnergy();
 
-  $('rEIn').textContent      = fmt(eIn, 3) + ' Wh';
-  $('rEOut').textContent     = fmt(eOut, 3) + ' Wh';
-  $('rPue').textContent      = fmt(pued, 3) + ' Wh';
-  $('rEmb').textContent      = fmt(wh, 3) + ' Wh';
-  $('rHosting').textContent  = fmt(hosting, 3) + ' Wh';
+  $('rEIn').textContent      = fmt(totals.eIn, 3) + ' Wh';
+  $('rEOut').textContent     = fmt(totals.eOut, 3) + ' Wh';
+  $('rPue').textContent      = fmt(totals.chipWh, 3) + ' Wh';
+  $('rHosting').textContent  = fmt(totals.hostingWh, 3) + ' Wh';
   $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
+  // The factor here is a label for whichever model most recently answered,
+  // not an input to any of the sums above — those are already priced and
+  // frozen per request.
+  const f = modelEnergy().factor;
   $('rModel').textContent = state.model.replace(/^claude-/, '') +
     (f === 1 ? '' : ' \u00d7' + f.toFixed(2));
   $('rThinking').textContent = state.thinkTokens
@@ -1998,11 +2051,16 @@ async function send(raw) {
     // output into the estimate for the request that produced it, and left out
     // the system prompt, which is billed as input.
     const estIn = estimateTokens(state.history.map(m => m.content).join(' ')) + SYSTEM_TOKENS;
-    state.inTokens  += inputTokens  || estIn;
-    state.outTokens += outputTokens || estimateTokens(fullText);
+    const turnIn  = inputTokens  || estIn;
+    const turnOut = outputTokens || estimateTokens(fullText);
+    state.inTokens  += turnIn;
+    state.outTokens += turnOut;
     state.history.push({ role: 'assistant', content: fullText });
     state.turns += 1;
     state.thinkTokens += thinkingTokens;
+    // Priced now, with this turn's own tokens against the model and grid in
+    // effect this instant, then frozen. See recordRequest().
+    recordRequest(turnIn, turnOut);
     committed = true;
 
     // Partial text is kept rather than discarded: deleting words the reader
