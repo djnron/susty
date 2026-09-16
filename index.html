@@ -24,8 +24,53 @@
 <meta property="og:image:alt" content="The susty wordmark on black, above the line 'tiny ways to make the world a little less bad' and a gold bar reading '0.00 g CO2e, the carbon cost of this chat, live'.">
 <meta name="twitter:card" content="summary_large_image">
 <script>
-  // Applied before first paint so a stored dark preference doesn't flash light.
-  try { if (localStorage.getItem('susty-theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch {}
+function guessDevice() {
+  // Test the SHORT edge for phones. Comparing the long edge classified every
+  // modern phone as a laptop (iPhone 15 is 393×852, so the long edge is 852)
+  // and billed a phone at 10 W instead of 1.35 W.
+  const short = Math.min(screen.width, screen.height);
+  const long  = Math.max(screen.width, screen.height);
+  const ua = navigator.userAgent;
+  const mobile = navigator.userAgentData
+    ? navigator.userAgentData.mobile
+    : /Android|iPhone|iPod/i.test(ua);
+  // iPadOS 13+ reports itself as Macintosh for desktop-class browsing, so the
+  // user agent alone misses every modern iPad. A Mac that reports touch points
+  // is an iPad.
+  const tablet = /iPad|Tablet/i.test(ua) ||
+                 (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+
+  // Phones default to OLED, not LCD. Panel type is not detectable — HDR
+  // support looked like a tell until it read true on a mini-LED laptop — so
+  // this is a prior, and on phones the prior is now firmly OLED: ~57% of
+  // smartphone shipments, and every current iPhone. The old LCD default meant
+  // most mobile readers saw dark mode save nothing on a device where it does.
+  // It errs downward by 11% for a reader who really is on an LCD phone, which
+  // the picker lets them correct.
+  if (mobile && short < 600) return 'oledPhone';
+  // Tablets stay LCD: the OLED iPad Pro is a small slice of the installed base.
+  if (tablet || mobile) return 'lcdTablet';
+  // Resolution alone can't separate laptop from desktop: 1920×1080 is the most
+  // common *laptop* panel, so only go to a monitor well above that. Laptops and
+  // monitors stay LCD too — notebook OLED is still under 5%, monitors 2.1%.
+  return long >= 2200 ? 'lcdMonitor' : 'lcdLaptop';
+}
+
+  // Dark is still the base palette in :root, so an explicit stored choice
+  // always wins over the guess below and only this attribute needs setting.
+  // Absent a stored choice, the default now follows device: phone and
+  // tablet are typically handheld in variable, often bright light, where
+  // dark stays the safer default; laptop and monitor are typically a
+  // stationary, indoor, controlled-light setup, where light is now the
+  // default instead. Applied before first paint so neither case flashes
+  // the other theme on load.
+  try {
+    const saved = localStorage.getItem('susty-theme');
+    const light = saved
+      ? saved === 'light'
+      : ['lcdLaptop', 'lcdMonitor'].includes(guessDevice());
+    if (light) document.documentElement.setAttribute('data-theme', 'light');
+  } catch {}
 </script>
 <!-- No webfont. The reference is set in Menlo, which ships with macOS, and
      the stack falls through to whatever monospace the device already has. The
@@ -1462,38 +1507,11 @@ const grams = () =>
 // looked like an OLED tell until it reported true on a mini-LED laptop, and
 // there is no brightness API. So we guess the class, assume the backlit
 // (zero-saving) case, and say so rather than claiming a saving we can't see.
-function guessDevice() {
-  // Test the SHORT edge for phones. Comparing the long edge classified every
-  // modern phone as a laptop (iPhone 15 is 393×852, so the long edge is 852)
-  // and billed a phone at 10 W instead of 1.35 W.
-  const short = Math.min(screen.width, screen.height);
-  const long  = Math.max(screen.width, screen.height);
-  const ua = navigator.userAgent;
-  const mobile = navigator.userAgentData
-    ? navigator.userAgentData.mobile
-    : /Android|iPhone|iPod/i.test(ua);
-  // iPadOS 13+ reports itself as Macintosh for desktop-class browsing, so the
-  // user agent alone misses every modern iPad. A Mac that reports touch points
-  // is an iPad.
-  const tablet = /iPad|Tablet/i.test(ua) ||
-                 (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-
-  // Phones default to OLED, not LCD. Panel type is not detectable — HDR
-  // support looked like a tell until it read true on a mini-LED laptop — so
-  // this is a prior, and on phones the prior is now firmly OLED: ~57% of
-  // smartphone shipments, and every current iPhone. The old LCD default meant
-  // most mobile readers saw dark mode save nothing on a device where it does.
-  // It errs downward by 11% for a reader who really is on an LCD phone, which
-  // the picker lets them correct.
-  if (mobile && short < 600) return 'oledPhone';
-  // Tablets stay LCD: the OLED iPad Pro is a small slice of the installed base.
-  if (tablet || mobile) return 'lcdTablet';
-  // Resolution alone can't separate laptop from desktop: 1920×1080 is the most
-  // common *laptop* panel, so only go to a monitor well above that. Laptops and
-  // monitors stay LCD too — notebook OLED is still under 5%, monitors 2.1%.
-  return long >= 2200 ? 'lcdMonitor' : 'lcdLaptop';
-}
-
+// guessDevice() itself now lives in the pre-paint script at the top of
+// <head>, above — the light/dark default there needs it before first paint,
+// and it has no DOM/state dependencies (just screen and navigator), so
+// there is one definition shared by both this call and that one rather than
+// two guesses that could disagree.
 function fmtDuration(s) {
   if (s < 60) return Math.round(s) + 's';
   const m = Math.floor(s / 60);
