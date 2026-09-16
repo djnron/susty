@@ -1859,6 +1859,35 @@ $('tier').addEventListener('change', e => {
   paintLedger();
 });
 
+// Mirrors DEFAULT_TIER in api/chat.js. The client has no way to import a
+// server module, so this is a second place that must be kept in step with
+// it — same posture as MODEL_ENERGY/GRACE/DEVICE_BASE and their own
+// "keep in step with index.html" comments in tools/clock.test.mjs.
+const DEFAULT_TIER = 'sonnet';
+
+// Longest-prefix, matching modelEnergy()'s reasoning: the API answers with
+// dated ids. Kept here rather than merged into MODEL_ENERGY because this
+// tracks tiers, not models — opus and opus-thinking share a model id, and
+// the ledger's "answered by" already disambiguates them by whichever tier
+// key was actually requested, so this map only needs to catch a fallback.
+const EXPECTED_MODEL = {
+  haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-4-6',
+  opus: 'claude-opus-4-8', 'opus-thinking': 'claude-opus-4-8',
+  'gemini-flash': 'gemini-3.8-flash', 'gemini-flash-lite': 'gemini-3.5-flash-lite'
+};
+// resolveTier() only ever falls back to one place — the default tier — when
+// a tier is unrecognised, gated, or its provider isn't configured. So a
+// picker left on a stale/unavailable tier after a silent fallback only ever
+// needs correcting to the default, never to some other tier entirely.
+function syncTierToAnswer() {
+  const expected = EXPECTED_MODEL[state.tier];
+  if (expected && !state.model.startsWith(expected) && state.tier !== DEFAULT_TIER) {
+    state.tier = DEFAULT_TIER;
+    $('tier').value = DEFAULT_TIER;
+    try { localStorage.setItem('susty-tier', DEFAULT_TIER); } catch {}
+  }
+}
+
 $('screen').addEventListener('change', e => {
   state.screen = e.target.value;
   try { localStorage.setItem('susty-screen', state.screen); } catch {}
@@ -2064,6 +2093,11 @@ async function send(raw) {
     state.history.push({ role: 'assistant', content: fullText });
     state.turns += 1;
     state.thinkTokens += thinkingTokens;
+    // state.model is already whatever actually answered (set from
+    // message_start as the stream arrived) — sync the picker to it before
+    // pricing, so a silent fallback doesn't leave the dropdown pointing at
+    // a tier the reply didn't come from.
+    syncTierToAnswer();
     // Priced now, with this turn's own tokens against the model and grid in
     // effect this instant, then frozen. See recordRequest().
     recordRequest(turnIn, turnOut);
