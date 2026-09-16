@@ -154,16 +154,37 @@ than which model serves the request.
 
 ### Choosing a model
 
-The ledger's **Answer with** picker offers four tiers. The client sends an
-opaque key and `api/chat.js` owns the only mapping to a model, so a modified
-client cannot name an arbitrary model or switch thinking on:
+The ledger's **Answer with** picker offers six tiers, across two providers.
+The client sends an opaque key and `api/chat.js` owns the only mapping to a
+model, so a modified client cannot name an arbitrary model or switch
+thinking on:
 
 | Tier | Model | Thinking | Per-token |
 |---|---|---|---|
 | Haiku 4.5 | `claude-haiku-4-5` | off | ×0.52 |
-| **Sonnet 4.6** (default) | `claude-sonnet-4-6` | off | ×1.00 |
+| Sonnet 4.6 | `claude-sonnet-4-6` | off | ×1.00 (the anchor) |
 | Opus 4.8 | `claude-opus-4-8` | off | ×1.33 |
 | Opus 4.8, extended thinking | `claude-opus-4-8` | adaptive, effort `low` | ×1.33 **plus the thinking tokens** |
+| Gemini 3.5 Flash-Lite | `gemini-3.5-flash-lite` | forced on, level `low` | not yet calibrated — falls back to ×1.00 |
+| **Gemini 3.8 Flash** (default) | `gemini-3.8-flash` | forced on, level `low` | not yet calibrated — falls back to ×1.00 |
+
+**The default is a scaling decision, not a validated one.** Gemini became
+the default when traffic grew suddenly, to spread load off the Anthropic
+key rather than because an evaluation found it cheaper or more accurate.
+Neither Gemini tier has a fitted EcoLogits factor, so both silently price
+at the Sonnet anchor — a real number, just not a Gemini-specific one — and
+the picker says "not yet calibrated" rather than showing a ×1.00 that
+looks deliberate. Both Gemini tiers also cannot fully disable thinking
+(verified against Google's docs): `low` is the floor, not the off that
+`sonnet`/`haiku`/`opus` get by omitting the field, so every Gemini reply
+carries some — sometimes substantial and variable — hidden reasoning cost
+that a real per-model factor would need to account for. `DEFAULT_TIER` in
+`api/chat.js` stays `sonnet` regardless: that constant is the fallback a
+request degrades to if a tier is unrecognised, gated, or its provider
+isn't configured, and it has to remain a provider that's always
+guaranteed present, which is Anthropic. The client's own default (what a
+fresh visitor's picker starts on) is the separate, product-facing choice
+that actually moved to Gemini.
 
 The per-token column understates the last row badly, which is why the ledger
 reports thinking separately. **Thinking tokens are measured, not inferred:**

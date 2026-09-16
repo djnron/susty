@@ -103,7 +103,9 @@ The endpoint spends your money, so treat it accordingly.
 |---|---|
 | The bot's personality and rules | `SYSTEM` at the top of `api/chat.js` |
 | Model tiers offered in the ledger | `TIERS` in `api/chat.js` |
-| Default model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet`, defaults to `claude-sonnet-4-6` |
+| What a fresh visitor's picker starts on | `tier:` in the `state` object in `index.html` |
+| The fallback a request degrades to if a tier is unrecognised, gated, or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
+| Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-4-6` |
 | Carbon coefficients | `MODEL` object near the top of the inline script in `index.html` |
 | Device power and panel types | `DEVICE_BASE` and `PANELS` in `index.html` |
 | How long attention is assumed to last | `GRACE` in `index.html` |

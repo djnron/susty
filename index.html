@@ -972,11 +972,11 @@ textarea, input { caret-color: var(--ink); }
       <label for="tier">Answer with</label>
       <select id="tier">
         <option value="haiku">Haiku 4.5, about half the energy</option>
-        <option value="sonnet" selected>Sonnet 4.6, the default</option>
+        <option value="sonnet">Sonnet 4.6</option>
         <option value="opus">Opus 4.8, about a third more</option>
         <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
         <option value="gemini-flash-lite">Gemini 3.5 Flash-Lite, energy not yet calibrated</option>
-        <option value="gemini-flash">Gemini 3.8 Flash, energy not yet calibrated</option>
+        <option value="gemini-flash" selected>Gemini 3.8 Flash, the default — energy not yet calibrated</option>
       </select>
     </div>
     <div class="pick">
@@ -1376,7 +1376,7 @@ const state = {
   turns: 0, inTokens: 0, outTokens: 0, history: [], busy: false,
   screen: 'lcdLaptop',
   model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
-  tier: 'sonnet',               // what we asked for; the server may override
+  tier: 'gemini-flash',         // what we asked for; the server may override
   thinkTokens: 0,               // measured subset of outTokens
   grid: 'world', gridGuessed: false, region: '', live: null,
   // One frozen record per completed exchange (see recordRequest), priced with
