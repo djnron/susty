@@ -930,6 +930,8 @@ textarea, input { caret-color: var(--ink); }
         <option value="sonnet" selected>Sonnet 4.6, the default</option>
         <option value="opus">Opus 4.8, about a third more</option>
         <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
+        <option value="gemini-flash-lite">Gemini 3.5 Flash-Lite, energy not yet calibrated</option>
+        <option value="gemini-flash">Gemini 3.8 Flash, energy not yet calibrated</option>
       </select>
     </div>
     <div class="pick">
@@ -1062,7 +1064,11 @@ const MODEL_ENERGY = {
 };
 // Unknown or newer models fall back to the anchor rather than guessing. The
 // 5-series is deliberately absent: EcoLogits has no architecture estimate for
-// it, so a factor would be invention.
+// it, so a factor would be invention. Gemini models are absent for the same
+// reason — no fitted factor has been verified for gemini-3.8-flash or
+// gemini-3.5-flash-lite yet, so both fall back to the Sonnet anchor and the
+// picker says so ("energy not yet calibrated") rather than showing a ×1.00
+// that looks deliberate.
 // Longest-prefix match, because the API answers with dated ids: ask for
 // claude-haiku-4-5 and message_start reports claude-haiku-4-5-20251001. An
 // exact lookup missed that and billed Haiku at the Sonnet anchor.

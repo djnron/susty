@@ -2,6 +2,8 @@
 // Drop-in for Vercel (this file lives at /api/chat.js and needs no config).
 // The API key stays here, on the server. It is never sent to the browser.
 
+import { callGoogle, pipeGoogleAsAnthropicSSE } from "./providers/google.js";
+
 export const SYSTEM = `You are Susty, a sustainability advisor. Your job is to find tiny ways to make the world a little less bad — practical, specific, honest.
 
 How you answer:
@@ -35,24 +37,40 @@ export const LIMITS = {
 // But extended thinking is the term that matters — Oviedo et al. put a
 // reasoning-length reply at ~13× a standard one, so `opus-thinking` is roughly
 // an order of magnitude, not a third more.
+//
+// Every tier now carries a `provider`, because `resolveTier` uses it to check
+// that provider's key is actually configured before handing the tier out —
+// see providerConfigured() below. gemini-flash and gemini-flash-lite have no
+// entry yet in index.html's MODEL_ENERGY table: EcoLogits has no fitted
+// factor for either verified here, so both fall back to the Sonnet anchor
+// rather than a guessed multiplier, same policy as any unrecognised model.
+//
+// Gemini 3 Flash and Flash-Lite cannot fully disable thinking (verified
+// against ai.google.dev/gemini-api/docs/generate-content/thinking on
+// 2026-09-15) — "low" is the lowest level documented as valid, not the
+// true-off susty's other tiers get by simply omitting the field.
 export const TIERS = {
   haiku: {
+    provider: "anthropic",
     model: "claude-haiku-4-5",
     maxTokens: LIMITS.maxTokens,
   },
   sonnet: {
+    provider: "anthropic",
     // ANTHROPIC_MODEL still overrides the default tier, so existing
     // deployments keep working; it deliberately does not override the others.
     model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
     maxTokens: LIMITS.maxTokens,
   },
   opus: {
+    provider: "anthropic",
     // Omitting `thinking` means off on 4.8. On the 5-series it means ON, so a
     // 5-series tier added here must disable it explicitly.
     model: "claude-opus-4-8",
     maxTokens: LIMITS.maxTokens,
   },
   "opus-thinking": {
+    provider: "anthropic",
     model: "claude-opus-4-8",
     maxTokens: 4000,
     // Adaptive is the only on-mode from 4.7 onward — `budget_tokens` is
@@ -60,6 +78,16 @@ export const TIERS = {
     thinking: { type: "adaptive" },
     effort: "low",
     expensive: true,
+  },
+  "gemini-flash-lite": {
+    provider: "google",
+    model: "gemini-3.5-flash-lite",
+    thinkingLevel: "low",
+  },
+  "gemini-flash": {
+    provider: "google",
+    model: "gemini-3.8-flash",
+    thinkingLevel: "low",
   },
 };
 export const DEFAULT_TIER = "sonnet";
@@ -73,6 +101,19 @@ export const DEFAULT_TIER = "sonnet";
 export const TIERS_ENABLED = process.env.SUSTY_TIERS !== "off";
 export const EXPENSIVE_TIERS_ENABLED = process.env.SUSTY_EXPENSIVE_TIERS !== "off";
 
+// Anthropic is required and checked once, at the top of handler()/server.js,
+// before resolveTier is ever consulted — this is not the place to re-litigate
+// that, and re-checking it here made every Anthropic tier fall back in any
+// process that has not itself set ANTHROPIC_API_KEY (tools/tiers.test.mjs,
+// notably). Every other provider is optional, gated here instead: a tier
+// for one resolves to the default rather than erroring when its key isn't
+// set — the same graceful-fallback posture as the expensive-tier gate below.
+function providerConfigured(provider) {
+  if (provider === "anthropic") return true;
+  if (provider === "google") return Boolean(process.env.GOOGLE_GEMINI_API_KEY);
+  return false;
+}
+
 export function resolveTier(key) {
   const fallback = { key: DEFAULT_TIER, ...TIERS[DEFAULT_TIER] };
   if (!TIERS_ENABLED) return fallback;
@@ -83,6 +124,7 @@ export function resolveTier(key) {
   if (typeof key !== "string" || !Object.hasOwn(TIERS, key)) return fallback;
   const tier = TIERS[key];
   if (tier.expensive && !EXPENSIVE_TIERS_ENABLED) return fallback;
+  if (!providerConfigured(tier.provider)) return fallback;
   return { key, ...tier };
 }
 
@@ -157,6 +199,10 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Send a POST request." });
   }
+  // Anthropic is the one required provider — susty has always needed this
+  // key, and the default tier is always Anthropic. Every other provider is
+  // optional and gated inside resolveTier() instead, which falls back rather
+  // than erroring when its key is missing.
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(500).json({ error: "ANTHROPIC_API_KEY is not set on the server." });
   }
@@ -174,8 +220,30 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "The conversation was malformed." });
   }
 
+  const tier = resolveTier(req.body?.tier);
+
   try {
-    const upstream = await callAnthropic(messages, req.body?.tier);
+    if (tier.provider === "google") {
+      const upstream = await callGoogle(messages, tier, SYSTEM);
+
+      if (!upstream.ok) {
+        const data = await upstream.json().catch(() => ({}));
+        console.error("Gemini error", upstream.status, data);
+        return res
+          .status(upstream.status)
+          .json({ error: data?.error?.message || "The model provider rejected the request." });
+      }
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      await pipeGoogleAsAnthropicSSE(upstream, res, tier);
+      return res.end();
+    }
+
+    const upstream = await callAnthropic(messages, tier.key);
 
     if (!upstream.ok) {
       const data = await upstream.json().catch(() => ({}));

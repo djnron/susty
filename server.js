@@ -9,7 +9,8 @@ import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { clean, rateLimited, callAnthropic } from "./api/chat.js";
+import { clean, rateLimited, callAnthropic, resolveTier, SYSTEM } from "./api/chat.js";
+import { callGoogle, pipeGoogleAsAnthropicSSE } from "./api/providers/google.js";
 import { fromGB, fromEIA, fromElectricityMaps } from "./api/grid.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -144,8 +145,28 @@ const server = createServer(async (req, res) => {
     const messages = clean(parsed?.messages);
     if (!messages) return json(res, 400, { error: "The conversation was malformed." });
 
+    const tier = resolveTier(parsed?.tier);
+
     try {
-      const upstream = await callAnthropic(messages, parsed?.tier);
+      if (tier.provider === "google") {
+        const upstream = await callGoogle(messages, tier, SYSTEM);
+        if (!upstream.ok) {
+          const data = await upstream.json().catch(() => ({}));
+          console.error("Gemini error", upstream.status, data);
+          return json(res, upstream.status, {
+            error: data?.error?.message || "The model provider rejected the request.",
+          });
+        }
+        res.writeHead(200, {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          "x-accel-buffering": "no",
+        });
+        await pipeGoogleAsAnthropicSSE(upstream, res, tier);
+        return res.end();
+      }
+
+      const upstream = await callAnthropic(messages, tier.key);
       if (!upstream.ok) {
         const data = await upstream.json().catch(() => ({}));
         console.error("Anthropic error", upstream.status, data);
