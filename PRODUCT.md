@@ -56,10 +56,14 @@ Single-session, single-page. No login, no history, no account. The user arrives,
   make without hedging
 - Type is monospace throughout, uppercase for every heading and label, with
   0.8px tracking on the uppercase runs. The reference is set in Menlo; the
-  stack falls through to whatever monospace the device has. No webfont:
-  nothing is downloaded, which is a claim the ledger can make honestly. This
-  replaces the earlier Helvetica / Times pairing and, before that, Plus
-  Jakarta Sans
+  stack falls through to whatever monospace the device has, and costs
+  nothing. Chat reply text is the one exception: it's set in self-hosted
+  Space Mono, a real ~19KB webfont, fetched once per session, so the
+  conversation itself reads differently from the chrome around it. That is
+  a deliberate reversal of this project's own former "nothing is
+  downloaded" stance — held twice before, first over Plus Jakarta Sans,
+  then over an earlier Helvetica / Times pairing, both dropped for exactly
+  the reason now being traded away on purpose for the reply text alone
 - The meter and ledger are non-negotiable product surfaces — they are not optional UI
 
 ## Evidence on Hand

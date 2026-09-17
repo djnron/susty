@@ -279,6 +279,21 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  // Same story as the PNGs above: Vercel needs no route for these, but
+  // without one here the chat-reply webfont 404s locally and silently falls
+  // back to --mono, which would look like a bug rather than the CSS working
+  // as designed.
+  if (req.method === "GET" && /^\/space-mono-(400|700)\.woff2$/.test(url.pathname)) {
+    try {
+      const woff2 = await readFile(join(root, url.pathname.slice(1)));
+      res.writeHead(200, { "content-type": "font/woff2", "cache-control": "public, max-age=31536000, immutable" });
+      return res.end(woff2);
+    } catch {
+      res.writeHead(404, { "content-type": "text/plain" });
+      return res.end("Not found.");
+    }
+  }
+
   res.writeHead(404, { "content-type": "text/plain" });
   res.end("Not found");
 });

@@ -72,10 +72,15 @@ function guessDevice() {
     if (light) document.documentElement.setAttribute('data-theme', 'light');
   } catch {}
 </script>
-<!-- No webfont. The reference is set in Menlo, which ships with macOS, and
-     the stack falls through to whatever monospace the device already has. The
-     page costs no font transfer at all: on a product that bills itself for
-     its own footprint, that is worth more than an exact typeface. -->
+<!-- One webfont, not none: chat reply text (.bubble) is set in self-hosted
+     Space Mono, a real ~19 KB download, chosen deliberately to make the
+     conversation itself read differently from the brutalist UI chrome
+     around it. Everything else — labels, buttons, the ledger, headings —
+     stays on Menlo, which ships with macOS, and the stack falls through to
+     whatever monospace the device already has: zero transfer, as before.
+     This is a genuine reversal of this project's own former "the page
+     costs no font transfer at all" stance; see PRODUCT.md/DESIGN.md for the
+     tradeoff stated in full rather than quietly dropped. -->
 <style>
 /* ---------------------------------------------------------------------------
    Neo-brutalist, from the Figma reference (node 1:266). The language is:
@@ -109,6 +114,10 @@ function guessDevice() {
   --block-ink: #000000;
 
   --mono: Menlo, "SF Mono", ui-monospace, SFMono-Regular, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  /* Chat reply text only (.bubble) — see the @font-face rules below and the
+     note above <style> for why this is a real, disclosed webfont rather than
+     the zero-download stance the rest of the type system still holds to. */
+  --mono-chat: 'Space Mono', var(--mono);
 
   /* Sized against .frame, not the viewport, so docking the shelf shrinks the
      display type with the column it lives in. */
@@ -138,6 +147,26 @@ function guessDevice() {
 
   --pad:     clamp(16px, 4vw, 24px);
   --measure: 72ch;
+}
+
+/* Self-hosted rather than Google's CDN, so a visit costs one request to
+   susty's own origin instead of a third-party DNS/TLS handshake to
+   fonts.gstatic.com on every load. Latin-subset WOFF2, regular + bold:
+   ~19 KB combined, fetched once and cached for the session. SIL Open Font
+   License. https://fonts.google.com/specimen/Space+Mono */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/space-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/space-mono-700.woff2') format('woff2');
 }
 
 /* The reference's own treatment: white ground, black everything. */
@@ -394,6 +423,7 @@ textarea, input { caret-color: var(--ink); }
   background: var(--paper);
   box-shadow: var(--sh-md) var(--sh-md) 0 var(--ink);
   padding: var(--s4);
+  font-family: var(--mono-chat);
   font-size: var(--t-body);
   line-height: 1.55;
   overflow-wrap: anywhere;
