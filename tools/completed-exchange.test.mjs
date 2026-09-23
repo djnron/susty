@@ -152,7 +152,8 @@ check('primary meter is per answer (completed exchange) and starts with no figur
   assert.match(html, /'shown after your first answer' : 'average for this chat'/);
 });
 check('session total remains visible', () => {
-  assert.match(html, /id="meterNote">0\.00 g so far, including your screen · no answers yet/);
+  assert.match(html, /id="meterNote">0\.00 g so far, including your device · no answers yet/);
+  assert.match(html, /' g so far, including your device · ' \+/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);
 });
 check('units are never forced to capitals (g would read as G, giga)', () => {

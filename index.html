@@ -940,7 +940,7 @@ textarea, input { caret-color: var(--ink); }
             <span class="meter-hint" id="meterHint">shown after your first answer</span>
           </span>
         </button>
-        <p class="meter-note" id="meterNote">0.00 g so far, including your screen · no answers yet</p>
+        <p class="meter-note" id="meterNote">0.00 g so far, including your device · no answers yet</p>
       </div>
   </header>
 
@@ -1625,11 +1625,12 @@ function paintMeter(pulse = true) {
   const sessionTotal = grams();
   const completed = completedExchangeCount();
   // On screen a completed exchange is an "answer"; the ledger and METHODOLOGY
-  // say what counts as one. Before the first, the total is already non-zero
-  // (the screen is on), so the note says why.
-  $('meterNote').textContent = sessionTotal.toFixed(2) + ' g so far' +
-    (completed === 0 ? ', including your screen · no answers yet'
-      : ' · ' + completed + (completed === 1 ? ' answer' : ' answers'));
+  // say what counts as one. The total always includes the whole device the
+  // reader is on (which is why it is non-zero before the first answer), so
+  // the note says so every time.
+  $('meterNote').textContent = sessionTotal.toFixed(2) + ' g so far, including your device · ' +
+    // Non-breaking spaces keep "2 answers" together when the note wraps.
+    (completed === 0 ? 'no\u00a0answers\u00a0yet' : completed + (completed === 1 ? '\u00a0answer' : '\u00a0answers'));
   $('meterHint').textContent = target === null ? 'shown after your first answer' : 'average for this chat';
   // Cancel any in-flight tween, so rapid changes don't leave two loops
   // writing `shown` in the same frame.

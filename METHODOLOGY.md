@@ -450,10 +450,10 @@ On screen, a completed exchange is called an **answer**; the ledger and this doc
 0.07  grams CO2e per answer
       AVERAGE FOR THIS CHAT
 
-0.21 g so far · 3 answers
+0.21 g so far, including your device · 3 answers
 ```
 
-Before the first answer the headline shows no figure and reads "grams CO2e per answer — shown after your first answer", and the note reads "0.02 g so far, including your screen · no answers yet": the total is already non-zero because device time accrues from the first moment of attended use. With exactly one answer the average equals the total and the two rise together; from the second answer the average falls below the total. Units are never set in forced capitals, where "g" would read as "G" (giga).
+Before the first answer the headline shows no figure and reads "grams CO2e per answer — shown after your first answer", and the note reads "0.02 g so far, including your device · no answers yet": the total is already non-zero because device time accrues from the first moment of attended use. The note always says the total includes the device, before and after the first answer. With exactly one answer the average equals the total and the two rise together; from the second answer the average falls below the total. Units are never set in forced capitals, where "g" would read as "G" (giga).
 
 The ledger opens with:
 
