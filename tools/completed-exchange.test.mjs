@@ -153,7 +153,7 @@ check('headline is the running total, which only goes up', () => {
   assert.match(html, /function paintMeter\(pulse = true\) \{\s+const target = grams\(\);/);
 });
 check('under the headline: the number of answers; the average is in the ledger', () => {
-  assert.match(html, /id="meterNote">No answers yet<\/p>/);
+  assert.match(html, /<span id="meterNote">No answers yet<\/span><span class="meter-cta">Click\/tap above to learn more<\/span>/);
   assert.match(html, /completed === 0 \? 'No answers yet'/);
   assert.match(html, /<td>Average per answer<\/td><td id="rPerExchange">/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);

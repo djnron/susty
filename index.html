@@ -362,6 +362,9 @@ textarea, input { caret-color: var(--ink); }
 }
 /* Units keep their case: forced capitals turned g (grams) into G (giga). */
 .meter-unit { white-space: normal; text-transform: none; }
+/* The meter opens the ledger; a gold box does not announce itself as a
+   button, so the line under it says so, on a line of its own. */
+.meter-cta { display: block; }
 .meter-hint { text-decoration: underline; text-underline-offset: 3px; white-space: normal; }
 /* Marks an exchange with a hard two-frame flip, no easing. */
 .meter.pulse { animation: tick .36s linear; }
@@ -939,7 +942,7 @@ textarea, input { caret-color: var(--ink); }
             <span class="meter-hint">including your device</span>
           </span>
         </button>
-        <p class="meter-note" id="meterNote">No answers yet</p>
+        <p class="meter-note"><span id="meterNote">No answers yet</span><span class="meter-cta">Click/tap above to learn more</span></p>
       </div>
   </header>
 

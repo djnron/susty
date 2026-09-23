@@ -453,9 +453,10 @@ On screen, a completed exchange is called an **answer**; the ledger and this doc
       INCLUDING YOUR DEVICE
 
 3 answers
+Click/tap above to learn more
 ```
 
-The headline is the **running session total**. It rises with every answer, including cut-off or failed attempts that used energy, and slowly while the reader is present, because device time accrues from the first moment of attended use; it never falls. Beneath it is the number of answers ("No answers yet" before the first). The **functional unit**, the average per completed exchange, is the second figure in the ledger, not on the main screen: it spreads reading time across answers, so it is neither the cost of the latest question nor a number that helps a reader decide anything, while it matters for comparing sessions and for reporting.
+The headline is the **running session total**. It rises with every answer, including cut-off or failed attempts that used energy, and slowly while the reader is present, because device time accrues from the first moment of attended use; it never falls. Beneath it is the number of answers ("No answers yet" before the first), followed by a prompt to open the ledger. The **functional unit**, the average per completed exchange, is the second figure in the ledger, not on the main screen: it spreads reading time across answers, so it is neither the cost of the latest question nor a number that helps a reader decide anything, while it matters for comparing sessions and for reporting.
 
 The functional-unit value was the headline until 23 September 2026. As an average it drops whenever a new answer costs less than the average so far, for example after a first answer that included several minutes of reading time. In testing, that read as the counter resetting when the model was changed, and as questions not being counted. Units are never set in forced capitals, where "g" would read as "G" (giga).
 
