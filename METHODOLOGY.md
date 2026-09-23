@@ -1,7 +1,8 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release — no open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
+**Version:** 2.0.0, released 23 September 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 23 September 2026
 **Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 

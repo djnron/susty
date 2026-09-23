@@ -181,6 +181,16 @@ check('says the model factors omit GPU count', () => has(/\*\*What the factors l
 check('says there is no idle-capacity term', () => has(/### Idle and reserved capacity/));
 check('lists data next steps', () => has(/## 15\. Next steps: data and specificity/));
 
+console.log('\nVersion');
+check('package.json, README, CHANGELOG and METHODOLOGY carry the same version', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  const changelog = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
+  assert.match(readme, new RegExp(`\\*\\*Version ${pkg.replace(/\./g, '\\.')}\\*\\*`));
+  assert.equal(changelog.match(/^## (\d+\.\d+\.\d+)/m)[1], pkg, 'newest CHANGELOG entry');
+  has(new RegExp(`\\*\\*Version:\\*\\* ${pkg.replace(/\./g, '\\.')},`));
+});
+
 console.log('\nLayout');
 check('hidden pickers stay hidden despite .pick display: flex', () =>
   assert.match(html, /\.pick\[hidden\] \{ display: none; \}/));

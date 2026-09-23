@@ -2,6 +2,8 @@
 
 A sustainability chatbot that estimates the operational carbon of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
+**Version 2.0.0** (23 September 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Every release is tagged in git (`v2.0.0`, `v1.0.0`).
+
 No build step, no framework, no dependencies.
 
 ```
