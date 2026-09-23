@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release — no open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026))
+**Status:** Candidate for release — no open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 23 September 2026
 **Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 
@@ -180,9 +180,23 @@ These values must **not** be attributed to Luccioni et al. That study measures e
 
 **Order-of-magnitude check, not a calibration.** An illustrative Susty exchange (831 input and 571 output tokens across two turns, at PUE 1.12 plus hosting) comes to **0.186 Wh per exchange**. Oviedo et al. (*Joule*, 2026) estimate a median **0.31 Wh per query (IQR 0.16–0.60)** for frontier-scale models (>200B parameters) on H100 nodes, for a standard query with a median of 300 output tokens. Susty's figure falls inside that range. `tools/clock.test.mjs` asserts this so the coefficients cannot drift out of it unnoticed.
 
+**Where Susty sits: at the low end.** Susty's inference energy for a comparable query is at the low end of published estimates, not the middle. Provider disclosures are per query, without token counts, so they cannot yet be turned into per-token coefficients; scopes also differ (idle capacity, host systems, batch size, hardware). The comparison is indicative:
+
+| Source | Scope | Wh per query | Implied per output token |
+|---|---|---:|---:|
+| Google (2025), median Gemini Apps text prompt | Measured in production; accelerators, host, idle capacity, PUE | 0.24 (0.10 accelerators only) | not disclosed |
+| OpenAI (2025), average ChatGPT query, as cited by Oviedo et al. | Disclosed; method unpublished | 0.34 | not disclosed |
+| Oviedo et al. (2026), >200B parameters on H100, 300 median output tokens | Bottom-up model, PUE 1.05–1.40 | 0.31 (IQR 0.16–0.60) | ≈ 1.0 mWh, all-in |
+| EcoLogits 0.11 full model, Sonnet 4.6, 300 output tokens | GPU count, server, PUE, batch 64 | 0.46–0.75 | 1.5–2.5 mWh |
+| **Susty**, Sonnet 4.6, 1,000 input / 300 output tokens | Coefficient model, PUE 1.12 | **0.22** | **0.56 mWh** |
+
+On these references the absolute coefficient could plausibly be about 2–4.5× higher for a Sonnet-class model. Susty keeps its values until they can be calibrated against provider data (§15), rather than swapping one unverified number for another.
+
+**Cross-check as average power draw.** Energy per token × generation speed gives the data-centre power attributed to one active reply. Susty's coefficients (including PUE) imply about 62 W for Haiku 4.5 (1.05 J/token × 59 tokens/s), 67 W for Sonnet 4.6 (2.02 × 33) and 93 W for Gemini 3.5 Flash-Lite (1.71 × 54), using EcoLogits' measured throughputs. An 8×H100 node (10.2 kW maximum, 0.7 utilisation, PUE 1.12) shared by 32–64 concurrent requests implies 125–250 W per request. Susty's figures falling below that range is consistent with its coefficients being on the low side, or with an assumption of heavier batching than 64.
+
 The tenfold difference between input and output means long generated responses generally dominate inference energy, although accumulated chat history makes later prompts progressively more expensive.
 
-**Reply length matters more than model choice.** Oviedo et al. find that a reasoning-length query (median 5,000 output tokens, ~15× a standard query) raises median energy about **13×**, to 3.91 Wh (IQR 2.15–7.05). The entire spread between Haiku and Opus in the factor table below is about 2.6×. Whether extended thinking is on, and how long the reply runs, decides far more than which model serves it.
+**Reply length matters more than model choice.** Oviedo et al. find that a reasoning-length query (median 5,000 output tokens, ~15× a standard query) raises median energy about **13×**, to 3.91 Wh (IQR 2.15–7.05). The entire spread between Haiku and Opus in the factor table below is about 2.6× (20× or more on EcoLogits' full model; §4.4). Whether extended thinking is on, and how long the reply runs, decides far more than which model serves it.
 
 ### 4.4 Model factors
 
@@ -202,7 +216,19 @@ f(P_active, B) = 1.1665e-6 · e^(-0.011206·B) · P_active + 4.0529e-5   Wh per 
 | Gemini 3.5 Flash-Lite | 30–105B, dense | 0.85 | derived from EcoLogits/ML.ENERGY |
 | Gemini 3.8 Flash | 75–200B, MoE | 1.36 | derived from EcoLogits/ML.ENERGY |
 
-**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. The Gemini factors are derived exactly as the Claude ones are; until 23 September 2026 both Gemini tiers were priced at the Sonnet anchor as an uncalibrated proxy, which understated Gemini 3.8 Flash by about a quarter. The factor covers per-token energy only: Gemini's thinking tokens are counted separately (§4.1) and priced as output. The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor. Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
+**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. The Gemini factors are derived exactly as the Claude ones are; until 23 September 2026 both Gemini tiers were priced at the Sonnet anchor as an uncalibrated proxy, which understated Gemini 3.8 Flash by about a quarter. The factor covers per-token energy only: Gemini's thinking tokens are counted separately (§4.1) and priced as output. The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor.
+
+**What the factors leave out: GPU count.** The factors use only EcoLogits' per-GPU energy term. EcoLogits' full model also multiplies by the number of GPUs needed to hold the model in memory (1.2 × total parameters × 2 bytes over 80 GB GPUs, rounded up to a power of two), and adds non-GPU server power, provider PUE and batch 64. Because GPU count follows **total** parameters, the full model separates small and large models far more:
+
+| Model | Susty factor | EcoLogits full model, mWh per output token (300 tokens) |
+|---|---:|---:|
+| Claude Haiku 4.5 | 0.52 | 0.07–0.19 |
+| Gemini 3.5 Flash-Lite | 0.85 | 0.09–0.53 |
+| Claude Sonnet 4.6 | 1.00 | 1.52–2.51 |
+| Claude Opus 4.8 | 1.33 | 3.50–6.43 |
+| Gemini 3.8 Flash | 1.36 | 3.66–6.14 |
+
+On the full model the Haiku-to-Opus spread is 20× or more, against Susty's 2.6×. Susty's factors therefore likely **understate large models and overstate small ones**, and the Flash-Lite picker label ("about 15% less per token") likely understates its saving. The full model is not adopted wholesale because it also appears to overstate some serving: for Gemini 3.8 Flash it gives 1.1–1.8 Wh per 300-token reply, while Google's measured median for a Gemini Apps prompt is 0.24 Wh, a gap consistent with GPU-based sizing misrepresenting TPU serving. Calibrating against provider data is the next step (§15). Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
 
 ### 4.5 Model routing and tiers
 
@@ -258,6 +284,10 @@ Susty applies a **PUE of 1.12** to modeled AI inference energy.
 This value is a **Susty hyperscale-data-center assumption**, not the Uptime Institute global average. Uptime reports a 2023 industry average PUE of **1.58** (per site) and a capacity-weighted figure of **1.47**. Large modern hyperscale facilities operate below those averages; Oviedo et al. model AI data-center PUE as a distribution with P5–P95 of 1.05–1.40, "consistent with hyperscaler public reports", and 1.12 sits inside that range. Susty does not know which facility serves a given request.
 
 PUE is therefore a material uncertainty and is treated as a modeled parameter rather than a measured fact.
+
+### Idle and reserved capacity
+
+Susty has no explicit term for idle capacity that providers keep available for reliability and low latency, or for host-system energy beyond what the per-token coefficient implicitly covers. Google reports these as material: its median Gemini Apps prompt is 0.10 Wh on active accelerators alone and 0.24 Wh once host systems, idle machines and data-centre overhead are included.
 
 ### Hosting and network
 
@@ -487,18 +517,19 @@ A modeled number is never described as directly measured. The interface uses pre
 
 ## 12. Known limitations
 
-1. **Absolute inference energy.** The input/output token coefficients are assumptions rather than provider-specific measurements.
-2. **Model calibration.** Anthropic and Google factors depend on architecture that neither company discloses; EcoLogits infers it.
-3. **PUE.** The actual facility serving a request is unknown.
-4. **Server location.** The user's grid is used as a proxy for remote service energy.
-5. **Grid accounting basis.** Ember and Electricity Maps (life-cycle) and eGRID/EIA/NESO (operational) are mixed. The ledger labels which applies; see §6.1.
-6. **Regional GB figures are forecasts.** NESO publishes only forecasts at regional level.
-7. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
-8. **Attended time.** Browser interaction is a proxy for attention, not a direct observation.
-9. **Network energy.** The fixed service term is simplified and does not separately model access networks or routers.
-10. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
-11. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
-12. **Embodied emissions and training.** Both are outside the current boundary.
+1. **Absolute inference energy.** The input/output token coefficients are assumptions, not provider-specific measurements, and sit at the low end of published per-query estimates (§4.3). The fixed 10:1 output-to-input ratio is not separately calibrated.
+2. **Model calibration.** Anthropic and Google architectures are inferred by EcoLogits, not disclosed. The factors omit GPU count, so they compress the spread between small and large models (§4.4).
+3. **Idle and host overhead.** No explicit term for idle reserved capacity (§5).
+4. **PUE.** The actual facility serving a request is unknown.
+5. **Server location.** The user's grid is used as a proxy for remote service energy.
+6. **Grid accounting basis.** Ember and Electricity Maps (life-cycle) and eGRID/EIA/NESO (operational) are mixed. The ledger labels which applies; see §6.1.
+7. **Regional GB figures are forecasts.** NESO publishes only forecasts at regional level.
+8. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
+9. **Attended time.** Browser interaction is a proxy for attention, not a direct observation.
+10. **Network energy.** The fixed service term is simplified and does not separately model access networks or routers.
+11. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
+12. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
+13. **Embodied emissions and training.** Both are outside the current boundary.
 
 The result should be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
 
@@ -564,10 +595,33 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | "These three actions each cover it thousands of times over" | **Not always true**; now computed from the session total | Code |
 | Offset actions: cold wash ~200 g/load, thermostat −2°F ~300 kg/yr, one beef meal a week swapped ~200 kg/yr | Order of magnitude; not traced to a primary source | — |
 | Comparisons: tea, shower, burger | Not traced to a primary source | — |
+| Google median Gemini Apps text prompt: 0.24 Wh comprehensive, 0.10 Wh accelerators only | Confirmed | Google 2025, arXiv 2508.15734 |
+| OpenAI average ChatGPT query 0.34 Wh | Confirmed as cited by Oviedo et al.; OpenAI's method unpublished | Oviedo et al. 2026 |
+| EcoLogits full-model energy per request (Haiku, Sonnet, Opus, Gemini Flash-Lite and Flash; 300 output tokens) | Computed with EcoLogits 0.11.1 and its current model registry | EcoLogits source |
+| Susty factors include GPU count | **No** — per-GPU term only; disclosed in §4.4 | EcoLogits source |
 | Renewable tariff 30 g/kWh | No source found; **preset removed** | — |
 | Ember factors | Coal 820, gas 490, other fossil 700, wind 11 g/kWh, global | Ember methodology |
 | Electricity Maps default basis | Life-cycle (`emissionFactorType` default) | Electricity Maps API reference |
 | 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
+
+---
+
+## 15. Next steps: data and specificity
+
+In priority order. None of these changes numbers until the data exists; each should come with the version update described in §13.
+
+| Gap | Data needed | Candidate source | Expected effect |
+|---|---|---|---|
+| Absolute energy per token | Per-model energy per input and output token, or per-query energy with token counts | Provider disclosures (Google's 2025 method; a request to Anthropic); ML.ENERGY measurements | Replaces the largest assumption; likely raises estimates |
+| Input/output split | Measured prefill vs decode energy per token at production batch sizes | ML.ENERGY; serving-framework benchmarks; Oviedo et al.'s simulation code | Replaces the fixed 10:1 ratio |
+| Model scaling | GPU-count-aware, hardware-specific (TPU vs GPU) scaling with batch and utilisation assumptions | EcoLogits full model, reconciled to provider disclosures | Wider, better-grounded spread between models |
+| Idle and host overhead | Share of idle reserved capacity and host energy | Google 2025 (0.10 → 0.24 Wh) | Adds a documented term |
+| Uncertainty | A distribution for each parameter, propagated by Monte Carlo | Oviedo et al.'s approach | Ranges instead of single figures |
+| Device power | Measured whole-device power during Susty-type sessions on phone, tablet and laptop | Lab measurement following Kirkeby & Lagermann | Validates the 1.35–10 W values |
+| Attended time | Distribution of reading and idle time per exchange | Aggregated, privacy-preserving interaction statistics | Validates the 75-second grace window |
+| Grid | One source with both bases, hourly for every region; serving-region intensity; marginal-emissions sensitivity | Electricity Maps (direct and life-cycle); provider region disclosure | Consistent basis; correct grid for the server share |
+| Service and network | Measured function energy and bytes per exchange | Hosting telemetry; network energy-per-GB literature | Sources the 0.003 Wh term |
+| Outside the boundary | Embodied emissions per request, and water, as separate lines | EcoLogits embodied model; Mistral Large 2 life-cycle analysis; Google 2025 (water) | A fuller picture without changing the operational figure |
 
 ---
 
@@ -578,6 +632,8 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 - ITU-T L.1801 (02/2026), **Guidelines for assessing the environmental impact of artificial intelligence systems** — https://www.itu.int/rec/T-REC-L.1801
 - Luccioni, Jernite & Strubell (2024), **Power Hungry Processing: Watts Driving the Cost of AI Deployment?**, FAccT '24 — https://arxiv.org/abs/2311.16863
 - Oviedo et al. (2026), **Energy use of AI inference, efficiency pathways, and test-time scaling**, *Joule* — https://arxiv.org/abs/2509.20241
+- Google (2025), **Measuring the environmental impact of delivering AI at Google scale** — https://arxiv.org/abs/2508.15734
+- Mistral AI (2025), **Life-cycle analysis of Mistral Large 2** (cited in §15 as a candidate source for embodied impacts)
 - EcoLogits — https://ecologits.ai/ (energy function and model estimates: https://github.com/genai-impact/ecologits)
 - ML.ENERGY leaderboard — https://ml.energy/
 - Uptime Institute, **Large data centers are mostly more efficient, analysis confirms** — https://journal.uptimeinstitute.com/large-data-centers-are-mostly-more-efficient-analysis-confirms/

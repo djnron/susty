@@ -172,6 +172,15 @@ check('coverage ratio is computed, not asserted', () => {
   assert.match(html, /Math\.floor\(SMALLEST_ACTION_G \/ g\)/);
 });
 
+console.log('\nDisclosed limitations');
+check('says where the coefficients sit among published estimates', () => {
+  has(/\*\*Where Susty sits: at the low end\.\*\*/);
+  assert.match(html, /sit at the low end of published estimates/);
+});
+check('says the model factors omit GPU count', () => has(/\*\*What the factors leave out: GPU count\.\*\*/));
+check('says there is no idle-capacity term', () => has(/### Idle and reserved capacity/));
+check('lists data next steps', () => has(/## 15\. Next steps: data and specificity/));
+
 console.log('\nLayout');
 check('hidden pickers stay hidden despite .pick display: flex', () =>
   assert.match(html, /\.pick\[hidden\] \{ display: none; \}/));

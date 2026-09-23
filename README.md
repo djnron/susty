@@ -179,6 +179,10 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **Grid sources mix two accounting bases.** Ember's national figures are
   life-cycle; NESO, EIA and eGRID are operational. The ledger names which one
   applies; converting them to one basis would add error (METHODOLOGY §6.1).
+- **Energy per token is at the low end of published estimates**, and the
+  model multipliers leave out how many GPUs a model needs, so they likely
+  understate large models and overstate small ones. Both stay as they are
+  until they can be calibrated against provider data (METHODOLOGY §4.3–4.4, §15).
 - **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
   every Gemini reply carries some reasoning tokens. They are measured and
   priced; the default, Flash-Lite, runs at the lowest level Google offers.
