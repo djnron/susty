@@ -1,6 +1,6 @@
 # susty
 
-A sustainability chatbot that keeps a running count of the carbon its own conversation costs. Click the counter to see the arithmetic and what to do about it.
+A sustainability chatbot that estimates the operational carbon of its own conversation. The primary meter reports the session-average g CO2e per completed exchange, with the cumulative session total in the ledger.
 
 No build step, no framework, no dependencies.
 
@@ -140,18 +140,22 @@ stylesheet.
 
 ## About the carbon figures
 
-They are estimates, and the page says so. Token counts are real — the API reports them and the meter uses them. Everything after that is modelled:
+They are estimates, and the page says so. Provider token counts are measured where available; energy, device power, location, and some grid values are modeled, inferred, or derived.
 
 ```
 grams CO2e = ( (tokens × energy per token) × cooling
-             + exchanges × hosting
+             + handled requests × hosting
              + device watts × hours attended ) × grid intensity
+
+g CO2e / completed exchange
+= session g CO2e / completed exchanges
 ```
 
-Per-query energy use isn't published by any lab, and public estimates vary by
-more than an order of magnitude. The defaults here (0.05 mWh per input token,
-0.5 mWh per output token, PUE 1.12, 473 g/kWh world
-average) sit in the middle of that range and are deliberately easy to change.
+The absolute token coefficients (0.05 mWh per input token and 0.5 mWh per
+output token) and PUE 1.12 are Susty modeling assumptions, not direct
+measurements from the cited literature. They are deliberately easy to change
+as better provider/model measurements become available. The world grid
+fallback is 473 g/kWh.
 Grid intensity is user-selectable because it alone swings the answer more than
 tenfold.
 
@@ -181,4 +185,4 @@ Declared rather than fixed, and all in METHODOLOGY:
   resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to drop it from the
   menu, or `SUSTY_TIERS=off` to collapse every request to the default.
 
-The ledger is built to make the conversation's footprint feel small on purpose. A long chat costs a fraction of a penny to offset; the actions discussed in it are worth thousands of times more. That comparison is the point of the feature.
+The ledger keeps both the normalized functional unit and the cumulative session total visible. Everyday comparisons continue to use the session total, not the per-exchange average.

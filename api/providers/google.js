@@ -4,7 +4,7 @@
 // rather than teach the browser a second wire format for one extra
 // provider, this translates Gemini's stream into the same event shape
 // index.html already parses (message_start / content_block_delta /
-// message_delta). A real normalized contract can replace this translation
+// message_delta / message_stop). A real normalized contract can replace this translation
 // once a third provider makes one worth having.
 //
 // Verified against ai.google.dev/api/generate-content and
@@ -45,6 +45,15 @@ export async function callGoogle(messages, tier, system) {
   });
 }
 
+// Normalize Gemini terminal reasons into the small Anthropic-shaped contract
+// the browser already understands. A missing reason is deliberately left null:
+// end-of-stream alone is not proof that generation completed normally.
+export function normalizeGoogleFinishReason(reason) {
+  if (reason === "STOP") return "end_turn";
+  if (reason === "MAX_TOKENS") return "max_tokens";
+  return reason ? `google_${String(reason).toLowerCase()}` : null;
+}
+
 // Reads Gemini's SSE stream and re-emits it as Anthropic-shaped SSE lines,
 // writing straight to `res` the same way the Anthropic path already does.
 //
@@ -62,6 +71,29 @@ export async function pipeGoogleAsAnthropicSSE(upstream, res, tier) {
   const decoder = new TextDecoder();
   let buf = "";
   let usage = null;
+  let finishReason = null;
+
+  const handleLine = (line) => {
+    if (!line.startsWith("data: ")) return;
+    const chunk = line.slice(6).trim();
+    if (!chunk) return;
+    let evt;
+    try {
+      evt = JSON.parse(chunk);
+    } catch {
+      return;
+    }
+
+    const text = (evt.candidates || [])
+      .flatMap((c) => c.content?.parts || [])
+      .map((p) => p.text || "")
+      .join("");
+    if (text) write({ type: "content_block_delta", delta: { type: "text_delta", text } });
+
+    const candidate = evt.candidates?.[0];
+    if (candidate?.finishReason) finishReason = candidate.finishReason;
+    if (evt.usageMetadata) usage = evt.usageMetadata;
+  };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -69,26 +101,12 @@ export async function pipeGoogleAsAnthropicSSE(upstream, res, tier) {
     buf += decoder.decode(value, { stream: true });
     const lines = buf.split("\n");
     buf = lines.pop();
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const chunk = line.slice(6).trim();
-      if (!chunk) continue;
-      let evt;
-      try {
-        evt = JSON.parse(chunk);
-      } catch {
-        continue;
-      }
-
-      const text = (evt.candidates || [])
-        .flatMap((c) => c.content?.parts || [])
-        .map((p) => p.text || "")
-        .join("");
-      if (text) write({ type: "content_block_delta", delta: { type: "text_delta", text } });
-
-      if (evt.usageMetadata) usage = evt.usageMetadata;
-    }
+    for (const line of lines) handleLine(line);
   }
+  buf += decoder.decode();
+  if (buf.trim()) handleLine(buf);
+
+  const stopReason = normalizeGoogleFinishReason(finishReason);
 
   if (usage) {
     write({
@@ -109,10 +127,17 @@ export async function pipeGoogleAsAnthropicSSE(upstream, res, tier) {
     const thinking = usage.thoughtsTokenCount || 0;
     write({
       type: "message_delta",
+      delta: stopReason ? { stop_reason: stopReason } : {},
       usage: {
         output_tokens: candidates + thinking,
         output_tokens_details: { thinking_tokens: thinking },
       },
     });
+  } else if (stopReason) {
+    write({ type: "message_delta", delta: { stop_reason: stopReason } });
+  }
+
+  if (stopReason) {
+    write({ type: "message_stop" });
   }
 }

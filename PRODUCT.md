@@ -12,7 +12,7 @@ People curious about the sustainability of everyday decisions — diet, travel, 
 
 ## Product Purpose
 
-susty is a sustainability chatbot that gives specific, number-backed answers to everyday sustainability questions and keeps a live count of the carbon cost of the conversation itself. The meter is not a disclaimer — it is the product's central argument: even the most honest environmental advice tool has a footprint, and naming it is what makes the advice trustworthy.
+susty is a sustainability chatbot that gives specific, number-backed answers to everyday sustainability questions and keeps a live estimate of the conversation's operational carbon footprint. The primary meter reports the **session-average g CO2e per completed exchange**, with the cumulative session total visible alongside it. The meter is not a disclaimer — it is the product's central argument: even the most honest environmental advice tool has a footprint, and naming it is what makes the advice trustworthy.
 
 ## Positioning
 
@@ -24,15 +24,15 @@ Single-session, single-page. No login, no history, no account. The user arrives,
 
 ## Capabilities and Constraints
 
-- Claude-powered chat via Vercel serverless proxy; API key server-side only
-- Live carbon accounting: token counts from the API, energy modelled from published coefficients
+- Anthropic- and Gemini-powered chat via Vercel serverless proxy; API keys server-side only
+- Live operational-carbon accounting: provider token counts where available, modeled inference/service/device energy, and a completed-exchange functional unit
 - Grid intensity is user-selectable (world average to hydro/wind)
 - No build step, no dependencies, no database, no auth
 - Rate-limited at 25 requests per IP per 10 minutes (in-memory; leaky on cold starts)
 - Feedback via mailto; no stored submissions. `api/feedback.js` exists and
   deploys, but nothing calls it — the client still opens a mail client, so the
   endpoint is dead code until the two are wired together
-- Model: claude-sonnet-4-6 (configurable via env)
+- Model tiers include Anthropic and Gemini; the server may fall back to the configured Sonnet tier when an optional provider is unavailable
 
 ## Brand Commitments
 
@@ -68,7 +68,7 @@ Single-session, single-page. No login, no history, no account. The user arrives,
 
 ## Evidence on Hand
 
-- Carbon coefficients: Luccioni et al. 2023, Uptime Institute 2023, Patterson et al. 2021, IEA CO₂ 2023, Frontier 2024 State of CDR
+- Carbon model evidence includes EcoLogits/ML.ENERGY, Luccioni et al. 2023, Oviedo et al. 2026, Uptime Institute, EIA, EPA eGRID, Ember, DIMPACT, and device-power literature. The absolute token coefficients and PUE 1.12 are Susty modeling assumptions rather than direct measurements from those sources.
 - No testimonials, case studies, or usage data on hand
 
 ## Product Principles

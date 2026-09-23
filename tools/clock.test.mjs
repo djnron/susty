@@ -165,13 +165,15 @@ console.log('\nModel-relative energy factors');
     if (!ok) fails++;
     console.log(`${ok ? 'pass' : 'FAIL'}  ${name} factor ${factor} reproduces from EcoLogits (${derived.toFixed(3)})`);
   }
-  // The anchor must be exactly 1: it is the model susty actually runs.
+  // The anchor must be exactly 1: it is Susty's reference model for the
+  // relative-factor table, regardless of which provider/tier is selected.
   const anchored = MODEL_ENERGY['claude-sonnet-4-6'].factor === 1.00;
   if (!anchored) fails++;
   console.log(`${anchored ? 'pass' : 'FAIL'}  claude-sonnet-4-6 is the 1.00x anchor`);
 
-  // Absolute calibration: a real exchange must stay inside Oviedo et al's
-  // measured IQR for a frontier-model query, 0.16-0.60 Wh.
+  // Order-of-magnitude plausibility check: this illustrative exchange should
+  // stay inside Oviedo et al's measured IQR for a frontier-model query,
+  // 0.16-0.60 Wh. This is not an absolute calibration of Susty's coefficients.
   const wh = (831 * 0.00005 + 571 * 0.0005) * 1.12 + 2 * 0.003;
   const perExchange = wh / 2;
   const inRange = perExchange >= 0.16 && perExchange <= 0.60;
