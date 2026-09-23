@@ -172,5 +172,9 @@ check('coverage ratio is computed, not asserted', () => {
   assert.match(html, /Math\.floor\(SMALLEST_ACTION_G \/ g\)/);
 });
 
+console.log('\nLayout');
+check('hidden pickers stay hidden despite .pick display: flex', () =>
+  assert.match(html, /\.pick\[hidden\] \{ display: none; \}/));
+
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');
 process.exit(fails ? 1 : 0);

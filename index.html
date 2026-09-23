@@ -696,6 +696,9 @@ textarea, input { caret-color: var(--ink); }
   text-transform: uppercase;
   letter-spacing: var(--track);
 }
+/* display: flex above outranks the browser's own [hidden] rule, which left an
+   empty "Narrow it down" picker on screen for every country without regions. */
+.pick[hidden] { display: none; }
 .pick select {
   width: 100%;
   border: var(--bw) solid var(--ink);
