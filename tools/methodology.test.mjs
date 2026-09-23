@@ -66,16 +66,26 @@ check('history, length, rate limits match api/chat.js', () => {
 });
 check('thinking-tier ceiling matches', () =>
   has(new RegExp(`${TIERS['opus-thinking'].maxTokens.toLocaleString('en-US')}-token ceiling`)));
-check('Gemini tiers are documented as uncapped while they carry no maxTokens', () => {
-  const uncapped = ['gemini-flash', 'gemini-flash-lite'].every(k => TIERS[k].maxTokens === undefined);
-  if (uncapped) has(/Gemini tiers set no output-token cap/);
+check('Gemini output cap and thinking levels match', () => {
+  const cap = TIERS['gemini-flash'].maxTokens;
+  assert.equal(TIERS['gemini-flash-lite'].maxTokens, cap);
+  has(new RegExp(`\\*\\*${cap.toLocaleString('en-US')} output tokens\\*\\* per Gemini reply`));
+  has(new RegExp(`\\| \\*\\*Gemini 3\\.5 Flash-Lite\\*\\* \\(client default\\) \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash-lite'].thinkingLevel}\``));
+  has(new RegExp(`\\| Gemini 3\\.8 Flash \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash'].thinkingLevel}\``));
+});
+check('client default tier is documented', () => {
+  const tier = html.match(/tier: '([\w-]+)',\s+\/\/ what we asked for/)[1];
+  assert.equal(tier, 'gemini-flash-lite');
+  assert.match(html, /<option value="gemini-flash-lite" selected>Gemini 3\.5 Flash-Lite, the default/);
 });
 
 console.log('\nModel factors');
 const factorRows = {
-  'claude-haiku-4-5':  /Claude Haiku 4\.5 \|[^|]*\| ([\d.]+) \|/,
-  'claude-sonnet-4-6': /Claude Sonnet 4\.6 \|[^|]*\| ([\d.]+) \|/,
-  'claude-opus-4-8':   /Claude Opus 4\.6 \/ 4\.7 \/ 4\.8 \|[^|]*\| ([\d.]+) \|/,
+  'claude-haiku-4-5':      /Claude Haiku 4\.5 \|[^|]*\| ([\d.]+) \|/,
+  'claude-sonnet-4-6':     /Claude Sonnet 4\.6 \|[^|]*\| ([\d.]+) \|/,
+  'claude-opus-4-8':       /Claude Opus 4\.6 \/ 4\.7 \/ 4\.8 \|[^|]*\| ([\d.]+) \|/,
+  'gemini-3.8-flash':      /Gemini 3\.8 Flash \|[^|]*\| ([\d.]+) \|/,
+  'gemini-3.5-flash-lite': /Gemini 3\.5 Flash-Lite \|[^|]*\| ([\d.]+) \|/,
 };
 for (const [id, re] of Object.entries(factorRows)) {
   check(`${id} factor matches`, () => {
@@ -84,10 +94,7 @@ for (const [id, re] of Object.entries(factorRows)) {
     assert.equal(Number(m[1]), MODEL_ENERGY[id].factor);
   });
 }
-check('Gemini is documented as an uncalibrated proxy while it has no factor', () => {
-  const hasGemini = Object.keys(MODEL_ENERGY).some(k => k.startsWith('gemini'));
-  if (!hasGemini) has(/Gemini 3\.8 Flash \|[^|]*\| 1\.00 proxy \| \*\*not calibrated\*\*/);
-});
+
 
 console.log('\nDevice table');
 const deviceRows = [

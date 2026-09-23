@@ -149,13 +149,17 @@ console.log('\nModel-relative energy factors');
     'claude-sonnet-4-6': { factor: 1.00, thinks: false },
     'claude-opus-4-6':   { factor: 1.33, thinks: true  },
     'claude-opus-4-7':   { factor: 1.33, thinks: true  },
-    'claude-opus-4-8':   { factor: 1.33, thinks: true  }
+    'claude-opus-4-8':   { factor: 1.33, thinks: true  },
+    'gemini-3.8-flash':      { factor: 1.36, thinks: true  },
+    'gemini-3.5-flash-lite': { factor: 0.85, thinks: true  }
   };
   const A = 1.17e-6, B = -1.12e-2, G = 4.05e-5;
   const f = (p, b) => A * Math.exp(B * b) * p + G;
   const active = { 'claude-haiku-4-5': 22.5, 'claude-sonnet-4-6': 88,
                    'claude-opus-4-6': 133.5, 'claude-opus-4-7': 133.5,
-                   'claude-opus-4-8': 133.5 };
+                   'claude-opus-4-8': 133.5,
+                   // EcoLogits models.json: MoE 75-200B active; dense 30-105B.
+                   'gemini-3.8-flash': 137.5, 'gemini-3.5-flash-lite': 67.5 };
   const anchor = f(active['claude-sonnet-4-6'], 32);
 
   // Every published factor must reproduce from the source function.

@@ -179,10 +179,9 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **Grid sources mix two accounting bases.** Ember's national figures are
   life-cycle; NESO, EIA and eGRID are operational. The renewable-tariff preset
   (30 g/kWh) is unsourced. Both are open decisions in METHODOLOGY.
-- **Gemini tiers are priced at the Sonnet anchor.** EcoLogits' estimates would
-  put Gemini 3.8 Flash, the default, about a third higher. Also an open
-  decision in METHODOLOGY.
-- **Gemini replies have no output-token cap**; only the Anthropic tiers do.
+- **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
+  every Gemini reply carries some reasoning tokens. They are measured and
+  priced; the default, Flash-Lite, runs at the lowest level Google offers.
 - **Rate limiting is in-memory**, so it resets on cold start. It deters casual
   abuse; it is not a quota.
 - **`api/feedback.js` is not wired up.** The client opens a `mailto:` link

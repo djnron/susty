@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release — four open decisions (see [Open decisions](#open-decisions))
+**Status:** Candidate for release — three open decisions (see [Open decisions](#open-decisions))
 **Date:** 23 September 2026
 **Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 
@@ -17,8 +17,7 @@ These are known inconsistencies that this document discloses but does not resolv
 
 1. **Mixed grid accounting boundary.** Ember national figures (every non-US, non-GB country, the EU and world averages, and the US national fallback) are **life-cycle** intensities. EPA eGRID, the EIA-derived hourly figures and NESO are **operational (direct combustion)** intensities. See [§6.1](#61-accounting-basis). For the US the two differ by about 10% (Ember 384 vs eGRID 350 g/kWh).
 2. **Renewable-tariff preset (30 g/kWh).** Unsourced, appears to be life-cycle, and represents a contractual (market-based) instrument inside an otherwise location-based model. See [§6.7](#67-renewable-tariff-preset).
-3. **Gemini model factors.** Both Gemini tiers are priced at the Sonnet anchor (×1.00). EcoLogits now publishes architecture estimates for both models; the same derivation Susty uses for Claude gives **×1.36** for Gemini 3.8 Flash (the default tier) and **×0.85** for Gemini 3.5 Flash-Lite. See [§4.4](#44-model-factors).
-4. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
+3. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
 
 ---
 
@@ -198,10 +197,10 @@ f(P_active, B) = 1.1665e-6 · e^(-0.011206·B) · P_active + 4.0529e-5   Wh per 
 | Claude Haiku 4.5 | 10–35B, dense | 0.52 | derived from EcoLogits/ML.ENERGY |
 | Claude Sonnet 4.6 | 44–132B, MoE | 1.00 | anchor |
 | Claude Opus 4.6 / 4.7 / 4.8 | 67–200B, MoE | 1.33 | derived from EcoLogits/ML.ENERGY |
-| Gemini 3.5 Flash-Lite | 30–105B, dense | 1.00 proxy | **not calibrated** (derivation would give 0.85) |
-| Gemini 3.8 Flash | 75–200B, MoE | 1.00 proxy | **not calibrated** (derivation would give 1.36) |
+| Gemini 3.5 Flash-Lite | 30–105B, dense | 0.85 | derived from EcoLogits/ML.ENERGY |
+| Gemini 3.8 Flash | 75–200B, MoE | 1.36 | derived from EcoLogits/ML.ENERGY |
 
-**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. Gemini tiers currently use the Sonnet anchor as a proxy and must be labeled **not calibrated**; see [Open decision 3](#open-decisions). The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor. Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
+**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. The Gemini factors are derived exactly as the Claude ones are; until 23 September 2026 both Gemini tiers were priced at the Sonnet anchor as an uncalibrated proxy, which understated Gemini 3.8 Flash by about a quarter. The factor covers per-token energy only: Gemini's thinking tokens are counted separately (§4.1) and priced as output. The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor. Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
 
 ### 4.5 Model routing and tiers
 
@@ -213,10 +212,12 @@ The ledger's model picker offers six tiers across two providers. The client send
 | Sonnet 4.6 | `claude-sonnet-4-6` (overridable via `ANTHROPIC_MODEL`) | off | ×1.00 (anchor) |
 | Opus 4.8 | `claude-opus-4-8` | off | ×1.33 |
 | Opus 4.8, extended thinking | `claude-opus-4-8` | adaptive, effort `low`, 4,000-token ceiling | ×1.33 **plus the thinking tokens** |
-| Gemini 3.5 Flash-Lite | `gemini-3.5-flash-lite` | cannot be disabled; level `low` | not calibrated — ×1.00 proxy |
-| **Gemini 3.8 Flash** (client default) | `gemini-3.8-flash` | cannot be disabled; level `low` | not calibrated — ×1.00 proxy |
+| **Gemini 3.5 Flash-Lite** (client default) | `gemini-3.5-flash-lite` | cannot be disabled; level `minimal` | ×0.85 **plus the thinking tokens** |
+| Gemini 3.8 Flash | `gemini-3.8-flash` | cannot be disabled; level `low` | ×1.36 **plus the thinking tokens** |
 
-**The Gemini default is a scaling decision, not a validated one.** Gemini became the client default to spread load off the Anthropic key, not because an evaluation found it cheaper or more accurate. A default should never be described as more efficient unless it has been validated as such. Every Gemini reply carries some hidden reasoning cost, because `low` is the floor rather than off; it is measured through `thoughtsTokenCount` and priced.
+**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Flash-Lite is the default because it has the lowest modeled per-token energy of the Gemini tiers (×0.85) and runs at the lowest thinking level Google offers for it. That is a modeled comparison, not a measured one, and it says nothing about answer quality; the picker labels it "about 15% less per token, plus brief thinking" rather than calling it efficient.
+
+Gemini 3 models cannot switch thinking off. Each tier runs at the lowest level its model accepts: `minimal` for Flash-Lite (also Google's default for that model) and `low` for Flash, which does not offer `minimal`. Until 23 September 2026 Flash-Lite ran at `low`, above its floor. Thinking tokens are measured through `thoughtsTokenCount` and priced as output.
 
 **Server fallback is a separate concept.** `DEFAULT_TIER` in `api/chat.js` stays `sonnet`: it is what a request degrades to if a tier is unrecognised, gated, or its provider is not configured, and it must be a provider that is always present. The tier is a request, not a setting — the ledger reports the model that actually answered (from the response's `message.model`), not the one asked for.
 
@@ -234,7 +235,8 @@ A visitor on the thinking tier can raise the cost of an exchange several times o
 The endpoint is public, so:
 
 - **40 messages** of history forwarded, **4,000 characters** per message.
-- **1,000 output tokens** maximum per Anthropic reply (4,000 on the thinking tier, because thinking counts against the ceiling). **Gemini tiers set no output-token cap** and run to the model's own default — a known gap.
+- **1,000 output tokens** maximum per Anthropic reply (4,000 on the thinking tier, because thinking counts against the ceiling).
+- **2,000 output tokens** per Gemini reply. Gemini counts thinking tokens against `maxOutputTokens` and enforces it as a hard cutoff, so the cap is the standard reply ceiling plus the same again as thinking headroom. A reply that hits it ends with `MAX_TOKENS` and is recorded as incomplete.
 - **25 requests per IP per 10 minutes.** Rate-limit state is in-process: it resets on a cold start and is not shared between instances. It deters casual abuse; it is not a quota. The limiter checks before recording, so rejected attempts do not extend the window, and when the map exceeds 5,000 addresses it evicts the oldest 1,000 rather than clearing.
 
 `clean()` forwards only role and string content. It also drops leading non-`user` turns, because a 40-message window over an even-length history can open on an assistant turn, which the Messages API rejects.
@@ -427,7 +429,7 @@ The ledger opens with:
 - latest completed model (the model that actually answered the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session.
 
-Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity and its named source, and whether a model factor is calibrated or a proxy (in the model picker).
+Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity and its named source. The model picker states each tier's per-token energy relative to Sonnet 4.6, and that the Gemini tiers always think.
 
 The per-exchange value is always labeled a **session average**. It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
 
@@ -457,7 +459,7 @@ These are order-of-magnitude figures. Their job is to show that the footprint of
 
 The ledger converts grams to money at **$100 per tonne**, to show proportion rather than to sell offsets. At conversation scale this lands under a hundredth of a cent.
 
-$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 4](#open-decisions).
+$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 3](#open-decisions).
 
 ---
 
@@ -469,7 +471,7 @@ $100/tonne is a **long-run target price**, not today's price: the US DOE Carbon 
 | **Derived** | EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic |
 | **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
-| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, Gemini proxy factor |
+| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage |
 
 A modeled number is never described as directly measured. The interface uses precision appropriate to the uncertainty of its inputs.
 
@@ -478,7 +480,7 @@ A modeled number is never described as directly measured. The interface uses pre
 ## 12. Known limitations
 
 1. **Absolute inference energy.** The input/output token coefficients are assumptions rather than provider-specific measurements.
-2. **Model calibration.** Gemini tiers use a Sonnet proxy; Anthropic and Google factors depend on inferred architecture.
+2. **Model calibration.** Anthropic and Google factors depend on architecture that neither company discloses; EcoLogits infers it.
 3. **PUE.** The actual facility serving a request is unknown.
 4. **Server location.** The user's grid is used as a proxy for remote service energy.
 5. **Grid accounting basis.** Ember (life-cycle) and eGRID/EIA/NESO (operational) are mixed; see §6.1.
@@ -488,8 +490,7 @@ A modeled number is never described as directly measured. The interface uses pre
 9. **Network energy.** The fixed service term is simplified and does not separately model access networks or routers.
 10. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
 11. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
-12. **Gemini output is uncapped** by Susty; only Anthropic tiers carry a max-token ceiling.
-13. **Embodied emissions and training.** Both are outside the current boundary.
+12. **Embodied emissions and training.** Both are outside the current boundary.
 
 The result should be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
 
@@ -540,7 +541,9 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | DIMPACT "Eq. 19" as the duration-of-use rule | **Corrected** — Eq. 19 is standby allocation; device use energy is Eq. 16 | DIMPACT v1.0 |
 | Dash & Hu: 3–9% at 30–50% brightness; 39–47% at 100% | Confirmed | Purdue release of the MobiSys 2021 paper |
 | EcoLogits function constants | Confirmed exactly; EcoLogits default batch is 64, Susty uses 32 | EcoLogits source code |
-| EcoLogits has no Gemini architecture estimates | **Outdated** — both Gemini models Susty uses now have entries | EcoLogits `models.json` |
+| EcoLogits has no Gemini architecture estimates | **Outdated** — both Gemini models now have entries; factors adopted (×1.36, ×0.85) | EcoLogits `models.json` |
+| "`low` is the lowest Gemini thinking level" | **Corrected** for Flash-Lite, which supports and defaults to `minimal`; true for 3.8 Flash | Google Gemini thinking docs |
+| Gemini `maxOutputTokens` includes thinking | Confirmed — "including thought tokens", hard cutoff | Google Gemini thinking docs |
 | eGRID2023 Rev 2 subregion values | All 27 confirmed (NYLI, SRMW, SRVC within ±1 g/kWh of rounding) | EPA summary tables, Rev 2 |
 | Ember national values | World, EU, US and 34 countries within ±3 g/kWh of current Ember 2024 data; six differ by 4–17 g/kWh after Ember revisions (PH 612→629, NG 508→496, NZ 120→112, ZA 713→718, CH 30→35, PL 612→608). Ember 2025 data now available (world 458) | Ember yearly dataset |
 | Ember basis | Life-cycle (IPCC AR5 factors) | Ember methodology |

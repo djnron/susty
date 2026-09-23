@@ -40,15 +40,21 @@ export const LIMITS = {
 //
 // Every tier now carries a `provider`, because `resolveTier` uses it to check
 // that provider's key is actually configured before handing the tier out —
-// see providerConfigured() below. gemini-flash and gemini-flash-lite have no
-// entry yet in index.html's MODEL_ENERGY table: EcoLogits has no fitted
-// factor for either verified here, so both fall back to the Sonnet anchor
-// rather than a guessed multiplier, same policy as any unrecognised model.
+// see providerConfigured() below. Both Gemini tiers have factors in
+// index.html's MODEL_ENERGY table, derived from EcoLogits' architecture
+// estimates the same way as the Claude ones (flash ×1.36, flash-lite ×0.85).
 //
-// Gemini 3 Flash and Flash-Lite cannot fully disable thinking (verified
-// against ai.google.dev/gemini-api/docs/generate-content/thinking on
-// 2026-09-15) — "low" is the lowest level documented as valid, not the
-// true-off susty's other tiers get by simply omitting the field.
+// Gemini 3 models cannot fully disable thinking. Each tier runs at the lowest
+// level its model accepts (ai.google.dev/gemini-api/docs/thinking, checked
+// 2026-09-23): gemini-3.8-flash supports low/medium/high, so "low";
+// gemini-3.5-flash-lite also supports "minimal", which is its own default.
+//
+// Gemini counts thinking tokens against maxOutputTokens ("including thought
+// tokens"), and the cap is a hard cutoff. So the Gemini ceiling is the
+// standard reply ceiling plus the same again as headroom for thinking; a
+// cap of 1000 alone could stop a reply mid-thought.
+const GEMINI_MAX_TOKENS = 2 * LIMITS.maxTokens;
+
 export const TIERS = {
   haiku: {
     provider: "anthropic",
@@ -82,12 +88,14 @@ export const TIERS = {
   "gemini-flash-lite": {
     provider: "google",
     model: "gemini-3.5-flash-lite",
-    thinkingLevel: "low",
+    thinkingLevel: "minimal",
+    maxTokens: GEMINI_MAX_TOKENS,
   },
   "gemini-flash": {
     provider: "google",
     model: "gemini-3.8-flash",
     thinkingLevel: "low",
+    maxTokens: GEMINI_MAX_TOKENS,
   },
 };
 export const DEFAULT_TIER = "sonnet";

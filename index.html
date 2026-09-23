@@ -1008,8 +1008,8 @@ textarea, input { caret-color: var(--ink); }
         <option value="sonnet">Sonnet 4.6</option>
         <option value="opus">Opus 4.8, about a third more</option>
         <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
-        <option value="gemini-flash-lite">Gemini 3.5 Flash-Lite, energy not yet calibrated</option>
-        <option value="gemini-flash" selected>Gemini 3.8 Flash, the default — energy not yet calibrated</option>
+        <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite, the default: about 15% less per token, plus brief thinking</option>
+        <option value="gemini-flash">Gemini 3.8 Flash, about a third more per token, plus some thinking</option>
       </select>
     </div>
     <div class="pick">
@@ -1132,23 +1132,27 @@ textarea, input { caret-color: var(--ink); }
 // an order-of-magnitude check, but does not directly establish Susty's split
 // between input-token and output-token energy.
 //
-// EcoLogits flags every Anthropic entry `model-arch-not-released` — the
-// parameter counts are inferred, not disclosed. Factors are therefore rounded
-// to two places and treated as a spread, not a precision.
+// EcoLogits flags every Anthropic and Google entry `model-arch-not-released`
+// — the parameter counts are inferred, not disclosed. Factors are therefore
+// rounded to two places and treated as a spread, not a precision.
+//
+// Gemini, from EcoLogits' models.json (checked 2026-09-23):
+//   gemini-3.8-flash       MoE, 75-200B active  -> 137.5B midpoint -> ×1.36
+//   gemini-3.5-flash-lite  dense, 30-105B       -> 67.5B midpoint  -> ×0.85
+// Both always think (it cannot be switched off on Gemini 3); those tokens are
+// measured through thoughtsTokenCount and priced as output, not folded in here.
 const MODEL_ENERGY = {
-  'claude-haiku-4-5':   { factor: 0.52, thinks: false },
-  'claude-sonnet-4-6':  { factor: 1.00, thinks: false },   // the anchor
-  'claude-opus-4-6':    { factor: 1.33, thinks: true  },
-  'claude-opus-4-7':    { factor: 1.33, thinks: true  },
-  'claude-opus-4-8':    { factor: 1.33, thinks: true  }
+  'claude-haiku-4-5':      { factor: 0.52, thinks: false },
+  'claude-sonnet-4-6':     { factor: 1.00, thinks: false },   // the anchor
+  'claude-opus-4-6':       { factor: 1.33, thinks: true  },
+  'claude-opus-4-7':       { factor: 1.33, thinks: true  },
+  'claude-opus-4-8':       { factor: 1.33, thinks: true  },
+  'gemini-3.8-flash':      { factor: 1.36, thinks: true  },
+  'gemini-3.5-flash-lite': { factor: 0.85, thinks: true  }
 };
 // Unknown or newer models fall back to the anchor rather than guessing. The
-// 5-series is deliberately absent: EcoLogits has no architecture estimate for
-// it, so a factor would be invention. Gemini models are absent for the same
-// reason — no fitted factor has been verified for gemini-3.8-flash or
-// gemini-3.5-flash-lite yet, so both fall back to the Sonnet anchor and the
-// picker says so ("energy not yet calibrated") rather than showing a ×1.00
-// that looks deliberate.
+// Claude 5-series is deliberately absent: EcoLogits has no architecture
+// estimate for it, so a factor would be invention.
 // Longest-prefix match, because the API answers with dated ids: ask for
 // claude-haiku-4-5 and message_start reports claude-haiku-4-5-20251001. An
 // exact lookup missed that and billed Haiku at the Sonnet anchor.
@@ -1413,7 +1417,7 @@ const state = {
   inTokens: 0, outTokens: 0, history: [], busy: false,
   screen: 'lcdLaptop',
   model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
-  tier: 'gemini-flash',         // what we asked for; the server may override
+  tier: 'gemini-flash-lite',    // what we asked for; the server may override
   thinkTokens: 0,               // measured subset of outTokens
   grid: 'world', gridGuessed: false, region: '', live: null,
   // One frozen record per accounted request attempt (see recordRequest),

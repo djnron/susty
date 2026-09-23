@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import {
+  callGoogle,
   normalizeGoogleFinishReason,
   pipeGoogleAsAnthropicSSE,
 } from '../api/providers/google.js';
+import { TIERS } from '../api/chat.js';
 
 let fails = 0;
 function check(label, fn) {
@@ -263,6 +265,22 @@ await asyncCheck('Gemini terminal event is kept when final SSE line has no newli
   assert.equal(events.find((e) => e.type === 'message_delta')?.delta?.stop_reason, 'end_turn');
   assert.ok(events.some((e) => e.type === 'message_stop'));
 });
+
+console.log('\nGemini request');
+for (const key of ['gemini-flash', 'gemini-flash-lite']) {
+  await asyncCheck(`${key} sends its output cap and thinking level`, async () => {
+    const realFetch = globalThis.fetch;
+    let sent;
+    globalThis.fetch = async (url, init) => { sent = JSON.parse(init.body); return { ok: true }; };
+    try {
+      await callGoogle([{ role: 'user', content: 'hi' }], TIERS[key], 'system');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    assert.equal(sent.generationConfig.maxOutputTokens, TIERS[key].maxTokens);
+    assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, TIERS[key].thinkingLevel);
+  });
+}
 
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');
 process.exit(fails ? 1 : 0);

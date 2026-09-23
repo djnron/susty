@@ -13,9 +13,12 @@
 //   - candidatesTokenCount EXCLUDES thoughtsTokenCount — totalTokenCount is
 //     documented as "prompt + thoughts + response candidates", i.e. additive.
 //     Do not add thoughtsTokenCount into the output count again downstream.
-//   - Gemini 3 Flash and Flash-Lite cannot fully disable thinking. "low" is
-//     the lowest level documented as valid (not an error) for
-//     gemini-3.8-flash; used as the safe floor for both Gemini tiers here.
+//   - Gemini 3 Flash and Flash-Lite cannot fully disable thinking. Each tier
+//     sends the lowest level its model accepts: "low" for gemini-3.8-flash,
+//     "minimal" for gemini-3.5-flash-lite (re-checked 2026-09-23).
+//   - maxOutputTokens includes thought tokens and is a hard cutoff; hitting it
+//     ends the stream with finishReason MAX_TOKENS, which the client records
+//     as an incomplete attempt.
 
 export async function callGoogle(messages, tier, system) {
   const contents = messages.map((m) => ({
@@ -27,9 +30,10 @@ export async function callGoogle(messages, tier, system) {
     systemInstruction: { parts: [{ text: system }] },
     contents,
   };
-  if (tier.thinkingLevel) {
-    body.generationConfig = { thinkingConfig: { thinkingLevel: tier.thinkingLevel } };
-  }
+  const generationConfig = {};
+  if (tier.maxTokens) generationConfig.maxOutputTokens = tier.maxTokens;
+  if (tier.thinkingLevel) generationConfig.thinkingConfig = { thinkingLevel: tier.thinkingLevel };
+  if (Object.keys(generationConfig).length) body.generationConfig = generationConfig;
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(tier.model)}` +
