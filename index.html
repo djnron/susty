@@ -1283,9 +1283,11 @@ const GRIDS = {
   AE:    { name: 'United Arab Emirates', g: 468 },
   GB:    { name: 'United Kingdom',       g: 217 },
   US:    { name: 'United States',        g: 384 },
-  VN:    { name: 'Vietnam',              g: 484 },
-  renew: { name: 'Renewable tariff (hydro or wind)', g: 30 }
+  VN:    { name: 'Vietnam',              g: 484 }
 };
+// No renewable-tariff option. A tariff is a contract, not the electricity the
+// reader's device and the servers physically draw from the local grid, and the
+// 30 g/kWh it carried had no source. Every figure here is location-based.
 
 // Time zone is the only location signal that costs nothing: no permission
 // prompt, no network call, no IP handed to a third party.
@@ -1404,7 +1406,9 @@ const COPY = {
     sourceLiveOther:  "The electricity figure comes from {source}, which reports a current reading for your grid.",
     usNationalAverage:"We are currently using Ember's 2024 United States national average (384 g/kWh). If you haven't already, pick a more specific location above to make this more accurate. ",
     sourceAnnualUS:   "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
-    sourceAnnual:     "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region."
+    sourceAnnual:     "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
+    basisOperational: "It counts what power stations emit.",
+    basisLifecycle:   "It counts life-cycle emissions, including fuel supply chains, so it runs a little higher than a figure counting only what power stations emit."
   }
 };
 
@@ -1661,7 +1665,7 @@ function paintLedger() {
   $('rPue').textContent      = fmt(totals.chipWh, 3) + ' Wh';
   $('rHosting').textContent  = fmt(totals.hostingWh, 3) + ' Wh';
   $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
-  $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh';
+  $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh, ' + gridBasis();
   // Show the latest successfully completed model. A later interrupted request
   // may update state.model while streaming, but it must not replace the model
   // label for the completed functional unit.
@@ -1722,6 +1726,7 @@ function paintLedger() {
   else if (state.grid === 'US' && !state.region)     parts.push(L.usNationalAverage);
   else if (state.grid === 'US')                      parts.push(fill(L.sourceAnnualUS, { source: src('egrid') }));
   else                                               parts.push(fill(L.sourceAnnual,   { source: src('ember') }));
+  parts.push(gridBasis() === 'operational' ? L.basisOperational : L.basisLifecycle);
 
   $('gridNote').innerHTML = parts.map(s => (s || '').trim()).filter(Boolean).join(' ');
   $('rTotal').textContent = fmt(g) + ' g CO₂e';
@@ -1938,6 +1943,17 @@ function markLiveRegion() {
   // "now" would overclaim on a figure matched to this hour a day ago.
   const when = state.live && state.live.matchedHour ? ' g/kWh this hour' : ' g/kWh now';
   opt.textContent = state.live ? name + ' — ' + state.live.g + when : base;
+}
+
+// The sources do not share one accounting basis, so the ledger names the one
+// in force. NESO, EIA-derived and eGRID figures count what power stations
+// emit (operational). Ember, and Electricity Maps by default, add fuel supply
+// chains and plant construction (life-cycle), which runs higher on fossil
+// grids and gives wind, solar and nuclear a small non-zero value.
+function gridBasis() {
+  if (state.live) return /^(NESO|EIA)/.test(state.live.source || '') ? 'operational' : 'life-cycle';
+  if (state.grid === 'US' && state.region) return 'operational';   // eGRID
+  return 'life-cycle';                                               // Ember
 }
 
 function applyGrid() {
@@ -2382,12 +2398,11 @@ try {
 } catch {}
 $('tier').value = state.tier;
 
-// Grid: World average first, then the EU aggregate, countries A–Z, tariff last.
+// Grid: World average first, then the EU aggregate, countries A–Z.
 const gridSel = $('grid');
 const gridOrder = ['world', 'EU',
-  ...Object.keys(GRIDS).filter(k => k !== 'world' && k !== 'EU' && k !== 'renew')
-    .sort((a, b) => GRIDS[a].name.localeCompare(GRIDS[b].name)),
-  'renew'];
+  ...Object.keys(GRIDS).filter(k => k !== 'world' && k !== 'EU')
+    .sort((a, b) => GRIDS[a].name.localeCompare(GRIDS[b].name))];
 gridSel.innerHTML = gridOrder.map(k =>
   '<option value="' + k + '">' + GRIDS[k].name + ' — ' + GRIDS[k].g + ' g/kWh</option>').join('');
 

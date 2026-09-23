@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release — three open decisions (see [Open decisions](#open-decisions))
+**Status:** Candidate for release — one open decision (see [Open decisions](#open-decisions))
 **Date:** 23 September 2026
 **Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 
@@ -15,9 +15,7 @@ This is an **operational estimate, not a full life-cycle assessment**. Training 
 
 These are known inconsistencies that this document discloses but does not resolve. Each changes numbers the product shows, so each needs an explicit owner decision rather than a silent fix.
 
-1. **Mixed grid accounting boundary.** Ember national figures (every non-US, non-GB country, the EU and world averages, and the US national fallback) are **life-cycle** intensities. EPA eGRID, the EIA-derived hourly figures and NESO are **operational (direct combustion)** intensities. See [§6.1](#61-accounting-basis). For the US the two differ by about 10% (Ember 384 vs eGRID 350 g/kWh).
-2. **Renewable-tariff preset (30 g/kWh).** Unsourced, appears to be life-cycle, and represents a contractual (market-based) instrument inside an otherwise location-based model. See [§6.7](#67-renewable-tariff-preset).
-3. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
+1. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
 
 ---
 
@@ -283,9 +281,11 @@ The sources do **not** share one accounting boundary:
 | EIA-930 fuel mix × Susty fuel factors | US regions, hourly | Operational (direct combustion) |
 | EPA eGRID2023 Rev 2 | US subregions, annual | Operational (CO2e output emission rates) |
 | Ember yearly data | All other countries, EU, world, US national fallback | **Life-cycle** (IPCC AR5 Annex III factors, including supply chain and upstream methane) |
-| Renewable-tariff preset | User choice | Unsourced; appears life-cycle; contractual |
+| Electricity Maps (optional) | Any zone, when configured | **Life-cycle** (the API's default `emissionFactorType`) |
 
-Life-cycle intensities run higher than operational ones for fossil-heavy grids and give renewables a non-zero value. For the US, Ember's 2024 figure is **384 g/kWh**; eGRID2023's national operational CO2e rate is 770.9 lb/MWh = **350 g/kWh**. Until one basis is chosen ([Open decision 1](#open-decisions)), results for readers on Ember figures are closer to a life-cycle-inclusive grid intensity than a strictly operational one.
+**The ledger names the basis in force.** The grid-intensity row reads, for example, `384 g/kWh, life-cycle` or `212 g/kWh, operational`, and the source note says in plain words which one applies.
+
+**Why the figures are not converted to one basis.** Ember applies the same global life-cycle factor per fuel to every country (coal 820, gas 490, other fossil 700, wind 11 g CO2e/kWh), not each country's actual plant efficiency. So an Ember figure is not simply "operational plus a margin": it can be higher or lower than an operational figure for the same grid. For the US, Ember's 2024 figure is **384 g/kWh** against eGRID2023's operational **350 g/kWh** (770.9 lb/MWh). Recomputing Ember's generation mix with Susty's operational fuel factors moved countries by −76% to +20% (Sweden 35 → 8, South Africa 718 → 861), which would add a new error rather than remove one. A single source publishing both bases for every zone with one method — Electricity Maps' paid tier, for example — is the clean fix, and remains future work. Against the other uncertainties in the model, chiefly the absolute token-energy coefficients, the basis difference is secondary; it is disclosed rather than hidden.
 
 ### 6.2 Great Britain — NESO
 
@@ -327,17 +327,17 @@ When the United States is selected with no subregion, Susty uses **384 g/kWh**, 
 
 ### 6.6 Optional — Electricity Maps
 
-Live intensity for any zone via `ELECTRICITY_MAPS_TOKEN`. Not used by default: absolute values need a paid plan. When it supplies a figure, the ledger credits Electricity Maps.
+Live intensity for any zone via `ELECTRICITY_MAPS_TOKEN`. Not used by default: absolute values need a paid plan. When it supplies a figure, the ledger credits Electricity Maps and labels the figure life-cycle, the API's default basis.
 
-### 6.7 Renewable-tariff preset
+### 6.7 No renewable-tariff option
 
-The interface contains a user-selectable **Renewable tariff (hydro or wind) = 30 gCO2/kWh** preset. It is retained for compatibility but is **not validated by this methodology**:
+Susty offered a "Renewable tariff (hydro or wind)" preset at 30 g CO2/kWh until 23 September 2026. It was removed because:
 
-- It has no recorded source.
-- 30 g/kWh is close to published **life-cycle** medians for hydro (~24) and above wind (~11); on the **operational** basis used for GB and US figures, wind and hydro are 0.
-- A tariff is a contractual (market-based) instrument. Every other grid figure in Susty is location-based: what the local grid physically supplies.
+- it had no recorded source;
+- a tariff is a contractual (market-based) instrument, while every other figure in Susty is location-based — the electricity the local grid physically supplies to the reader's device and, by approximation, the servers;
+- choosing it let a reader remove most of the footprint by picking a label.
 
-It should be sourced and normalized to the chosen accounting basis, relabelled explicitly as a market-based alternative, or removed, before this methodology is treated as fully validated.
+Susty is a location-based estimate. A reader on a renewable tariff still draws from the same grid; the tariff changes who is paid for which generation, not what their device runs on. A visitor who had the preset saved falls back to their time-zone guess.
 
 ### 6.8 Location
 
@@ -429,7 +429,7 @@ The ledger opens with:
 - latest completed model (the model that actually answered the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session.
 
-Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity and its named source. The model picker states each tier's per-token energy relative to Sonnet 4.6, and that the Gemini tiers always think.
+Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The model picker states each tier's per-token energy relative to Sonnet 4.6, and that the Gemini tiers always think.
 
 The per-exchange value is always labeled a **session average**. It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
 
@@ -459,7 +459,7 @@ These are order-of-magnitude figures. Their job is to show that the footprint of
 
 The ledger converts grams to money at **$100 per tonne**, to show proportion rather than to sell offsets. At conversation scale this lands under a hundredth of a cent.
 
-$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 3](#open-decisions).
+$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 1](#open-decisions).
 
 ---
 
@@ -483,7 +483,7 @@ A modeled number is never described as directly measured. The interface uses pre
 2. **Model calibration.** Anthropic and Google factors depend on architecture that neither company discloses; EcoLogits infers it.
 3. **PUE.** The actual facility serving a request is unknown.
 4. **Server location.** The user's grid is used as a proxy for remote service energy.
-5. **Grid accounting basis.** Ember (life-cycle) and eGRID/EIA/NESO (operational) are mixed; see §6.1.
+5. **Grid accounting basis.** Ember and Electricity Maps (life-cycle) and eGRID/EIA/NESO (operational) are mixed. The ledger labels which applies; see §6.1.
 6. **Regional GB figures are forecasts.** NESO publishes only forecasts at regional level.
 7. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
 8. **Attended time.** Browser interaction is a proxy for attention, not a direct observation.
@@ -554,7 +554,9 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | OLED phone share "~57%" | **Updated** to ~63% (Q1 2025; 57% was Q1 2024) | Omdia via OLED-Info |
 | Offset at "$100/t for durable removal (Frontier 2024)" | **Corrected** — $100/t is a target; 2024 average ~$320/t | CDR.fyi 2024 review; US DOE |
 | Comparisons: tea, shower, burger | Not traced to a primary source | — |
-| Renewable tariff 30 g/kWh | No source found | — |
+| Renewable tariff 30 g/kWh | No source found; **preset removed** | — |
+| Ember factors | Coal 820, gas 490, other fossil 700, wind 11 g/kWh, global | Ember methodology |
+| Electricity Maps default basis | Life-cycle (`emissionFactorType` default) | Electricity Maps API reference |
 | 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
 
 ---

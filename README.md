@@ -177,8 +177,8 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **Grid intensity is applied to the reader's device and the data centre
   alike.** The servers are almost certainly somewhere else.
 - **Grid sources mix two accounting bases.** Ember's national figures are
-  life-cycle; NESO, EIA and eGRID are operational. The renewable-tariff preset
-  (30 g/kWh) is unsourced. Both are open decisions in METHODOLOGY.
+  life-cycle; NESO, EIA and eGRID are operational. The ledger names which one
+  applies; converting them to one basis would add error (METHODOLOGY §6.1).
 - **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
   every Gemini reply carries some reasoning tokens. They are measured and
   priced; the default, Flash-Lite, runs at the lowest level Google offers.

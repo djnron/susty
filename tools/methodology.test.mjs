@@ -127,10 +127,17 @@ check('EIA fuel factors match', () => {
     has(new RegExp(`\\| ${name} \\| ${g.toLocaleString('en-US')} \\|`), `${name} ${g}`);
   }
 });
-check('world, EU, US fallback and renewable preset match', () => {
+check('world, EU and US fallback match', () => {
   has(new RegExp(`world ${GRIDS.world.g}, EU ${GRIDS.EU.g}`));
   has(new RegExp(`Susty uses \\*\\*${GRIDS.US.g} g/kWh\\*\\*`));
-  has(new RegExp(`Renewable tariff \\(hydro or wind\\) = ${GRIDS.renew.g} gCO2/kWh`));
+});
+check('no market-based renewable preset, and the document says so', () => {
+  assert.ok(!('renew' in GRIDS), 'GRIDS still has a renewable preset');
+  has(/### 6\.7 No renewable-tariff option/);
+});
+check('ledger labels the grid accounting basis', () => {
+  assert.match(html, /\$\('rGrid'\)\.textContent\s*=\s*MODEL\.gridGPerKwh \+ ' g\/kWh, ' \+ gridBasis\(\)/);
+  has(/The ledger names the basis in force/);
 });
 check('eGRID range matches the subregion table', () => {
   const vals = Object.values(US_SUB);
