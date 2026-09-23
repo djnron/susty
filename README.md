@@ -1,6 +1,8 @@
 # susty
 
-A sustainability chatbot that keeps a running count of the carbon its own conversation costs. Click the counter to see the arithmetic and what to do about it.
+A sustainability chatbot that estimates the operational carbon of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
+
+**Version 2.0.0** (23 September 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Every release is tagged in git (`v2.0.0`, `v1.0.0`).
 
 No build step, no framework, no dependencies.
 
@@ -140,25 +142,29 @@ stylesheet.
 
 ## About the carbon figures
 
-They are estimates, and the page says so. Token counts are real — the API reports them and the meter uses them. Everything after that is modelled:
+They are estimates, and the page says so. Provider token counts are measured where available; energy, device power, location, and some grid values are modeled, inferred, or derived.
 
 ```
 grams CO2e = ( (tokens × energy per token) × cooling
-             + exchanges × hosting
+             + handled requests × hosting
              + device watts × hours attended ) × grid intensity
+
+g CO2e / completed exchange
+= session g CO2e / completed exchanges
 ```
 
-Per-query energy use isn't published by any lab, and public estimates vary by
-more than an order of magnitude. The defaults here (0.05 mWh per input token,
-0.5 mWh per output token, PUE 1.12, 473 g/kWh world
-average) sit in the middle of that range and are deliberately easy to change.
+The absolute token coefficients (0.05 mWh per input token and 0.5 mWh per
+output token) and PUE 1.12 are Susty modeling assumptions, not direct
+measurements from the cited literature. They are deliberately easy to change
+as better provider/model measurements become available. The world grid
+fallback is 471 g/kWh (Ember 2024).
 Grid intensity is user-selectable because it alone swings the answer more than
 tenfold.
 
 The device term counts the whole end-user device, not just its screen, which is
 how every published framework counts it — and only for the time the reader was
 actually there. It is calibrated on measured figures rather than on the
-reporting frameworks' assumed ones. §4 of METHODOLOGY has the sourcing, the
+reporting frameworks' assumed ones. §7 of METHODOLOGY has the sourcing, the
 approaches it rejects, and the errors larger than the model itself.
 
 ## Known gaps
@@ -172,6 +178,16 @@ Declared rather than fixed, and all in METHODOLOGY:
   phones default to OLED, everything else to LCD.
 - **Grid intensity is applied to the reader's device and the data centre
   alike.** The servers are almost certainly somewhere else.
+- **Grid sources mix two accounting bases.** Ember's national figures are
+  life-cycle; NESO, EIA and eGRID are operational. The ledger names which one
+  applies; converting them to one basis would add error (METHODOLOGY §6.1).
+- **Energy per token is at the low end of published estimates**, and the
+  model multipliers leave out how many GPUs a model needs, so they likely
+  understate large models and overstate small ones. Both stay as they are
+  until they can be calibrated against provider data (METHODOLOGY §4.3–4.4, §15).
+- **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
+  every Gemini reply carries some reasoning tokens. They are measured and
+  priced; the default, Flash-Lite, runs at the lowest level Google offers.
 - **Rate limiting is in-memory**, so it resets on cold start. It deters casual
   abuse; it is not a quota.
 - **`api/feedback.js` is not wired up.** The client opens a `mailto:` link
@@ -181,4 +197,4 @@ Declared rather than fixed, and all in METHODOLOGY:
   resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to drop it from the
   menu, or `SUSTY_TIERS=off` to collapse every request to the default.
 
-The ledger is built to make the conversation's footprint feel small on purpose. A long chat costs a fraction of a penny to offset; the actions discussed in it are worth thousands of times more. That comparison is the point of the feature.
+The ledger keeps both the normalized functional unit and the cumulative session total visible. Everyday comparisons continue to use the session total, not the per-exchange average.

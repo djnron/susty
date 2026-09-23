@@ -12,6 +12,12 @@ node tools/contrast.mjs
 echo "\n== carbon model: clock, device table, model factors =================="
 node tools/clock.test.mjs
 
+echo "\n== completed-exchange functional unit ================================"
+node tools/completed-exchange.test.mjs
+
+echo "\n== methodology matches code =========================================="
+node tools/methodology.test.mjs
+
 echo "\n== model tiers: all enabled =========================================="
 node tools/tiers.test.mjs
 echo "\n== model tiers: expensive gated ======================================"

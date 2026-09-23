@@ -81,6 +81,17 @@ if (!TIERS_ENABLED) {
   check("gemini-flash cannot go to true thinking-off", gf.thinkingLevel === "low");
   check("gemini-flash-lite maps to gemini-3.5-flash-lite",
     resolveTier("gemini-flash-lite").model === "gemini-3.5-flash-lite");
+  // Flash-Lite accepts "minimal", its own default and the lowest it offers;
+  // Flash's lowest is "low" (ai.google.dev/gemini-api/docs/thinking).
+  check("gemini-flash-lite thinks at minimal, its floor",
+    resolveTier("gemini-flash-lite").thinkingLevel === "minimal");
+  // Gemini counts thinking against maxOutputTokens, so the cap leaves room
+  // for it beyond the standard reply ceiling rather than being left off.
+  for (const k of ["gemini-flash", "gemini-flash-lite"]) {
+    const t = resolveTier(k);
+    check(`${k} carries an output cap with thinking headroom`,
+      Number.isInteger(t.maxTokens) && t.maxTokens > resolveTier("sonnet").maxTokens);
+  }
 
   // Anthropic tiers must be unaffected by Google's key either way.
   check("haiku still resolves with Google configured", resolveTier("haiku").key === "haiku");
