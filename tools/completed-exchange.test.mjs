@@ -146,14 +146,15 @@ for (const [label, marker] of [
 }
 
 console.log('\nMeter and ledger contract');
-check('primary meter is per answer (completed exchange) and starts with no figure', () => {
-  assert.match(html, /id="meterRead" hidden><\/span>/);
-  assert.match(html, /grams CO₂e per answer/);
-  assert.match(html, /'shown after your first answer' : 'average for this chat'/);
+check('headline is the running total, which only goes up', () => {
+  assert.match(html, /id="meterRead">0\.00<\/span>/);
+  assert.match(html, /grams CO₂e so far/);
+  assert.match(html, /<span class="meter-hint">including your device<\/span>/);
+  assert.match(html, /function paintMeter\(pulse = true\) \{\s+const target = grams\(\);/);
 });
-check('session total remains visible', () => {
-  assert.match(html, /id="meterNote">0\.00 g so far, including your device · no answers yet/);
-  assert.match(html, /' g so far, including your device · ' \+/);
+check('average per answer (the functional unit) sits under the headline', () => {
+  assert.match(html, /id="meterNote">The average per answer appears after your first answer\./);
+  assert.match(html, /' g per answer on average · '/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);
 });
 check('units are never forced to capitals (g would read as G, giga)', () => {

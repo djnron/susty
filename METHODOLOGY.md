@@ -29,12 +29,14 @@ Susty's primary functional unit is **one completed exchange**.
 
 > A completed exchange is one user prompt and the corresponding model response that reaches an explicit normal provider completion and is committed to the conversation.
 
-The primary reported value is a **session average**:
+The functional-unit value is a **session average**:
 
 ```text
 g CO2e per completed exchange
 = total operational session emissions / completed exchanges
 ```
+
+On screen it is reported directly beneath the headline, which is the running **session total** (§8). An average falls whenever a new exchange costs less than the average so far; as the headline it read as a reset, so the total, which only rises, leads.
 
 This is not the measured footprint of a specific individual exchange. Device energy accrues across the session while the user is estimated to be attending to Susty, so the cleanest way to put all components on one functional unit is to normalize the total session footprint by the number of completed exchanges.
 
@@ -139,7 +141,7 @@ average_gCO2e_per_completed_exchange
 = session_gCO2e / completed_exchanges
 ```
 
-Before the first completed exchange, the functional-unit value is undefined and is shown as `—`, not zero.
+Before the first completed exchange, the functional-unit value is undefined: it is not shown as zero, and the screen says it will appear after the first answer.
 
 Because attended device energy can continue to accrue after a response, the average per completed exchange can increase while a user reads. It can also decrease when a new completed exchange increases the denominator. The **session total never decreases**.
 
@@ -444,29 +446,31 @@ Absent a stored choice, the theme defaults to **dark on phones and tablets** and
 
 ## 8. Reporting and ledger
 
-On screen, a completed exchange is called an **answer**; the ledger and this document define it. The primary display reports:
+On screen, a completed exchange is called an **answer**; the ledger and this document define it. The display reports:
 
 ```text
-0.07  grams CO2e per answer
-      AVERAGE FOR THIS CHAT
+0.21  grams CO2e so far
+      INCLUDING YOUR DEVICE
 
-0.21 g so far, including your device · 3 answers
+0.07 g per answer on average · 3 answers
 ```
 
-Before the first answer the headline shows no figure and reads "grams CO2e per answer — shown after your first answer", and the note reads "0.02 g so far, including your device · no answers yet": the total is already non-zero because device time accrues from the first moment of attended use. The note always says the total includes the device, before and after the first answer. With exactly one answer the average equals the total and the two rise together; from the second answer the average falls below the total. Units are never set in forced capitals, where "g" would read as "G" (giga).
+The headline is the **running session total**. It rises with every answer, including cut-off or failed attempts that used energy, and slowly while the reader is present, because device time accrues from the first moment of attended use; it never falls. The **functional unit**, the average per completed exchange, sits directly beneath it. Before the first answer the note reads "The average per answer appears after your first answer." With exactly one answer the average equals the total.
+
+The functional-unit value was the headline until 23 September 2026. As an average it drops whenever a new answer costs less than the average so far, for example after a first answer that included several minutes of reading time. In testing, that read as the counter resetting when the model was changed, and as questions not being counted. Units are never set in forced capitals, where "g" would read as "G" (giga).
 
 The ledger opens with:
 
-- average per answer;
+- this chat so far (the session total);
 - answers (completed exchanges);
-- session total;
+- average per answer;
 - cut-off or failed attempts, which are in the total but not counted as answers (only when there are any);
 - the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session.
 
 Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
-The per-exchange value is always labeled a **session average**. It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
+The per-answer value is always labeled an average ("per answer on average"). It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
 
 Token-normalized carbon may be reported as a secondary diagnostic in the future, but should not be presented as task effectiveness or answer quality.
 

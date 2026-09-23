@@ -12,7 +12,7 @@ People curious about the sustainability of everyday decisions — diet, travel, 
 
 ## Product Purpose
 
-susty is a sustainability chatbot that gives specific, number-backed answers to everyday sustainability questions and keeps a live estimate of the conversation's operational carbon footprint. The primary meter reports the **session-average g CO2e per completed exchange**, with the cumulative session total visible alongside it. The meter is not a disclaimer — it is the product's central argument: even the most honest environmental advice tool has a footprint, and naming it is what makes the advice trustworthy.
+susty is a sustainability chatbot that gives specific, number-backed answers to everyday sustainability questions and keeps a live estimate of the conversation's operational carbon footprint. The meter shows the **running total for the conversation**, with the **average g CO2e per answer** (per completed exchange, the functional unit) beneath it. The meter is not a disclaimer — it is the product's central argument: even the most honest environmental advice tool has a footprint, and naming it is what makes the advice trustworthy.
 
 ## Positioning
 
