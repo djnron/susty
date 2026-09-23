@@ -1,6 +1,6 @@
 # susty
 
-A sustainability chatbot that estimates the operational carbon of its own conversation. The meter shows the running total for the conversation, with the average per answer (g CO2e per completed exchange, the functional unit) beneath it.
+A sustainability chatbot that estimates the operational carbon of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
 No build step, no framework, no dependencies.
 

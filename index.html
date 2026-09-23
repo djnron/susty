@@ -939,7 +939,7 @@ textarea, input { caret-color: var(--ink); }
             <span class="meter-hint">including your device</span>
           </span>
         </button>
-        <p class="meter-note" id="meterNote">The average per answer appears after your first answer.</p>
+        <p class="meter-note" id="meterNote">No answers yet</p>
       </div>
   </header>
 
@@ -1056,7 +1056,7 @@ textarea, input { caret-color: var(--ink); }
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
     <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
-    <p class="note" id="noteSum">The large meter is the carbon of this chat so far, and it goes up with every answer. Underneath is the average per answer: that total divided by the answers that finished normally. Failed or cut-off attempts stay in the total when their energy can be measured or modelled, but they do not count as answers. The total includes AI inference, hosting/network, and the whole device you're reading on during estimated attended time. Typing and scrolling are evidence of attention; after a period without activity we stop counting device time. Longer chats also cost more per answer because the conversation context is sent back each time.</p>
+    <p class="note" id="noteSum">The large meter is the carbon of this chat so far, and it goes up with every answer. The ledger also shows the average per answer: that total divided by the answers that finished normally. Failed or cut-off attempts stay in the total when their energy can be measured or modelled, but they do not count as answers. The total includes AI inference, hosting/network, and the whole device you're reading on during estimated attended time. Typing and scrolling are evidence of attention; after a period without activity we stop counting device time. Longer chats also cost more per answer because the conversation context is sent back each time.</p>
   </div>
 
   <div class="sect">
@@ -1064,7 +1064,7 @@ textarea, input { caret-color: var(--ink); }
     <ul class="sources">
       <li>
         <b>Functional unit: one completed exchange (an "answer" on screen)</b>
-        <span>One user prompt plus the corresponding response that reaches normal provider completion and is committed to the conversation. It is reported under the headline as a session average: total operational session CO₂e divided by completed exchanges. The headline itself is the running session total.</span>
+        <span>One user prompt plus the corresponding response that reaches normal provider completion and is committed to the conversation. It is reported in the ledger as a session average: total operational session CO₂e divided by completed exchanges. The headline is the running session total.</span>
       </li>
       <li>
         <b>Energy per token (modelled assumption)</b>
@@ -1620,19 +1620,17 @@ let shown = 0, meterRaf = null;
 // `pulse` is false for passive ticks and failed/incomplete attempts: the flash
 // marks a newly completed functional unit, not steady device-time drift.
 // The big number is the running total, so it goes up with every answer (and
-// slowly while the reader is here). The functional unit, grams per completed
-// exchange, sits underneath: as an average it can fall when a cheaper answer
-// arrives, which read as a reset when it was the headline.
+// slowly while the reader is here). Under it, just the number of answers.
+// The functional unit, grams per completed exchange, is an average that can
+// fall when a cheaper answer arrives; as the headline that read as a reset,
+// so it lives in the ledger.
 function paintMeter(pulse = true) {
   const target = grams();
-  const perAnswer = gramsPerCompletedExchange();
   const completed = completedExchangeCount();
   // On screen a completed exchange is an "answer"; the ledger and METHODOLOGY
-  // say what counts as one. Non-breaking spaces keep "2 answers" together.
-  $('meterNote').textContent = perAnswer === null
-    ? 'The average per answer appears after your first answer.'
-    : perAnswer.toFixed(2) + ' g per answer on average · ' +
-      completed + (completed === 1 ? '\u00a0answer' : '\u00a0answers');
+  // say what counts as one.
+  $('meterNote').textContent = completed === 0 ? 'No answers yet'
+    : completed + (completed === 1 ? ' answer' : ' answers');
   // Cancel any in-flight tween, so rapid changes don't leave two loops
   // writing `shown` in the same frame.
   if (meterRaf !== null) { cancelAnimationFrame(meterRaf); meterRaf = null; }

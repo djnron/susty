@@ -152,9 +152,10 @@ check('headline is the running total, which only goes up', () => {
   assert.match(html, /<span class="meter-hint">including your device<\/span>/);
   assert.match(html, /function paintMeter\(pulse = true\) \{\s+const target = grams\(\);/);
 });
-check('average per answer (the functional unit) sits under the headline', () => {
-  assert.match(html, /id="meterNote">The average per answer appears after your first answer\./);
-  assert.match(html, /' g per answer on average · '/);
+check('under the headline: the number of answers; the average is in the ledger', () => {
+  assert.match(html, /id="meterNote">No answers yet<\/p>/);
+  assert.match(html, /completed === 0 \? 'No answers yet'/);
+  assert.match(html, /<td>Average per answer<\/td><td id="rPerExchange">/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);
 });
 check('units are never forced to capitals (g would read as G, giga)', () => {

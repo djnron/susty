@@ -36,7 +36,7 @@ g CO2e per completed exchange
 = total operational session emissions / completed exchanges
 ```
 
-On screen it is reported directly beneath the headline, which is the running **session total** (§8). An average falls whenever a new exchange costs less than the average so far; as the headline it read as a reset, so the total, which only rises, leads.
+On screen the headline is the running **session total**, with the number of answers beneath it; the functional-unit value is shown in the ledger (§8). An average falls whenever a new exchange costs less than the average so far; as the headline it read as a reset, so the total, which only rises, leads.
 
 This is not the measured footprint of a specific individual exchange. Device energy accrues across the session while the user is estimated to be attending to Susty, so the cleanest way to put all components on one functional unit is to normalize the total session footprint by the number of completed exchanges.
 
@@ -452,10 +452,10 @@ On screen, a completed exchange is called an **answer**; the ledger and this doc
 0.21  grams CO2e so far
       INCLUDING YOUR DEVICE
 
-0.07 g per answer on average · 3 answers
+3 answers
 ```
 
-The headline is the **running session total**. It rises with every answer, including cut-off or failed attempts that used energy, and slowly while the reader is present, because device time accrues from the first moment of attended use; it never falls. The **functional unit**, the average per completed exchange, sits directly beneath it. Before the first answer the note reads "The average per answer appears after your first answer." With exactly one answer the average equals the total.
+The headline is the **running session total**. It rises with every answer, including cut-off or failed attempts that used energy, and slowly while the reader is present, because device time accrues from the first moment of attended use; it never falls. Beneath it is the number of answers ("No answers yet" before the first). The **functional unit**, the average per completed exchange, is the second figure in the ledger, not on the main screen: it spreads reading time across answers, so it is neither the cost of the latest question nor a number that helps a reader decide anything, while it matters for comparing sessions and for reporting.
 
 The functional-unit value was the headline until 23 September 2026. As an average it drops whenever a new answer costs less than the average so far, for example after a first answer that included several minutes of reading time. In testing, that read as the counter resetting when the model was changed, and as questions not being counted. Units are never set in forced capitals, where "g" would read as "G" (giga).
 
@@ -470,7 +470,7 @@ The ledger opens with:
 
 Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
-The per-answer value is always labeled an average ("per answer on average"). It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
+The per-answer value is always labeled an average ("Average per answer"). It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
 
 Token-normalized carbon may be reported as a secondary diagnostic in the future, but should not be presented as task effectiveness or answer quality.
 
