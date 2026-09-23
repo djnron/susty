@@ -68,7 +68,7 @@ Single-session, single-page. No login, no history, no account. The user arrives,
 
 ## Evidence on Hand
 
-- Carbon model evidence includes EcoLogits/ML.ENERGY, Luccioni et al. 2023, Oviedo et al. 2026, Uptime Institute, EIA, EPA eGRID, Ember, DIMPACT, and device-power literature. The absolute token coefficients and PUE 1.12 are Susty modeling assumptions rather than direct measurements from those sources.
+- Carbon model evidence includes EcoLogits/ML.ENERGY, Luccioni et al. (FAccT 2024), Oviedo et al. (Joule 2026), Uptime Institute, NESO, EIA, EPA eGRID, Ember, DIMPACT, Kirkeby & Lagermann (SAC 2026), and Dash & Hu (MobiSys 2021). METHODOLOGY.md §14 logs what was verified against each. The absolute token coefficients and PUE 1.12 are Susty modeling assumptions rather than direct measurements from those sources.
 - No testimonials, case studies, or usage data on hand
 
 ## Product Principles

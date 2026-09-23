@@ -1,12 +1,24 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release
-**Date:** 22 September 2026
+**Status:** Candidate for release — four open decisions (see [Open decisions](#open-decisions))
+**Date:** 23 September 2026
+**Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 
 Susty estimates the **operational carbon footprint of an AI conversation**. It combines modeled AI inference energy, modeled service/hosting energy, and estimated end-user device energy during attended use, then applies grid carbon intensity.
 
-This is an **operational estimate, not a full life-cycle assessment**. Training and embodied hardware emissions are excluded. Every material input is identified as measured, inferred/declared, or modeled.
+This is an **operational estimate, not a full life-cycle assessment**. Training and embodied hardware emissions are excluded. Every material input is identified as measured, derived, inferred/declared, or modeled. Where a number is a guess, this document says so and, where known, which direction it errs. The product's argument depends on the arithmetic being checkable, so the uncomfortable parts are written down rather than rounded away.
+
+---
+
+## Open decisions
+
+These are known inconsistencies that this document discloses but does not resolve. Each changes numbers the product shows, so each needs an explicit owner decision rather than a silent fix.
+
+1. **Mixed grid accounting boundary.** Ember national figures (every non-US, non-GB country, the EU and world averages, and the US national fallback) are **life-cycle** intensities. EPA eGRID, the EIA-derived hourly figures and NESO are **operational (direct combustion)** intensities. See [§6.1](#61-accounting-basis). For the US the two differ by about 10% (Ember 384 vs eGRID 350 g/kWh).
+2. **Renewable-tariff preset (30 g/kWh).** Unsourced, appears to be life-cycle, and represents a contractual (market-based) instrument inside an otherwise location-based model. See [§6.7](#67-renewable-tariff-preset).
+3. **Gemini model factors.** Both Gemini tiers are priced at the Sonnet anchor (×1.00). EcoLogits now publishes architecture estimates for both models; the same derivation Susty uses for Claude gives **×1.36** for Gemini 3.8 Flash (the default tier) and **×0.85** for Gemini 3.5 Flash-Lite. See [§4.4](#44-model-factors).
+4. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
 
 ---
 
@@ -28,10 +40,13 @@ This is not the measured footprint of a specific individual exchange. Device ene
 ### Completion rules
 
 - A response counts as completed only when Susty receives the provider's normal terminal signal. For the current adapters, Anthropic must end with `message_stop` and `stop_reason = end_turn`; Gemini `finishReason = STOP` is normalized to the same state.
-- A failed request that produces no usable completed response does not increase the denominator.
-- A partial, truncated, blocked, or cut-off response does not count as completed. Unknown or missing terminal state is treated conservatively as incomplete.
-- Energy from incomplete or failed attempts should remain in the session numerator when it can be measured or reasonably modeled.
+- Anthropic `max_tokens`, `refusal`, any other stop reason, a mid-stream `error` event, or a stream that closes without `message_stop` is **incomplete**.
+- Gemini `MAX_TOKENS`, safety/block reasons, an unknown reason, or a missing `finishReason` is **not completed**. End of stream alone is never taken as proof of completion.
+- A request that produces no usable text is **failed**.
+- Energy from incomplete or failed attempts remains in the session numerator when it can be measured or reasonably modeled. It never increases the denominator.
 - If provider usage is unavailable for a failed attempt, the unobserved inference energy is a known limitation.
+
+Each request record carries one of three explicit statuses — `completed`, `incomplete`, `failed` — and the denominator is derived only from records whose status is `completed`.
 
 ### Why exchange rather than token?
 
@@ -44,7 +59,7 @@ Susty therefore uses:
 - **Input, output, and thinking tokens** — workload and diagnostic measures.
 - **Attended time** — the activity basis for device energy.
 
-This framing is informed by the Green Software Foundation's Software Carbon Intensity approach, which requires a consistent functional unit across the defined software boundary. The SCI for AI work suggests per-token units for consumer LLM services; Susty uses exchange as the primary unit because its boundary includes the user device and attended use. Susty is not presented as a formal SCI score because it currently excludes embodied emissions and does not use all SCI accounting requirements.
+This framing is informed by the Green Software Foundation's Software Carbon Intensity approach, which requires a consistent functional unit across the defined software boundary. The SCI for AI specification suggests "per token" as the consumer functional unit for LLMs; Susty uses exchange as the primary unit because its boundary includes the user device and attended use, and SCI for AI requires the chosen unit and its rationale to be stated, which this section does. Susty is not presented as a formal SCI score because it excludes embodied emissions and does not implement all SCI accounting requirements. ITU-T L.1801 (02/2026) likewise requires a declared system boundary and a measurable functional unit; it prescribes no device or token coefficients.
 
 ---
 
@@ -55,18 +70,18 @@ This framing is informed by the Green Software Foundation's Software Carbon Inte
 1. **AI inference** associated with the prompt and model response.
 2. **Data-center facility overhead** through a PUE multiplier.
 3. **Hosting and network/service overhead** as a fixed modeled amount per request handled by the Susty service.
-4. **End-user device electricity** during estimated attended time.
-5. **Grid carbon intensity** used to convert electricity to operational CO2e.
+4. **End-user device electricity** — the whole device, not only its display — during estimated attended time.
+5. **Grid carbon intensity** used to convert electricity to CO2e.
 
 ### Excluded
 
-- Model training.
-- Embodied emissions from servers, accelerators, user devices, and network hardware.
+- **Model training.** Amortised training cost per query is real and not counted.
+- **Embodied emissions** from servers, accelerators, user devices, and network hardware. Susty once added a flat +15% to electricity for this; that treated manufacturing emissions as electricity, which they are not, and the multiplier was removed rather than turned into a separate term. On the AI side, a defensible per-request share would need the accelerator that served the request, its manufacturing footprint, and this request's slice of its lifetime throughput — none knowable from outside the provider. On the device side, per-product lifecycle reports exist, but manufacturing is not marginal to one session on a device that exists regardless, the amortisation basis has no settled answer, and the result would likely dominate rather than refine the figure.
 - Home/office router and access-network electricity beyond the flat hosting/network assumption.
 - Manufacturing and end-of-life impacts.
 - Any inference energy that cannot be observed or estimated after an upstream failure.
 
-The result should therefore be described as **estimated operational CO2e**, not total life-cycle emissions.
+The result should therefore be described as **estimated operational CO2e**, not total life-cycle emissions — with the caveat in [§6.1](#61-accounting-basis) that some grid inputs are themselves life-cycle intensities.
 
 ---
 
@@ -92,7 +107,7 @@ request_gCO2e(j)
   x grid_intensity(j) / 1000
 ```
 
-Token coefficients are in **mWh per token** before conversion to Wh.
+Token coefficients are in **mWh per token** before conversion to Wh. Each request is priced once, at the model factor and grid intensity in effect when it is recorded, and the record is then frozen. Changing model, grid, device, panel, or theme later never reprices it.
 
 ### Device energy
 
@@ -100,11 +115,13 @@ For each attended interval `t`:
 
 ```text
 device_Wh(t)
-= device_watts x attended_hours(t)
+= device_watts(t) x attended_hours(t)
 
 device_gCO2e(t)
 = device_Wh(t) x grid_intensity(t) / 1000
 ```
+
+Each slice is priced at the wattage and grid in effect during that slice. Before a grid, device or theme change takes effect, the elapsed slice is closed out at the old values, so time already spent is never billed at a rate set after it.
 
 ### Session total
 
@@ -121,54 +138,110 @@ average_gCO2e_per_completed_exchange
 = session_gCO2e / completed_exchanges
 ```
 
-Before the first completed exchange, the functional-unit value is undefined and should be shown as `—`, not zero.
+Before the first completed exchange, the functional-unit value is undefined and is shown as `—`, not zero.
 
 Because attended device energy can continue to accrue after a response, the average per completed exchange can increase while a user reads. It can also decrease when a new completed exchange increases the denominator. The **session total never decreases**.
+
+### Why longer chats cost more per turn
+
+The whole conversation history is re-sent on every request, so input tokens grow roughly linearly with conversation length and each successive answer costs more than the last. The ledger says so rather than letting the total look mysteriously superlinear.
 
 ---
 
 ## 4. AI inference
 
-### Token measurement
+### 4.1 Token measurement
 
-Susty uses token counts reported by the model provider where available. Input and output usage are therefore measured at the API level rather than inferred from rendered text.
+Susty uses token counts reported by the model provider where available: Anthropic's `usage.input_tokens` (on `message_start`) and `usage.output_tokens` (on the final `message_delta`); Gemini's `usageMetadata`.
 
-Where a provider exposes thinking/reasoning tokens, Susty includes them in the output workload without double-counting them if they are already a subset of reported output tokens.
+Thinking/reasoning tokens are **measured**, not inferred:
 
-If usage is unavailable, Susty falls back to an estimate based on text length and the system-prompt allowance. This fallback is less precise and should be identified as estimated.
+- Anthropic reports `usage.output_tokens_details.thinking_tokens`, a subset of `output_tokens`, on the final `message_delta`. They are already billed at the output rate; the ledger shows them separately for transparency.
+- Gemini's `candidatesTokenCount` **excludes** `thoughtsTokenCount` (Google documents the total as prompt + thoughts + candidates). The adapter sums the two before passing them on, so both providers reach the browser with the same inclusive relationship. Sending `candidatesTokenCount` alone had silently priced Gemini's reasoning at zero.
 
-### Energy-per-token coefficients
+### 4.2 The estimate fallback
 
-Susty currently uses:
+When usage is missing, tokens are estimated at **4 characters per token**, with two corrections:
+
+- The estimate runs **before** the reply is appended to history, so the model's own output is not counted as part of the request that produced it.
+- A constant **275 tokens** is added for the system prompt, which is billed as input on every turn but never appears in the client's history. (Measured against a live request: a 13-token question reported 278 input tokens.)
+
+The fallback ignores the server's 40-message and 4,000-character truncation, so it over-counts on long conversations. It is a fallback; the measured path is the normal one. The ledger does not currently mark a turn whose tokens were estimated — a known gap.
+
+### 4.3 Energy-per-token coefficients
 
 | Term | Central value | Status |
 |---|---:|---|
 | Input tokens | 0.05 mWh/token | Susty modeling assumption |
 | Output tokens | 0.5 mWh/token | Susty modeling assumption |
 
-These values should **not** be attributed directly to Luccioni et al. The Luccioni study measures energy for 1,000 inferences across model/task classes; it does not publish these exact input/output per-token coefficients. The coefficients remain a central modeling assumption until Susty has a reproducible provider/model-specific calibration.
+These values must **not** be attributed to Luccioni et al. That study measures energy per **1,000 inferences** across model and task classes (text generation averaged about 0.047 kWh per 1,000 inferences on the open models tested); it publishes no input/output per-token coefficients. The coefficients remain a central modeling assumption until Susty has a reproducible provider/model-specific calibration.
 
-The tenfold difference between input and output means long generated responses generally dominate inference energy more than long prompts, although accumulated chat history can make later prompts progressively more expensive.
+**Order-of-magnitude check, not a calibration.** An illustrative Susty exchange (831 input and 571 output tokens across two turns, at PUE 1.12 plus hosting) comes to **0.186 Wh per exchange**. Oviedo et al. (*Joule*, 2026) estimate a median **0.31 Wh per query (IQR 0.16–0.60)** for frontier-scale models (>200B parameters) on H100 nodes, for a standard query with a median of 300 output tokens. Susty's figure falls inside that range. `tools/clock.test.mjs` asserts this so the coefficients cannot drift out of it unnoticed.
 
-### Model factors
+The tenfold difference between input and output means long generated responses generally dominate inference energy, although accumulated chat history makes later prompts progressively more expensive.
 
-Susty applies relative model factors anchored on Claude Sonnet:
+**Reply length matters more than model choice.** Oviedo et al. find that a reasoning-length query (median 5,000 output tokens, ~15× a standard query) raises median energy about **13×**, to 3.91 Wh (IQR 2.15–7.05). The entire spread between Haiku and Opus in the factor table below is about 2.6×. Whether extended thinking is on, and how long the reply runs, decides far more than which model serves it.
 
-| Model/tier | Relative factor | Status |
-|---|---:|---|
-| Claude Haiku 4.5 | 0.52 | modeled from EcoLogits/ML.ENERGY relationship |
-| Claude Sonnet 4.6 | 1.00 | anchor |
-| Claude Opus 4.8 | 1.33 | modeled from EcoLogits/ML.ENERGY relationship |
-| Gemini 3.5 Flash-Lite | 1.00 proxy | not calibrated |
-| Gemini 3.8 Flash | 1.00 proxy | not calibrated |
+### 4.4 Model factors
 
-Anthropic parameter counts are inferred rather than disclosed, so these factors are relative estimates, not direct measurements of provider energy use. Gemini tiers currently use the Sonnet anchor as a proxy and must be labeled **not calibrated**.
+Per-token energy scales with a model's active parameter count. Susty applies relative factors anchored on `claude-sonnet-4-6` = 1.00, derived from [EcoLogits](https://ecologits.ai/)' GPU energy function, which EcoLogits fitted to the measured [ML.ENERGY leaderboard](https://ml.energy/):
 
-### Model routing
+```text
+f(P_active, B) = 1.1665e-6 · e^(-0.011206·B) · P_active + 4.0529e-5   Wh per output token
+```
 
-Susty can route requests across Anthropic and Google model tiers. The model reported in the ledger should be the model that actually answered, not merely the model requested by the client.
+`P_active` is in billions of parameters, evaluated at the midpoint of EcoLogits' active-parameter range. Susty evaluates at batch size **B = 32**; EcoLogits' own default is 64, which would narrow the spread (Haiku 0.59, Opus 1.29). `tools/clock.test.mjs` reproduces every published factor from this function, so none of them is a typed-in number.
 
-The product-facing default and the server fallback are separate concepts. A default should never be described as more efficient unless it has been validated as such.
+| Model/tier | Active params (EcoLogits est.) | Relative factor | Status |
+|---|---|---:|---|
+| Claude Haiku 4.5 | 10–35B, dense | 0.52 | derived from EcoLogits/ML.ENERGY |
+| Claude Sonnet 4.6 | 44–132B, MoE | 1.00 | anchor |
+| Claude Opus 4.6 / 4.7 / 4.8 | 67–200B, MoE | 1.33 | derived from EcoLogits/ML.ENERGY |
+| Gemini 3.5 Flash-Lite | 30–105B, dense | 1.00 proxy | **not calibrated** (derivation would give 0.85) |
+| Gemini 3.8 Flash | 75–200B, MoE | 1.00 proxy | **not calibrated** (derivation would give 1.36) |
+
+**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. Gemini tiers currently use the Sonnet anchor as a proxy and must be labeled **not calibrated**; see [Open decision 3](#open-decisions). The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor. Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
+
+### 4.5 Model routing and tiers
+
+The ledger's model picker offers six tiers across two providers. The client sends an opaque key and `api/chat.js` owns the only mapping to a model, so a modified client cannot name an arbitrary model or switch thinking on.
+
+| Tier | Model | Thinking | Per-token factor |
+|---|---|---|---|
+| Haiku 4.5 | `claude-haiku-4-5` | off | ×0.52 |
+| Sonnet 4.6 | `claude-sonnet-4-6` (overridable via `ANTHROPIC_MODEL`) | off | ×1.00 (anchor) |
+| Opus 4.8 | `claude-opus-4-8` | off | ×1.33 |
+| Opus 4.8, extended thinking | `claude-opus-4-8` | adaptive, effort `low`, 4,000-token ceiling | ×1.33 **plus the thinking tokens** |
+| Gemini 3.5 Flash-Lite | `gemini-3.5-flash-lite` | cannot be disabled; level `low` | not calibrated — ×1.00 proxy |
+| **Gemini 3.8 Flash** (client default) | `gemini-3.8-flash` | cannot be disabled; level `low` | not calibrated — ×1.00 proxy |
+
+**The Gemini default is a scaling decision, not a validated one.** Gemini became the client default to spread load off the Anthropic key, not because an evaluation found it cheaper or more accurate. A default should never be described as more efficient unless it has been validated as such. Every Gemini reply carries some hidden reasoning cost, because `low` is the floor rather than off; it is measured through `thoughtsTokenCount` and priced.
+
+**Server fallback is a separate concept.** `DEFAULT_TIER` in `api/chat.js` stays `sonnet`: it is what a request degrades to if a tier is unrecognised, gated, or its provider is not configured, and it must be a provider that is always present. The tier is a request, not a setting — the ledger reports the model that actually answered (from the response's `message.model`), not the one asked for.
+
+Two server switches, both default-on:
+
+| Variable | Effect |
+|---|---|
+| `SUSTY_EXPENSIVE_TIERS=off` | Drops the thinking tier; everything else stays |
+| `SUSTY_TIERS=off` | Collapses every request to the default tier |
+
+A visitor on the thinking tier can raise the cost of an exchange several times over, on the deployment's own key, against a rate limit that resets on cold start. `SUSTY_EXPENSIVE_TIERS=off` is the lever.
+
+### 4.6 Guardrails
+
+The endpoint is public, so:
+
+- **40 messages** of history forwarded, **4,000 characters** per message.
+- **1,000 output tokens** maximum per Anthropic reply (4,000 on the thinking tier, because thinking counts against the ceiling). **Gemini tiers set no output-token cap** and run to the model's own default — a known gap.
+- **25 requests per IP per 10 minutes.** Rate-limit state is in-process: it resets on a cold start and is not shared between instances. It deters casual abuse; it is not a quota. The limiter checks before recording, so rejected attempts do not extend the window, and when the map exceeds 5,000 addresses it evicts the oldest 1,000 rather than clearing.
+
+`clean()` forwards only role and string content. It also drops leading non-`user` turns, because a 40-message window over an even-length history can open on an assistant turn, which the Messages API rejects.
+
+### 4.7 Streaming
+
+Deltas are rendered as they arrive, coalesced to one render per animation frame, and flushed synchronously when the stream closes (`requestAnimationFrame` does not run in a hidden tab). Partial text from an interrupted or truncated reply is kept on screen and recorded as **incomplete** rather than stored as a complete reply. If nothing usable arrives, the exchange is removed from both transcript and history, and the question is returned to the input box.
 
 ---
 
@@ -176,190 +249,255 @@ The product-facing default and the server fallback are separate concepts. A defa
 
 ### PUE
 
-Susty currently applies a **PUE of 1.12** to modeled AI inference energy.
+Susty applies a **PUE of 1.12** to modeled AI inference energy.
 
-This value is a **Susty hyperscale-data-center assumption**, not the Uptime Institute global average. Uptime reports a 2023 industry average PUE of **1.58** and a capacity-weighted figure of **1.47**. Large modern hyperscale facilities can operate below those averages, but Susty does not know which facility serves a given request.
+This value is a **Susty hyperscale-data-center assumption**, not the Uptime Institute global average. Uptime reports a 2023 industry average PUE of **1.58** (per site) and a capacity-weighted figure of **1.47**. Large modern hyperscale facilities operate below those averages; Oviedo et al. model AI data-center PUE as a distribution with P5–P95 of 1.05–1.40, "consistent with hyperscaler public reports", and 1.12 sits inside that range. Susty does not know which facility serves a given request.
 
-PUE is therefore a material uncertainty and should be treated as a modeled parameter rather than a measured fact.
+PUE is therefore a material uncertainty and is treated as a modeled parameter rather than a measured fact.
 
 ### Hosting and network
-
-Susty currently models service/hosting/network activity at:
 
 ```text
 0.003 Wh per request handled by Susty
 ```
 
-This is a declared modeling assumption. It does not represent a direct measurement of Vercel, internet transit, or the user's local network.
+This is a declared modeling assumption covering the serverless function and network round trip. It does not represent a direct measurement of Vercel, internet transit, or the user's local network.
 
-For the completed-exchange method, an unsuccessful request still incurs this service term when the browser receives an HTTP response from Susty, even though it does not increase the completed-exchange denominator. A client-side fetch failure with no HTTP response is not recorded because the client cannot know whether the service was reached.
+An unsuccessful request still incurs this service term when the browser receives an HTTP response from Susty, even though it does not increase the completed-exchange denominator. A client-side fetch failure with no HTTP response is not recorded because the client cannot know whether the service was reached.
 
 ---
 
 ## 6. Grid carbon intensity
 
-Electricity is converted to carbon using the best available grid source for the user's selected or inferred region.
+The single largest lever in the formula. Electricity is converted to carbon using the best available source for the user's selected or inferred region, and the ledger names the source in force.
 
-### Great Britain
+### 6.1 Accounting basis
 
-**NESO Carbon Intensity API** — half-hourly regional data.
+The sources do **not** share one accounting boundary:
 
-### United States: hourly estimate
+| Source | Used for | Basis |
+|---|---|---|
+| NESO Carbon Intensity API | Great Britain, national and 14 regions | Operational (direct combustion; biomass 120, wind/solar/nuclear/hydro 0 g/kWh) |
+| EIA-930 fuel mix × Susty fuel factors | US regions, hourly | Operational (direct combustion) |
+| EPA eGRID2023 Rev 2 | US subregions, annual | Operational (CO2e output emission rates) |
+| Ember yearly data | All other countries, EU, world, US national fallback | **Life-cycle** (IPCC AR5 Annex III factors, including supply chain and upstream methane) |
+| Renewable-tariff preset | User choice | Unsourced; appears life-cycle; contractual |
 
-**EIA-930** generation by fuel type is converted to operational grid intensity using fuel-specific emissions factors.
+Life-cycle intensities run higher than operational ones for fossil-heavy grids and give renewables a non-zero value. For the US, Ember's 2024 figure is **384 g/kWh**; eGRID2023's national operational CO2e rate is 770.9 lb/MWh = **350 g/kWh**. Until one basis is chosen ([Open decision 1](#open-decisions)), results for readers on Ember figures are closer to a life-cycle-inclusive grid intensity than a strictly operational one.
 
-The EIA feed is delayed, so Susty uses the latest available observation matching the current hour of day rather than presenting the newest published hour as live current conditions. This is an **hour-matched proxy**, not real-time grid data.
+### 6.2 Great Britain — NESO
 
-Interregional imports are not fully represented, which can bias import-heavy regions.
+[NESO Carbon Intensity API](https://api.carbonintensity.org.uk/). Open, no key, no registration; nothing about the visitor is sent.
 
-### United States: annual fallbacks
+- **National:** uses the published `actual` for the current half hour, falling back to `forecast`.
+- **Regional (14 DNO regions):** the regional endpoints publish **only a forecast** for the current half hour, not an actual. Regional GB figures are therefore NESO's current-period forecast, not a measured reading.
 
-**EPA eGRID** subregion output rates are used when hourly EIA data is unavailable for a selected subregion.
+### 6.3 United States — hourly, derived from EIA-930
 
-When the user has selected the United States but no subregion, Susty currently uses **384 gCO2/kWh**, Ember's 2024 United States annual generation-intensity figure, as the national fallback.
+[EIA-930](https://www.eia.gov/opendata/) hourly generation by fuel type, turned into an intensity with per-fuel factors. Requires a free `EIA_API_KEY`. EIA publishes hourly CO2 only in bulk spreadsheets, not the API, so intensity is **derived from the generation mix**:
 
-### Other countries
+| Fuel | g/kWh | Basis |
+|---|---:|---|
+| Coal | 1,024 | EIA: 2,257 lb/MWh |
+| Natural gas | 443 | EIA: 976 lb/MWh |
+| Petroleum | 800 | ~73–74 kg CO2/MMBtu at ~10,800 Btu/kWh |
+| Other | 600 | mixed bucket, uncertain |
+| Geothermal | 40 | reservoir fluid vents dissolved CO2; literature average ~45 |
+| Nuclear, hydro, wind, solar | 0 | operational emissions only |
+| Solar/wind with storage attached | 0 | counted as the generation they are |
+| Battery, pumped, other storage | excluded | time-shifted; counted when charged |
 
-**Ember** annual national electricity-intensity data provides the fallback for countries without a more granular supported source.
+Storage is excluded deliberately: pricing a discharged MWh at zero would credit it as carbon-free while its charging energy stayed uncounted. The fuel list follows the API's own `fueltype` facet; an older eight-fuel table silently dropped geothermal and storage-paired renewables and biased California high by about 3%.
 
-### Optional source
+**The feed runs roughly 15 hours to a day behind.** The newest published hour is therefore usually the middle of last night. Measured once in California, the newest hour read 330 g/kWh while the grid was near 169 — a 2× error. Susty instead uses the **most recent occurrence of the current hour of day**, because the diurnal shape is strongly periodic. This is an **hour-matched proxy**, not real-time data. If no matching hour is available it uses the most recent complete hour and says so. An hour is only accepted if it reports a fuel count comparable to the best hour in the window (at least 3, and at least 70% of the best), so a half-published snapshot is never presented as authoritative.
 
-Electricity Maps can provide more current intensity where an appropriate API tier is configured.
+Interregional imports are ignored, which biases import-heavy regions. Hawaii, Alaska and Puerto Rico are absent from EIA-930 and stay on eGRID.
 
-### Renewable-tariff preset
+### 6.4 United States — annual, by eGRID subregion
 
-The current interface also contains a user-selectable **30 gCO2/kWh renewable-tariff preset**. This value is retained for compatibility but is **not validated by this methodology**: its life-cycle versus operational accounting boundary is not aligned clearly enough with the other grid values. It should be sourced and normalized to the same boundary, or removed, before this methodology is treated as fully validated.
+[EPA eGRID2023 Rev 2](https://www.epa.gov/egrid/summary-data) subregion total output CO2e rates, converted from lb/MWh (× 0.453592). Used when hourly EIA data is unavailable. Subregions run from **110 g/kWh** (upstate New York) to **702** (Puerto Rico). States that straddle subregions with a wide gap are offered split — Hawaii, Illinois, Michigan, Montana, New York (three ways), Pennsylvania, Texas (three ways) and Wisconsin. The picker names geography the reader can identify rather than inferring from a ZIP table, which would mean fabricating hundreds of mappings across boundaries that do not follow postal lines.
 
-### Location
+When the United States is selected with no subregion, Susty uses **384 g/kWh**, Ember's 2024 US figure — a life-cycle intensity, see [§6.1](#61-accounting-basis).
 
-Susty begins with a privacy-preserving location guess from the browser's IANA time zone. It does not require geolocation permission or an IP-location lookup. Where supported, the user can refine the region manually.
+### 6.5 Other countries — Ember
 
-### Server-grid approximation
+[Ember](https://ember-energy.org/data/yearly-electricity-data/) 2024 national annual intensities, from Switzerland (30) to South Africa (713); world 473, EU 213. Annual means miss both the daily swing and regional spread, and the ledger says so. Ember has since revised some 2024 values and published 2025 data; see the verification log.
 
-Susty currently applies the selected grid intensity to both:
+### 6.6 Optional — Electricity Maps
 
-- the user's device; and
-- the remote AI/service energy.
+Live intensity for any zone via `ELECTRICITY_MAPS_TOKEN`. Not used by default: absolute values need a paid plan. When it supplies a figure, the ledger credits Electricity Maps.
 
-The device-side use is geographically plausible. The server-side use is a known approximation because the serving data center may be in another region with a different electricity mix. Until provider location and energy data are available, the ledger should disclose this explicitly.
+### 6.7 Renewable-tariff preset
+
+The interface contains a user-selectable **Renewable tariff (hydro or wind) = 30 gCO2/kWh** preset. It is retained for compatibility but is **not validated by this methodology**:
+
+- It has no recorded source.
+- 30 g/kWh is close to published **life-cycle** medians for hydro (~24) and above wind (~11); on the **operational** basis used for GB and US figures, wind and hydro are 0.
+- A tariff is a contractual (market-based) instrument. Every other grid figure in Susty is location-based: what the local grid physically supplies.
+
+It should be sourced and normalized to the chosen accounting basis, relabelled explicitly as a market-based alternative, or removed, before this methodology is treated as fully validated.
+
+### 6.8 Location
+
+Country is inferred from the browser's IANA time zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`). Geolocation needs a permission prompt; IP lookup hands a third party the visitor's address and adds a network request with its own footprint. The time zone is permissionless, instant, offline, and nothing leaves the browser. Unlisted European zones fall back to the EU average; anything else to the world average. The user can refine the country, and a region where a sub-picker exists.
+
+### 6.9 Server-grid approximation
+
+Susty applies the selected grid intensity to both the user's device and the remote AI/service energy. The device-side use is geographically plausible. The server-side use is a known approximation: the serving data center may be in another region on a different mix, and there is no way to see which from the browser. The ledger discloses this explicitly.
 
 ---
 
 ## 7. End-user device
 
-Susty includes the **whole end-user device**, not only the display.
+Susty includes the **whole end-user device**, not only the display. Every published framework counts the device rather than the screen alone; counting only the panel understated this row by roughly 2–3×. The device row can easily exceed the AI inference itself over a long reading session, which is why it is shown on its own row rather than buried in the sum.
 
-Device power is modeled as a base device load plus a panel component. Panel type and theme matter because OLED power can vary with displayed content; LCD/backlit panels are treated as effectively theme-independent for this model.
+### 7.1 Device power
 
-Representative central values are:
+Device power is modeled as a non-panel base load plus a panel component. The panel is what lets theme move the number; it is a component of the device figure, not an addition to it.
 
-| Configuration | Whole device | Panel component |
+| Configuration | Whole device | Panel (light / dark) |
 |---|---:|---:|
-| Phone, OLED dark | 1.35 W | 0.45 W |
+| Phone, OLED | 1.45 / **1.35 W** | 0.55 / 0.45 W |
 | Phone, LCD | 1.50 W | 0.60 W |
-| Tablet, OLED dark | 4.62 W | 1.32 W |
+| Tablet, OLED | 4.95 / 4.62 W | 1.65 / 1.32 W |
 | Tablet, LCD | 5.50 W | 2.20 W |
-| Laptop, OLED dark | 8.40 W | 2.40 W |
+| Laptop, OLED | 9.00 / 8.40 W | 3.00 / 2.40 W |
 | Laptop, LCD | 10.00 W | 4.00 W |
+| Desktop + OLED monitor | 77.00 / 75.20 W | 9.00 / 7.20 W |
 | Desktop + LCD monitor | 90.00 W | 22.0 W |
 
-These are representative model values, not measurements of the visitor's actual device. The device class may be inferred from browser characteristics; panel type and user selection remain assumptions unless explicitly chosen by the user.
+**Calibrated on measurement where it exists.** Kirkeby & Lagermann (SAC '26) measured typical laptop power of **9–13 W** during realistic browsing (best-fit 9.17–12.43 W across four laptops and ten participants), against the fixed **15–22 W** that the Digst and DIMPACT reporting models assume. They conclude the frameworks overestimate, and that the error **scales with task duration** — exactly the failure mode a running meter would accumulate. The laptop base of 6 W sits inside the 4.88–6.53 W Energy Star idle range of the same machines.
 
-### Attended time
+Phone, tablet and desktop come from [DIMPACT Methodology v1.0](https://dimpact.org/downloadResourceFile?resource=2), Table 6: smartphone 1–2 W (Carbon Trust white paper, lower bound), tablet 5.5 W (BBC White Paper 372, 2020), desktop & monitor 77–100 W. The panel takes about 40% of the LCD device total in the phone, tablet and laptop rows; the OLED tablet keeps the laptop's OLED-to-LCD ratio. Tablets were once billed as laptops (10 W against DIMPACT's 5.5 W), a 1.8× overstatement.
+
+These are representative model values, not measurements of the visitor's device.
+
+### 7.2 Detecting the device
+
+Device **class** is detectable; panel type and brightness are not. `guessDevice()` tests the screen's **short** edge (testing the long edge classified every modern phone as a laptop — an iPhone 15 is 393×852), treats a Macintosh reporting touch points as an iPad (iPadOS 13+ identifies as macOS), and only guesses a desktop monitor when the long edge is ≥ 2,200 px, since 1920×1080 is the most common laptop panel. A picker choice overrides the guess permanently.
+
+Panel type is a **declared prior**. HDR support looked like an OLED signal until it read `true` on a mini-LED laptop. Phones default to **OLED** — about 63% of smartphones shipped in Q1 2025 had OLED displays (Omdia), and every current iPhone does. That default errs downward by about 11% for a reader genuinely on an LCD phone, who can correct it in the picker. Tablets, laptops and monitors default to **LCD**, where OLED remains a small share.
+
+### 7.3 Attended time
 
 Susty estimates **attended time**, not literal screen-on time and not verified human attention.
 
-The device clock runs while the page is visible and there has been relevant user activity within a **75-second grace window**. Activity includes keyboard, pointer, wheel, scroll, touch, or mouse events. A blur can stop accrual immediately where the browser emits it.
+The device clock runs while Susty is the visible tab **and** there has been a keystroke, pointer, wheel, scroll, touch or mouse event within a **75-second grace window**. An unbroken absence therefore costs 75 seconds and no more. A `blur` stops accrual immediately where the browser emits one; a hidden tab accrues nothing. A 2-second heartbeat keeps the total current and is what actually stops the clock when a reader walks away.
 
-The grace window is intended to capture normal reading after the user's last interaction without charging indefinitely for a tab left open.
+- **The grace window is the only parameter, and it is anchored:** a Susty reply runs roughly 150–350 words, and at 200–250 words a minute reading it takes 40–105 seconds without touching anything.
+- **Why:** a plain visibility gate billed a tab left in the foreground for a full hour (55 min 52 s open, one exchange, charged 3,352 s). The same session now charges 75 s, about 2% of the wall clock. The ledger shows the charged time next to how long the page has simply been open.
+- **No attention decay.** An earlier version weighted each second by an invented decaying probability of presence. No published model does that. DIMPACT estimates end-user device energy as mean device power × duration of service use (Equation 16); a binary in-or-out allocation is the nearest established practice.
+- **Not byte-based.** The Sustainable Web Design Model v4 gives the device segment an energy-per-GB figure and no time term, on the reasoning that heavier pages drive more engagement. That suits a page you read and leave; it fits poorly here, where transfer is tiny and dwell time is the thing being measured.
+- `document.hasFocus()` is deliberately **not** a gate: it reads false in embedded and second-monitor contexts where the page is genuinely being read. The Idle Detection API would give a real signal but needs a permission prompt and is Chromium-only.
 
-This is a duration-of-use allocation model. It is more appropriate to Susty's conversational experience than a transfer-volume-only web model, but it remains an estimate.
+This is a duration-of-use allocation model. It remains an estimate.
 
-### Theme
+### 7.4 Theme
 
-Dark mode only changes the modeled device total when an emissive display such as OLED is selected. For a conventional backlit LCD, Susty assigns no material theme saving.
+Dark mode only changes the modeled device total when an emissive display such as OLED is selected. On a backlit LCD, one lamp burns at a constant rate regardless of content, so Susty assigns no theme saving; local dimming and mini-LED are a real exception it does not try to quantify.
 
-Brightness is not known and can have a larger effect than theme, so the theme adjustment should not be presented with false precision.
+The OLED phone delta (0.10 W) is calibrated to sit inside the **3–9%** of total phone power that Dash & Hu (MobiSys 2021) measured for switching to dark mode at the 30–50% brightness people typically use. The widely quoted ~40% saving holds only at 100% brightness (39–47%). Laptop and monitor OLED rows scale the phone ratio by panel area and are extrapolation — only phones were measured.
+
+**Brightness beats theme**, and brightness is unknown: in Dash & Hu's data, light mode at low brightness can draw about as much as dark mode at higher brightness. The theme adjustment should not be presented with false precision.
+
+Absent a stored choice, the theme defaults to **dark on phones and tablets** and **light on laptops and monitors**. On an LCD, which is the default for laptops and monitors, this makes no difference to the figure.
 
 ---
 
 ## 8. Reporting and ledger
 
-The primary display should report:
+The primary display reports:
 
 ```text
-AVERAGE PER COMPLETED EXCHANGE
-0.07 g CO2e / completed exchange
+0.07
+g CO2e / completed exchange
+session average
 
-0.21 g session total · 3 completed exchanges
+0.21 g CO2e session total · 3 completed exchanges
 ```
 
-The ledger should retain the underlying evidence:
+Before the first completed exchange the headline reads `—`.
 
+The ledger opens with:
+
+- average per completed exchange;
 - completed exchanges;
-- session total CO2e;
-- AI inference energy;
-- service/hosting energy;
-- end-user device energy;
-- input tokens;
-- output tokens and thinking tokens where available;
-- estimated attended time;
-- grid intensity and source;
-- actual model that answered;
-- whether a model factor is calibrated or a proxy.
+- session total;
+- incomplete / failed attempts (only when there are any);
+- latest completed model (the model that actually answered the most recent completed exchange; an interrupted later attempt does not replace it);
+- thinking tokens for the session.
 
-The per-exchange value must be labeled as a **session average**. It should never imply that every exchange had the same footprint.
+Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity and its named source, and whether a model factor is calibrated or a proxy (in the model picker).
 
-Token-normalized carbon may be reported as a secondary diagnostic in the future, but it should not be presented as task effectiveness or answer quality.
+The per-exchange value is always labeled a **session average**. It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
+
+Token-normalized carbon may be reported as a secondary diagnostic in the future, but should not be presented as task effectiveness or answer quality.
+
+**Copy rules learned the hard way.** Copy shared across regions names no region and quotes no region-specific ratio (a "sunny California afternoon" line once went to every US reader). The source sentence always credits the provider that actually supplied the figure — NESO, EIA, EPA, Ember, or Electricity Maps. Assumptions are labeled as assumptions.
 
 ---
 
 ## 9. Comparisons
 
-Everyday comparisons are based on the **session total**, not the average per exchange.
+Everyday comparisons are based on the **session total**, not the average per exchange. So are "this chat has cost…" language, the session summary, and any recommendation referring to the whole conversation.
 
-Representative order-of-magnitude comparisons include driving, boiling water, showering, food, and air travel. Their purpose is to establish scale, not to claim exact equivalence.
+| Action | g CO2e | Evidence |
+|---|---:|---|
+| Driving a gasoline car | 170 per km | Typical of a European petrol car; a typical US passenger vehicle is ~250 g/km (EPA, ~400 g/mile) |
+| Boiling water for tea | 20 per cup | Order of magnitude; not traced to a primary source |
+| Hot shower, 8 minutes | 500 | Order of magnitude; varies strongly with water heating; not traced to a primary source |
+| A beef burger | 3,000 | Order of magnitude; not traced to a primary source |
+| New York to Los Angeles, one economy seat | 250,000 | Consistent with published one-way estimates of ~250–310 kg CO2 |
 
-Any statement such as "thousands of times larger" should be calculated dynamically from the current session total rather than hard-coded.
+These are order-of-magnitude figures. Their job is to show that the footprint of asking is small next to the footprint of acting on the answer — which is the product's argument, not a disclaimer on it. Any statement such as "thousands of times larger" should be calculated from the current session total rather than hard-coded.
 
 ---
 
-## 10. Data-quality labels
+## 10. Offset costing
 
-Susty should distinguish four classes of evidence:
+The ledger converts grams to money at **$100 per tonne**, to show proportion rather than to sell offsets. At conversation scale this lands under a hundredth of a cent.
+
+$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 4](#open-decisions).
+
+---
+
+## 11. Data-quality labels
 
 | Class | Examples |
 |---|---|
-| **Measured** | provider token counts, returned model identity, browser event timing |
-| **Derived** | EIA fuel-mix intensity, cumulative session arithmetic |
+| **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity |
+| **Derived** | EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic |
+| **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
-| **Modeled** | token-energy coefficients, model factors, PUE, hosting/network energy, device wattage |
+| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, Gemini proxy factor |
 
-A modeled number should not be described as directly measured. The interface should use precision appropriate to the uncertainty of the inputs.
+A modeled number is never described as directly measured. The interface uses precision appropriate to the uncertainty of its inputs.
 
 ---
 
-## 11. Known limitations
-
-The largest current uncertainties are:
+## 12. Known limitations
 
 1. **Absolute inference energy.** The input/output token coefficients are assumptions rather than provider-specific measurements.
-2. **Model calibration.** Gemini tiers use a Sonnet proxy; Anthropic factors depend on inferred model architecture.
+2. **Model calibration.** Gemini tiers use a Sonnet proxy; Anthropic and Google factors depend on inferred architecture.
 3. **PUE.** The actual facility serving a request is unknown.
 4. **Server location.** The user's grid is used as a proxy for remote service energy.
-5. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
-6. **Attended time.** Browser interaction is a proxy for attention, not a direct observation.
-7. **Network energy.** The fixed service term is simplified and does not separately model access networks or routers.
-8. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
-9. **Embodied emissions and training.** Both are outside the current boundary.
+5. **Grid accounting basis.** Ember (life-cycle) and eGRID/EIA/NESO (operational) are mixed; see §6.1.
+6. **Regional GB figures are forecasts.** NESO publishes only forecasts at regional level.
+7. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
+8. **Attended time.** Browser interaction is a proxy for attention, not a direct observation.
+9. **Network energy.** The fixed service term is simplified and does not separately model access networks or routers.
+10. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
+11. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
+12. **Gemini output is uncapped** by Susty; only Anthropic tiers carry a max-token ceiling.
+13. **Embodied emissions and training.** Both are outside the current boundary.
 
-The result should therefore be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
+The result should be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
 
 ---
 
-## 12. Validation and change control
+## 13. Validation and change control
 
-Susty's methodology should be versioned. A change to any of the following should trigger a methodology-version update and regression tests:
+This methodology is versioned. A change to any of the following triggers a methodology-version update and regression tests:
 
 - functional-unit definition;
 - completion rules;
@@ -368,10 +506,10 @@ Susty's methodology should be versioned. A change to any of the following should
 - PUE;
 - hosting/network energy;
 - device wattage or attended-time rule;
-- grid source or conversion factors;
+- grid source, conversion factors, or accounting basis;
 - system boundary.
 
-Tests should verify at minimum:
+`sh tools/test.sh` verifies, among other things:
 
 ```text
 session total >= 0
@@ -384,7 +522,37 @@ else:
     = session total / completed exchanges
 ```
 
-They should also verify that failed or partial exchanges do not increase the denominator, that historical request records are not repriced after model/grid changes, and that device energy can continue to accrue without changing the completed-exchange count.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; and that the illustrative exchange stays inside Oviedo et al.'s IQR.
+
+---
+
+## 14. Verification log
+
+Re-checked on **23 September 2026** against primary sources where reachable.
+
+| Claim | Result | How checked |
+|---|---|---|
+| Oviedo et al.: 0.31 Wh median, IQR 0.16–0.60; 13× to 3.91 Wh at 5,000 output tokens; 300-token standard query; PUE P5–P95 1.05–1.40 | Confirmed | Full text (arXiv 2509.20241) |
+| Luccioni, Jernite & Strubell: measures per 1,000 inferences; no per-token coefficients | Confirmed; previous citation (arXiv 2311.16433, "Luccioni, Viguier & Ligozat") pointed at an unrelated paper and wrong authors | Full text (arXiv 2311.16863) |
+| Uptime: 1.58 average, 1.47 capacity-weighted | Confirmed | Uptime Institute publications |
+| Kirkeby & Lagermann: 9–13 W typical; 9.17–12.43 W fits; 15–22 W framework values; duration-proportional error; Energy Star idle 4.88–6.53 W | Confirmed | Full text (arXiv 2510.12566) |
+| DIMPACT: phone 1–2 W, tablet 5.5 W, desktop + monitor 77–100 W | Confirmed | DIMPACT v1.0, Table 6 |
+| DIMPACT "Eq. 19" as the duration-of-use rule | **Corrected** — Eq. 19 is standby allocation; device use energy is Eq. 16 | DIMPACT v1.0 |
+| Dash & Hu: 3–9% at 30–50% brightness; 39–47% at 100% | Confirmed | Purdue release of the MobiSys 2021 paper |
+| EcoLogits function constants | Confirmed exactly; EcoLogits default batch is 64, Susty uses 32 | EcoLogits source code |
+| EcoLogits has no Gemini architecture estimates | **Outdated** — both Gemini models Susty uses now have entries | EcoLogits `models.json` |
+| eGRID2023 Rev 2 subregion values | All 27 confirmed (NYLI, SRMW, SRVC within ±1 g/kWh of rounding) | EPA summary tables, Rev 2 |
+| Ember national values | World, EU, US and 34 countries within ±3 g/kWh of current Ember 2024 data; six differ by 4–17 g/kWh after Ember revisions (PH 612→629, NG 508→496, NZ 120→112, ZA 713→718, CH 30→35, PL 612→608). Ember 2025 data now available (world 458) | Ember yearly dataset |
+| Ember basis | Life-cycle (IPCC AR5 factors) | Ember methodology |
+| NESO regional `actual` | **Corrected** — regional endpoints publish forecast only | NESO API definitions and live API |
+| EIA coal 2,257 / gas 976 lb/MWh | Confirmed | EIA |
+| Anthropic `output_tokens_details.thinking_tokens` | Confirmed | Anthropic API documentation |
+| SCI for AI suggests per-token consumer unit for LLMs | Confirmed | GSF SCI-AI specification |
+| OLED phone share "~57%" | **Updated** to ~63% (Q1 2025; 57% was Q1 2024) | Omdia via OLED-Info |
+| Offset at "$100/t for durable removal (Frontier 2024)" | **Corrected** — $100/t is a target; 2024 average ~$320/t | CDR.fyi 2024 review; US DOE |
+| Comparisons: tea, shower, burger | Not traced to a primary source | — |
+| Renewable tariff 30 g/kWh | No source found | — |
+| 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
 
 ---
 
@@ -392,16 +560,24 @@ They should also verify that failed or partial exchanges do not increase the den
 
 - Green Software Foundation, **Software Carbon Intensity (SCI) Specification / ISO/IEC 21031:2024** — https://sci.greensoftware.foundation/
 - Green Software Foundation, **SCI for AI specification** — https://github.com/Green-Software-Foundation/sci-ai/blob/main/SPEC.md
-- Luccioni, Jernite & Strubell (2023), **Power Hungry Processing: Watts Driving the Cost of AI Deployment?** — https://arxiv.org/abs/2311.16863
-- EcoLogits — https://ecologits.ai/
+- ITU-T L.1801 (02/2026), **Guidelines for assessing the environmental impact of artificial intelligence systems** — https://www.itu.int/rec/T-REC-L.1801
+- Luccioni, Jernite & Strubell (2024), **Power Hungry Processing: Watts Driving the Cost of AI Deployment?**, FAccT '24 — https://arxiv.org/abs/2311.16863
+- Oviedo et al. (2026), **Energy use of AI inference, efficiency pathways, and test-time scaling**, *Joule* — https://arxiv.org/abs/2509.20241
+- EcoLogits — https://ecologits.ai/ (energy function and model estimates: https://github.com/genai-impact/ecologits)
 - ML.ENERGY leaderboard — https://ml.energy/
-- Oviedo et al. (2026), frontier-model inference energy comparison — https://arxiv.org/abs/2509.20241
 - Uptime Institute, **Large data centers are mostly more efficient, analysis confirms** — https://journal.uptimeinstitute.com/large-data-centers-are-mostly-more-efficient-analysis-confirms/
-- NESO Carbon Intensity API — https://api.carbonintensity.org.uk/
+- Anthropic, **Streaming messages** and **Extended thinking** — https://docs.anthropic.com/en/api/messages-streaming
+- Google, **Gemini API: thinking** — https://ai.google.dev/gemini-api/docs/thinking
+- NESO Carbon Intensity API — https://api.carbonintensity.org.uk/ (API definitions: https://github.com/carbon-intensity/api-definitions)
 - U.S. EIA Open Data / EIA-930 — https://www.eia.gov/opendata/
-- U.S. EPA eGRID — https://www.epa.gov/egrid/summary-data
+- U.S. EIA, CO2 per MWh by fuel — https://www.eia.gov/todayinenergy/detail.php?id=48296
+- U.S. EPA eGRID2023 Rev 2 summary tables — https://www.epa.gov/egrid/summary-data
 - Ember yearly electricity data — https://ember-energy.org/data/yearly-electricity-data/
-- DIMPACT Methodology v1.0 — https://dimpact.org/downloadResourceFile?resource=2
+- Kirkeby & Lagermann (2026), **Power Assumptions Matter: Evaluating End-user Laptop Energy Models for Sustainability Reporting of Browser-Based Web Services**, SAC '26 — https://arxiv.org/abs/2510.12566
+- DIMPACT Methodology v1.0 (October 2022) — https://dimpact.org/downloadResourceFile?resource=2
+- Carbon Trust (2021), **Carbon impact of video streaming** — https://www.carbontrust.com/sites/default/files/documents/resource/public/Carbon-impact-of-video-streaming.pdf
+- Dash & Hu (2021), **How much battery does dark mode save?**, MobiSys '21 — https://dl.acm.org/doi/10.1145/3458864.3467682
 - Sustainable Web Design Model v4 — https://sustainablewebdesign.org/estimating-digital-emissions/
-- Dash & Hu (2021), **How much battery does dark mode save?** — https://dl.acm.org/doi/10.1145/3458864.3467682
-- ITU-T L.1801 (2026), **Guidelines for assessing the environmental impact of artificial intelligence systems** — https://www.itu.int/rec/T-REC-L.1801
+- Omdia via OLED-Info, **OLED smartphone display penetration** — https://www.oled-info.com/omdia-oled-smartphone-display-penetration-exceed-60-2025
+- CDR.fyi, **Durable CDR Market 2024: Year in Review** — https://www.cdr.fyi/blog/2024-year-in-review
+- U.S. DOE, **Carbon Negative Shot Strategy** (target: under $100 per net tonne CO2e, durably stored) — https://www.energy.gov/fecm/carbon-negative-shot-strategy
