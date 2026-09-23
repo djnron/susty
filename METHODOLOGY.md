@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Status:** Candidate for release — one open decision (see [Open decisions](#open-decisions))
+**Status:** Candidate for release — no open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026))
 **Date:** 23 September 2026
 **Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
 
@@ -11,11 +11,14 @@ This is an **operational estimate, not a full life-cycle assessment**. Training 
 
 ---
 
-## Open decisions
+## Decisions taken on 23 September 2026
 
-These are known inconsistencies that this document discloses but does not resolve. Each changes numbers the product shows, so each needs an explicit owner decision rather than a silent fix.
+The verification pass (see [§14](#14-verification-log)) found places where the product's numbers or labels were not accurate. Each was decided and changed:
 
-1. **Offset price.** The ledger converts grams to money at **$100/tonne**. That is a long-run target price; the 2024 weighted-average price for durable removal was about **$320/tonne**. See [§10](#10-offset-costing).
+1. **Grid accounting basis.** Sources are not converted to one basis, because a conversion adds error (§6.1). The ledger now labels every grid figure operational or life-cycle.
+2. **Renewable-tariff preset removed.** It was unsourced and market-based inside a location-based model (§6.7).
+3. **Gemini priced from EcoLogits.** ×1.36 for Gemini 3.8 Flash and ×0.85 for Gemini 3.5 Flash-Lite, replacing the ×1.00 proxy; Flash-Lite is the client default and runs at its minimal thinking level; Gemini replies are capped (§4.4–4.6).
+4. **Offset price is today's price.** About $320 per tonne, the 2024 average for durable removal, replacing a $100 target price (§10).
 
 ---
 
@@ -457,9 +460,11 @@ These are order-of-magnitude figures. Their job is to show that the footprint of
 
 ## 10. Offset costing
 
-The ledger converts grams to money at **$100 per tonne**, to show proportion rather than to sell offsets. At conversation scale this lands under a hundredth of a cent.
+The ledger converts grams to money at **$320 per tonne**, the weighted-average price of durable carbon removal sold in 2024 (CDR.fyi; down from about $490 in 2023). It shows proportion, not an offer to sell offsets. At conversation scale the cost lands under a hundredth of a cent.
 
-$100/tonne is a **long-run target price**, not today's price: the US DOE Carbon Negative Shot targets $100 per net tonne for durable removal. The weighted average price of durable carbon removal sold in 2024 was about **$320/tonne**, down from about $490 in 2023 (CDR.fyi). The ledger figure therefore understates the current cost of durable removal by roughly 3×; at conversation scale the conclusion ("a tiny fraction of a cent") does not change. See [Open decision 1](#open-decisions).
+Until 23 September 2026 the ledger used $100 per tonne and attributed it to Frontier's market pricing. $100 is the US DOE Carbon Negative Shot's long-run *target* for durable removal, not a price paid today, so the old figure understated the current cost about 3×. The price is reviewed when a new annual average is published.
+
+The note beneath it compares the session with three everyday actions. The claim of how many times over they cover the conversation is **computed** from the session total and the smallest action (one cold wash, about 200 g), not asserted: a long session with a lot of reading time can reach grams, where "thousands of times over" would stop being true.
 
 ---
 
@@ -552,7 +557,9 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | Anthropic `output_tokens_details.thinking_tokens` | Confirmed | Anthropic API documentation |
 | SCI for AI suggests per-token consumer unit for LLMs | Confirmed | GSF SCI-AI specification |
 | OLED phone share "~57%" | **Updated** to ~63% (Q1 2025; 57% was Q1 2024) | Omdia via OLED-Info |
-| Offset at "$100/t for durable removal (Frontier 2024)" | **Corrected** — $100/t is a target; 2024 average ~$320/t | CDR.fyi 2024 review; US DOE |
+| Offset at "$100/t for durable removal (Frontier 2024)" | **Corrected** — $100/t is a target; ledger now uses the 2024 average, $320/t | CDR.fyi 2024 review; US DOE |
+| "These three actions each cover it thousands of times over" | **Not always true**; now computed from the session total | Code |
+| Offset actions: cold wash ~200 g/load, thermostat −2°F ~300 kg/yr, one beef meal a week swapped ~200 kg/yr | Order of magnitude; not traced to a primary source | — |
 | Comparisons: tea, shower, burger | Not traced to a primary source | — |
 | Renewable tariff 30 g/kWh | No source found; **preset removed** | — |
 | Ember factors | Coal 820, gas 490, other fossil 700, wind 11 g/kWh, global | Ember methodology |

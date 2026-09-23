@@ -152,8 +152,16 @@ check('ledger never credits NESO for a non-NESO live figure', () => {
 });
 check('in-page methodology does not call NESO regional figures actuals', () =>
   assert.doesNotMatch(html, /Half-hourly actuals for 14/));
-check('offset price is not presented as a market price', () =>
-  assert.doesNotMatch(html, /durable CDR market pricing/));
+check('offset price matches and is the current average, not the target', () => {
+  const usd = Number(html.match(/const OFFSET_USD_PER_TONNE = (\d+);/)[1]);
+  has(new RegExp(`converts grams to money at \\*\\*\\$${usd} per tonne\\*\\*`));
+  assert.doesNotMatch(html, /durable CDR market pricing/);
+  assert.doesNotMatch(html, /roughly \$100 per tonne/);
+});
+check('coverage ratio is computed, not asserted', () => {
+  assert.doesNotMatch(html, /each cover it thousands of times over/);
+  assert.match(html, /Math\.floor\(SMALLEST_ACTION_G \/ g\)/);
+});
 
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');
 process.exit(fails ? 1 : 0);

@@ -1031,7 +1031,7 @@ textarea, input { caret-color: var(--ink); }
     <h3>What to do about it</h3>
     <div class="offset">
       <p class="lead" id="offsetLead">Offsetting this costs under a hundredth of a cent.</p>
-      <p>At roughly $100 per tonne for verified carbon removal, this conversation is a rounding error. These three actions each cover it thousands of times over:</p>
+      <p id="offsetBody">At about $320 per tonne, the 2024 average price of durable carbon removal, this conversation is a rounding error. Each of these three actions covers it many times over:</p>
       <ol>
         <li><strong>Wash clothes in cold water</strong>, around 200 g saved per load.</li>
         <li><strong>Thermostat down 2°F</strong>, roughly 300 kg a year in a typical heated home.</li>
@@ -1087,8 +1087,8 @@ textarea, input { caret-color: var(--ink); }
         <span>Ember's 2024 national figures. Annual means, so they miss both time-of-day swings and regional spread. Ember counts life-cycle emissions (including fuel supply chains), while the GB and US sources above count only what power stations emit, so these run somewhat higher on the same grid.</span>
       </li>
       <li>
-        <a href="https://www.energy.gov/fecm/carbon-negative-shot-strategy" target="_blank" rel="noopener">Carbon removal priced at $100/tonne (a target, not today's price)</a>
-        <span>$100 per tonne is the US Department of Energy's long-run target for durable carbon removal. Durable removal actually sold for about $320 per tonne on average in 2024 (<a href="https://www.cdr.fyi/blog/2024-year-in-review" target="_blank" rel="noopener">CDR.fyi</a>), so today's cost is roughly three times the figure shown. Either way it is a tiny fraction of a cent for a conversation.</span>
+        <a href="https://www.cdr.fyi/blog/2024-year-in-review" target="_blank" rel="noopener">Carbon removal priced at about $320/tonne</a>
+        <span>CDR.fyi: the weighted-average price of durable carbon removal sold in 2024, down from about $490 in 2023. The often-quoted $100 per tonne is the US Department of Energy's long-run <a href="https://www.energy.gov/fecm/carbon-negative-shot-strategy" target="_blank" rel="noopener">target</a>, not today's price.</span>
       </li>
       <li>
         <a href="https://dl.acm.org/doi/10.1145/3458864.3467682" target="_blank" rel="noopener">Dark mode display power (3–9% at normal brightness)</a>
@@ -1411,6 +1411,13 @@ const COPY = {
     basisLifecycle:   "It counts life-cycle emissions, including fuel supply chains, so it runs a little higher than a figure counting only what power stations emit."
   }
 };
+
+// Durable carbon removal, 2024 weighted-average price per tonne sold
+// (CDR.fyi 2024 year in review). $100 is the DOE's long-run target, not a
+// price anyone pays today, which is what the ledger used to quote.
+const OFFSET_USD_PER_TONNE = 320;
+// One cold wash instead of hot, the smallest action in the offset list.
+const SMALLEST_ACTION_G = 200;
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1746,10 +1753,25 @@ function paintLedger() {
     return '<li><span>' + label + '</span><b>' + v + '</b></li>';
   }).join('');
 
-  const dollars = g / 1e6 * 100;
+  const dollars = g / 1e6 * OFFSET_USD_PER_TONNE;
   $('offsetLead').textContent = dollars < 0.0001
     ? 'Offsetting this costs under a hundredth of a cent.'
     : 'Offsetting this costs about $' + dollars.toFixed(4) + '.';
+  // Computed, not asserted: a long session with a lot of reading time can
+  // reach grams, and "thousands of times over" stops being true well before
+  // then. The smallest action on the list sets the floor.
+  const floor = g > 0 ? Math.floor(SMALLEST_ACTION_G / g) : null;
+  // Past the smallest action (hours of attended time on a desktop), neither
+  // "rounding error" nor "each covers it" holds; the two yearly actions, at
+  // hundreds of kilograms, still do.
+  $('offsetBody').textContent =
+    'At about $' + OFFSET_USD_PER_TONNE + ' per tonne, the 2024 average price of durable carbon removal, ' +
+    (floor === null || floor >= 2
+      ? 'this conversation is a rounding error. '
+      : 'this conversation is still small next to what you do with the answer. ') +
+    (floor === null ? 'Each of these three actions covers it many times over:'
+      : floor >= 2 ? 'Even the smallest of these three actions covers it about ' + floor.toLocaleString() + ' times over:'
+      : 'The two yearly changes below each cover it many times over:');
 
   paintScreen();
 }
