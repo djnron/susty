@@ -42,8 +42,8 @@ function guessDevice() {
 
   // Phones default to OLED, not LCD. Panel type is not detectable — HDR
   // support looked like a tell until it read true on a mini-LED laptop — so
-  // this is a prior, and on phones the prior is now firmly OLED: ~57% of
-  // smartphone shipments, and every current iPhone. The old LCD default meant
+  // this is a prior, and on phones the prior is now firmly OLED: ~63% of
+  // smartphone shipments (Omdia, Q1 2025), and every current iPhone. The old LCD default meant
   // most mobile readers saw dark mode save nothing on a device where it does.
   // It errs downward by 11% for a reader who really is on an LCD phone, which
   // the picker lets them correct.
@@ -1064,7 +1064,7 @@ textarea, input { caret-color: var(--ink); }
       </li>
       <li>
         <b>Energy per token (modelled assumption)</b>
-        <span>Susty currently models 0.05 mWh per input token and 0.5 mWh per output token. These coefficients are assumptions, not direct measurements from the cited literature. Luccioni et al. 2023 is background on AI inference energy: <a href="https://arxiv.org/abs/2311.16863" target="_blank" rel="noopener">Power Hungry Processing: Watts Driving the Cost of AI Deployment?</a></span>
+        <span>Susty currently models 0.05 mWh per input token and 0.5 mWh per output token. These coefficients are assumptions, not direct measurements from the cited literature. Luccioni, Jernite &amp; Strubell (FAccT 2024) is background on AI inference energy: <a href="https://arxiv.org/abs/2311.16863" target="_blank" rel="noopener">Power Hungry Processing: Watts Driving the Cost of AI Deployment?</a></span>
       </li>
       <li>
         <b>Data centre overhead PUE ×1.12 (modelled assumption)</b>
@@ -1072,11 +1072,11 @@ textarea, input { caret-color: var(--ink); }
       </li>
       <li>
         <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain: live, by region</a>
-        <span>NESO Carbon Intensity API. Half-hourly actuals for 14 distribution regions, so GB readings here are current rather than averaged. Open and keyless; nothing about you is sent with the request.</span>
+        <span>NESO Carbon Intensity API, half-hourly, so GB readings here are current rather than averaged. The national figure is NESO's published actual; for the 14 distribution regions NESO publishes only a forecast for the current half hour, which is what we use. Open and keyless; nothing about you is sent with the request.</span>
       </li>
       <li>
         <a href="https://www.eia.gov/opendata/" target="_blank" rel="noopener">United States: hourly by region</a>
-        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). Two caveats worth knowing: EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the generation mix rather than read off, and the feed itself runs about a day behind. We therefore take the same hour on the previous day, which tracks the daily curve far better than their newest figure would. That one is the middle of last night. Interregional imports are ignored. Needs a free EIA key; without one we fall back to the annual figures below.</span>
+        <span>EIA-930 hourly generation by fuel type, turned into an intensity with EIA's own per-fuel figures (coal 2,257 lb/MWh, gas 976 lb/MWh). Two caveats worth knowing: EIA publishes hourly CO₂ only in bulk spreadsheets, so this is derived from the generation mix rather than read off, and the feed itself runs about a day behind. We therefore take the same hour on the previous day, which tracks the daily curve far better than their newest figure would. That one is the middle of last night. If no matching hour is published yet, we use the most recent complete hour and say so. Interregional imports are ignored. Needs a free EIA key; without one we fall back to the annual figures below.</span>
       </li>
       <li>
         <a href="https://www.epa.gov/egrid/summary-data" target="_blank" rel="noopener">United States: annual, by eGRID subregion</a>
@@ -1084,15 +1084,15 @@ textarea, input { caret-color: var(--ink); }
       </li>
       <li>
         <a href="https://ember-energy.org/data/yearly-electricity-data/" target="_blank" rel="noopener">Everywhere else: national annual averages</a>
-        <span>2024 country figures, cross-checked against Ember's Global Electricity Review 2025. Annual means, so they miss both time-of-day swings and regional spread.</span>
+        <span>Ember's 2024 national figures. Annual means, so they miss both time-of-day swings and regional spread. Ember counts life-cycle emissions (including fuel supply chains), while the GB and US sources above count only what power stations emit, so these run somewhat higher on the same grid.</span>
       </li>
       <li>
-        <a href="https://frontierclimate.com/writing/2024-state-of-cdr" target="_blank" rel="noopener">Carbon removal cost ~$100/tonne</a>
-        <span>Frontier 2024 State of Carbon Dioxide Removal: durable CDR market pricing</span>
+        <a href="https://www.energy.gov/fecm/carbon-negative-shot-strategy" target="_blank" rel="noopener">Carbon removal priced at $100/tonne (a target, not today's price)</a>
+        <span>$100 per tonne is the US Department of Energy's long-run target for durable carbon removal. Durable removal actually sold for about $320 per tonne on average in 2024 (<a href="https://www.cdr.fyi/blog/2024-year-in-review" target="_blank" rel="noopener">CDR.fyi</a>), so today's cost is roughly three times the figure shown. Either way it is a tiny fraction of a cent for a conversation.</span>
       </li>
       <li>
         <a href="https://dl.acm.org/doi/10.1145/3458864.3467682" target="_blank" rel="noopener">Dark mode display power (3–9% at normal brightness)</a>
-        <span>Dash &amp; Hu, MobiSys 2021: How much battery does dark mode save? An accurate OLED display power profiler for modern smartphones. Measured across several OLED phones: ~42% of total phone power at 100% brightness, but only 3–9% at the 30–50% brightness in normal use.</span>
+        <span>Dash &amp; Hu, MobiSys 2021: How much battery does dark mode save? An accurate OLED display power profiler for modern smartphones. Measured across several OLED phones: 39–47% of total phone power at 100% brightness, but only 3–9% at the 30–50% brightness in normal use.</span>
       </li>
       <li>
         <b>Whole-device power and attended time (modelled / estimated)</b>
@@ -1310,7 +1310,7 @@ const TZ_COUNTRY = {};
 ].forEach(([cc, zones]) => zones.split(' ').forEach(z => { TZ_COUNTRY[z] = cc; }));
 
 // Sub-national data, because national averages hide enormous spreads. In the
-// US the national figure is 384 while actual subregions run 110–680.
+// US the national figure is 384 while actual subregions run 110–702.
 // eGRID2023 Rev 2 CO2e output rates, converted lb/MWh × 0.453592 → g/kWh.
 const US_SUB = {
   NYUP: 110, CAMX: 195, AKMS: 237, NEWE: 246, SRVC: 271, RFCE: 272, NWPP: 288,
@@ -1378,7 +1378,8 @@ const COPY = {
     eia:   { name: 'US Energy Information Administration', url: 'https://www.eia.gov/opendata/' },
     neso:  { name: 'the UK grid operator',                 url: 'https://www.carbonintensity.org.uk/' },
     egrid: { name: 'the EPA',                              url: 'https://www.epa.gov/egrid/summary-data' },
-    ember: { name: 'Ember',                                url: 'https://ember-energy.org/data/yearly-electricity-data/' }
+    ember: { name: 'Ember',                                url: 'https://ember-energy.org/data/yearly-electricity-data/' },
+    emaps: { name: 'Electricity Maps',                     url: 'https://www.electricitymaps.com/' }
   },
   location: {
     privacy:   "As a quick note, because we care about your privacy, we don't ask your browser for your location or look up your address.",
@@ -1394,7 +1395,9 @@ const COPY = {
     worldPick: "",
 
     sourceHourly:     "Currently the electricity figure comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
+    sourceRecent:     "Currently the electricity figure comes from the {source}, which tracks what's actually generating power each hour. Their data runs behind, so we use the most recent complete hour they have published.",
     sourceLive:       "The electricity figure comes from {source}, updated every half hour, so it follows the real ups and downs of the day.",
+    sourceLiveOther:  "The electricity figure comes from {source}, which reports a current reading for your grid.",
     usNationalAverage:"We are currently using Ember's 2024 United States national average (384 g/kWh). If you haven't already, pick a more specific location above to make this more accurate. ",
     sourceAnnualUS:   "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
     sourceAnnual:     "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region."
@@ -1702,8 +1705,16 @@ function paintLedger() {
   // No region named in the source sentences: they are shared across every US
   // region, and the daily swing varies wildly between them (solar-heavy
   // California roughly halves in the afternoon; coal-heavy regions barely move).
-  if (state.live && state.live.matchedHour)          parts.push(fill(L.sourceHourly,  { source: src('eia') }));
-  else if (state.live)                               parts.push(fill(L.sourceLive,    { source: src('neso') }));
+  // Credit whichever provider actually supplied the live figure. Keying the
+  // wording on matchedHour alone told a US reader on an unmatched EIA hour, or
+  // anyone on Electricity Maps, that the UK grid operator was the source.
+  const liveFrom = !state.live ? null
+    : /^EIA/.test(state.live.source || '')  ? 'eia'
+    : /^NESO/.test(state.live.source || '') ? 'neso'
+    : 'emaps';
+  if (liveFrom === 'eia')                            parts.push(fill(state.live.matchedHour ? L.sourceHourly : L.sourceRecent, { source: src('eia') }));
+  else if (liveFrom === 'neso')                      parts.push(fill(L.sourceLive,      { source: src('neso') }));
+  else if (liveFrom === 'emaps')                     parts.push(fill(L.sourceLiveOther, { source: src('emaps') }));
   else if (state.grid === 'US' && !state.region)     parts.push(L.usNationalAverage);
   else if (state.grid === 'US')                      parts.push(fill(L.sourceAnnualUS, { source: src('egrid') }));
   else                                               parts.push(fill(L.sourceAnnual,   { source: src('ember') }));
