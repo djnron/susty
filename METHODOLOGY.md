@@ -228,7 +228,7 @@ f(P_active, B) = 1.1665e-6 · e^(-0.011206·B) · P_active + 4.0529e-5   Wh per 
 | Claude Opus 4.8 | 1.33 | 3.50–6.43 |
 | Gemini 3.8 Flash | 1.36 | 3.66–6.14 |
 
-On the full model the Haiku-to-Opus spread is 20× or more, against Susty's 2.6×. Susty's factors therefore likely **understate large models and overstate small ones**, and the Flash-Lite picker label ("about 15% less per token") likely understates its saving. The full model is not adopted wholesale because it also appears to overstate some serving: for Gemini 3.8 Flash it gives 1.1–1.8 Wh per 300-token reply, while Google's measured median for a Gemini Apps prompt is 0.24 Wh, a gap consistent with GPU-based sizing misrepresenting TPU serving. Calibrating against provider data is the next step (§15). Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
+On the full model the Haiku-to-Opus spread is 20× or more, against Susty's 2.6×. Susty's factors therefore likely **understate large models and overstate small ones**, and Flash-Lite's modeled saving against Sonnet (15% per token) is likely understated. The full model is not adopted wholesale because it also appears to overstate some serving: for Gemini 3.8 Flash it gives 1.1–1.8 Wh per 300-token reply, while Google's measured median for a Gemini Apps prompt is 0.24 Wh, a gap consistent with GPU-based sizing misrepresenting TPU serving. Calibrating against provider data is the next step (§15). Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
 
 ### 4.5 Model routing and tiers
 
@@ -243,7 +243,7 @@ The ledger's model picker offers six tiers across two providers. The client send
 | **Gemini 3.5 Flash-Lite** (client default) | `gemini-3.5-flash-lite` | cannot be disabled; level `minimal` | ×0.85 **plus the thinking tokens** |
 | Gemini 3.8 Flash | `gemini-3.8-flash` | cannot be disabled; level `low` | ×1.36 **plus the thinking tokens** |
 
-**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Flash-Lite is the default because it has the lowest modeled per-token energy of the Gemini tiers (×0.85) and runs at the lowest thinking level Google offers for it. That is a modeled comparison, not a measured one, and it says nothing about answer quality; the picker labels it "about 15% less per token, plus brief thinking" rather than calling it efficient.
+**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Flash-Lite is the default because it has the lowest modeled per-token energy of the Gemini tiers (×0.85) and runs at the lowest thinking level Google offers for it. That is a modeled comparison, not a measured one, and it says nothing about answer quality; the picker labels it simply "Gemini 3.5 Flash-Lite (default)" rather than calling it efficient; its factor is shown in the ledger's model row.
 
 Gemini 3 models cannot switch thinking off. Each tier runs at the lowest level its model accepts: `minimal` for Flash-Lite (also Google's default for that model) and `low` for Flash, which does not offer `minimal`. Until 23 September 2026 Flash-Lite ran at `low`, above its floor. Thinking tokens are measured through `thoughtsTokenCount` and priced as output.
 
@@ -444,28 +444,27 @@ Absent a stored choice, the theme defaults to **dark on phones and tablets** and
 
 ## 8. Reporting and ledger
 
-The primary display reports:
+On screen, a completed exchange is called an **answer**; the ledger and this document define it. The primary display reports:
 
 ```text
-0.07
-g CO2e / completed exchange
-session average
+0.07  grams CO2e per answer
+      AVERAGE FOR THIS CHAT
 
-0.21 g CO2e session total · 3 completed exchanges
+0.21 g so far · 3 answers
 ```
 
-Before the first completed exchange the headline reads `—`.
+Before the first answer the headline shows no figure and reads "grams CO2e per answer — shown after your first answer", and the note reads "0.02 g so far, including your screen · no answers yet": the total is already non-zero because device time accrues from the first moment of attended use. With exactly one answer the average equals the total and the two rise together; from the second answer the average falls below the total. Units are never set in forced capitals, where "g" would read as "G" (giga).
 
 The ledger opens with:
 
-- average per completed exchange;
-- completed exchanges;
+- average per answer;
+- answers (completed exchanges);
 - session total;
-- incomplete / failed attempts (only when there are any);
-- latest completed model (the model that actually answered the most recent completed exchange; an interrupted later attempt does not replace it);
+- cut-off or failed attempts, which are in the total but not counted as answers (only when there are any);
+- the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session.
 
-Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The model picker states each tier's per-token energy relative to Sonnet 4.6, and that the Gemini tiers always think.
+Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
 The per-exchange value is always labeled a **session average**. It never implies that every exchange had the same footprint. Raw ledger rows are not normalized per exchange.
 

@@ -146,14 +146,17 @@ for (const [label, marker] of [
 }
 
 console.log('\nMeter and ledger contract');
-check('primary meter is per completed exchange and starts undefined', () => {
-  assert.match(html, /id="meterRead">—<\/span>/);
-  assert.match(html, /g CO₂e \/ completed exchange/);
-  assert.match(html, /session average/);
+check('primary meter is per answer (completed exchange) and starts with no figure', () => {
+  assert.match(html, /id="meterRead" hidden><\/span>/);
+  assert.match(html, /grams CO₂e per answer/);
+  assert.match(html, /'shown after your first answer' : 'average for this chat'/);
 });
 check('session total remains visible', () => {
-  assert.match(html, /id="meterNote">0\.00 g CO₂e session total · 0 completed exchanges/);
+  assert.match(html, /id="meterNote">0\.00 g so far, including your screen · no answers yet/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);
+});
+check('units are never forced to capitals (g would read as G, giga)', () => {
+  assert.match(html, /\.meter-unit \{ white-space: normal; text-transform: none; \}/);
 });
 check('latest model comes from completed frozen records', () => {
   assert.match(html, /find\(r => r\.status === REQUEST_STATUS\.COMPLETED && r\.model\)/);

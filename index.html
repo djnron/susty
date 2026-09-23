@@ -360,7 +360,9 @@ textarea, input { caret-color: var(--ink); }
   color: inherit;
   white-space: nowrap;
 }
-.meter-unit { white-space: normal; }
+/* Units keep their case: forced capitals turned g (grams) into G (giga). */
+.meter-unit { white-space: normal; text-transform: none; }
+.meter-read[hidden] { display: none; }
 .meter-hint { text-decoration: underline; text-underline-offset: 3px; }
 /* Marks an exchange with a hard two-frame flip, no easing. */
 .meter.pulse { animation: tick .36s linear; }
@@ -932,13 +934,13 @@ textarea, input { caret-color: var(--ink); }
       </div>
       <div class="meter-wrap">
         <button class="meter" id="meter" aria-controls="ledger" aria-expanded="false">
-          <span class="meter-read" id="meterRead">—</span>
+          <span class="meter-read" id="meterRead" hidden></span>
           <span class="meter-label">
-            <span class="meter-unit">g CO₂e / completed exchange</span>
-            <span class="meter-hint">session average</span>
+            <span class="meter-unit">grams CO₂e per answer</span>
+            <span class="meter-hint" id="meterHint">shown after your first answer</span>
           </span>
         </button>
-        <p class="meter-note" id="meterNote">0.00 g CO₂e session total · 0 completed exchanges</p>
+        <p class="meter-note" id="meterNote">0.00 g so far, including your screen · no answers yet</p>
       </div>
   </header>
 
@@ -978,11 +980,11 @@ textarea, input { caret-color: var(--ink); }
     <h3>This conversation</h3>
     <table class="rows">
       <tbody>
-        <tr class="total"><td>Average per completed exchange</td><td id="rPerExchange">—</td></tr>
-        <tr><td>Completed exchanges</td><td id="rCompleted">0</td></tr>
+        <tr class="total"><td>Average per answer</td><td id="rPerExchange">—</td></tr>
+        <tr><td>Answers</td><td id="rCompleted">0</td></tr>
         <tr><td>Session total</td><td id="rTotal">0.00 g CO₂e</td></tr>
-        <tr id="rIncompleteRow" hidden><td>Incomplete / failed attempts</td><td id="rIncomplete">0</td></tr>
-        <tr class="muted"><td>Latest completed model</td><td id="rModel">—</td></tr>
+        <tr id="rIncompleteRow" hidden><td>Cut off or failed (in the total, not counted as answers)</td><td id="rIncomplete">0</td></tr>
+        <tr class="muted"><td>Model for the latest answer</td><td id="rModel">—</td></tr>
         <tr class="muted"><td>Thinking tokens (session)</td><td id="rThinking">0 tokens</td></tr>
         <tr><td>Tokens sent (context)</td><td id="rIn">0</td></tr>
         <tr><td>Tokens written back</td><td id="rOut">0</td></tr>
@@ -1011,8 +1013,8 @@ textarea, input { caret-color: var(--ink); }
         <option value="sonnet">Sonnet 4.6</option>
         <option value="opus">Opus 4.8, about a third more</option>
         <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
-        <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite, the default: about 15% less per token, plus brief thinking</option>
-        <option value="gemini-flash">Gemini 3.8 Flash, about a third more per token, plus some thinking</option>
+        <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite (default)</option>
+        <option value="gemini-flash">Gemini 3.8 Flash</option>
       </select>
     </div>
     <div class="pick">
@@ -1055,15 +1057,15 @@ textarea, input { caret-color: var(--ink); }
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
     <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
-    <p class="note" id="noteSum">The large meter is the session-average operational footprint per completed exchange: the session total divided by responses that reached a normal provider completion. Failed or cut-off attempts stay in the session total when their energy can be measured or modelled, but they do not increase that denominator. The total includes AI inference, hosting/network, and the whole device you're reading on during estimated attended time. Typing and scrolling are evidence of attention; after a period without activity we stop counting device time. Longer chats also cost more per answer because the conversation context is sent back each time.</p>
+    <p class="note" id="noteSum">The large meter is the average carbon per answer in this chat: the total so far divided by the answers that finished normally. Failed or cut-off attempts stay in the session total when their energy can be measured or modelled, but they do not increase that denominator. The total includes AI inference, hosting/network, and the whole device you're reading on during estimated attended time. Typing and scrolling are evidence of attention; after a period without activity we stop counting device time. Longer chats also cost more per answer because the conversation context is sent back each time.</p>
   </div>
 
   <div class="sect">
     <h3>Methodology</h3>
     <ul class="sources">
       <li>
-        <b>Functional unit: one completed exchange</b>
-        <span>One user prompt plus the corresponding response that reaches normal provider completion and is committed to the conversation. The headline value is a session average: total operational session CO₂e divided by completed exchanges.</span>
+        <b>Functional unit: one completed exchange (an "answer" on screen)</b>
+        <span>One user prompt plus the corresponding response that reaches normal provider completion and is committed to the conversation. The headline value is a session average: total operational session CO₂e divided by completed exchanges. With one answer the average equals the total; they separate from the second answer on.</span>
       </li>
       <li>
         <b>Energy per token (modelled assumption)</b>
@@ -1622,16 +1624,23 @@ function paintMeter(pulse = true) {
   const target = gramsPerCompletedExchange();
   const sessionTotal = grams();
   const completed = completedExchangeCount();
-  $('meterNote').textContent = sessionTotal.toFixed(2) + ' g CO₂e session total · ' +
-    completed + ' completed ' + (completed === 1 ? 'exchange' : 'exchanges');
+  // On screen a completed exchange is an "answer"; the ledger and METHODOLOGY
+  // say what counts as one. Before the first, the total is already non-zero
+  // (the screen is on), so the note says why.
+  $('meterNote').textContent = sessionTotal.toFixed(2) + ' g so far' +
+    (completed === 0 ? ', including your screen · no answers yet'
+      : ' · ' + completed + (completed === 1 ? ' answer' : ' answers'));
+  $('meterHint').textContent = target === null ? 'shown after your first answer' : 'average for this chat';
   // Cancel any in-flight tween, so rapid changes don't leave two loops
   // writing `shown` in the same frame.
   if (meterRaf !== null) { cancelAnimationFrame(meterRaf); meterRaf = null; }
   if (target === null) {
-    meterRead.textContent = '—';
+    meterRead.hidden = true;
+    meterRead.textContent = '';
     shown = 0;
     return;
   }
+  meterRead.hidden = false;
   // No tween when there is nobody to watch it, and none in a hidden tab, where
   // rAF never runs and the reading would otherwise stay frozen at its old value.
   if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {

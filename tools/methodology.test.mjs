@@ -76,7 +76,7 @@ check('Gemini output cap and thinking levels match', () => {
 check('client default tier is documented', () => {
   const tier = html.match(/tier: '([\w-]+)',\s+\/\/ what we asked for/)[1];
   assert.equal(tier, 'gemini-flash-lite');
-  assert.match(html, /<option value="gemini-flash-lite" selected>Gemini 3\.5 Flash-Lite, the default/);
+  assert.match(html, /<option value="gemini-flash-lite" selected>Gemini 3\.5 Flash-Lite \(default\)<\/option>/);
 });
 
 console.log('\nModel factors');
