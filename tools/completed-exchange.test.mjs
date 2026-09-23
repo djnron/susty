@@ -90,6 +90,59 @@ console.log('\nFunctional-unit arithmetic');
   });
 }
 
+console.log('\nProduction recordRequest');
+{
+  const REQUEST_STATUS = Object.freeze({ COMPLETED: 'completed', INCOMPLETE: 'incomplete', FAILED: 'failed' });
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400 };
+  const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 }, 'claude-opus-4-8': { factor: 1.33 } };
+  const state = { model: 'claude-sonnet-4-6', requests: [] };
+  const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
+  vm.runInContext(
+    `${extractNamedFunction(html, 'modelEnergy')}\n${extractNamedFunction(html, 'recordRequest')}\n` +
+    'this.recordRequest = recordRequest;',
+    context,
+  );
+  const record = context.recordRequest;
+
+  check('HTTP failure keeps hosting only, invents no inference', () => {
+    record(0, 0, { status: 'failed', model: null, stopReason: 'http_503' });
+    const r = state.requests.at(-1);
+    assert.equal(r.status, 'failed');
+    assert.equal(r.chipWh, 0);
+    near(r.hostingWh, 0.003);
+    near(r.grams, 0.003 * 400 / 1000);
+  });
+  check('record is priced with the responding model factor', () => {
+    record(1000, 100, { status: 'completed', model: 'claude-opus-4-8-20260101', stopReason: 'end_turn' });
+    near(state.requests.at(-1).factor, 1.33);
+  });
+  check('records are frozen and keep their grid after a later change', () => {
+    const r = state.requests.at(-1);
+    MODEL.gridGPerKwh = 50;
+    assert.ok(Object.isFrozen(r));
+    assert.equal(r.gridGPerKwh, 400);
+  });
+  check('missing or unknown status is rejected', () => {
+    assert.throws(() => record(1, 1, {}), /valid status/);
+    assert.throws(() => record(1, 1, { status: 'done' }), /valid status/);
+  });
+}
+
+console.log('\nDevice time is closed out before a pricing input changes');
+for (const [label, marker] of [
+  ['grid', 'function applyGrid() {'],
+  ['device', "$('screen').addEventListener('change', e => {"],
+  ['theme', 'function applyTheme(next) {'],
+]) {
+  check(`${label} change syncs the clock before switching`, () => {
+    const at = html.indexOf(marker);
+    assert.notEqual(at, -1, `${marker} not found`);
+    const body = html.slice(at + marker.length, at + marker.length + 400);
+    const firstStatement = body.replace(/^\s*(\/\/[^\n]*\n\s*)*/, '');
+    assert.match(firstStatement, /^clockSync\(\);/);
+  });
+}
+
 console.log('\nMeter and ledger contract');
 check('primary meter is per completed exchange and starts undefined', () => {
   assert.match(html, /id="meterRead">—<\/span>/);

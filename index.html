@@ -1926,6 +1926,9 @@ function markLiveRegion() {
 }
 
 function applyGrid() {
+  // Close the device slice at the old grid before the new one takes effect,
+  // so time already elapsed is never billed at a rate set after it.
+  clockSync();
   MODEL.gridGPerKwh = state.live ? state.live.g : staticGrid();
   markLiveRegion();
   // No pulse. The flash marks an exchange, and this fires on load as soon as
@@ -2001,6 +2004,7 @@ function syncTierToAnswer() {
 }
 
 $('screen').addEventListener('change', e => {
+  clockSync();                 // price elapsed time at the old wattage first
   state.screen = e.target.value;
   try { localStorage.setItem('susty-screen', state.screen); } catch {}
   paintLedger();
@@ -2016,6 +2020,7 @@ function syncThemeLabel(t) {
 }
 
 function applyTheme(next) {
+  clockSync();                 // the panel's draw depends on theme; same reason
   if (next === 'light') document.documentElement.setAttribute('data-theme', 'light');
   else document.documentElement.removeAttribute('data-theme');
   syncThemeLabel(next);
