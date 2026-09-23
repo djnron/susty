@@ -127,6 +127,15 @@ check('EIA fuel factors match', () => {
     has(new RegExp(`\\| ${name} \\| ${g.toLocaleString('en-US')} \\|`), `${name} ${g}`);
   }
 });
+check('national range and stamp match the GRIDS table', () => {
+  const ember = Object.entries(GRIDS).filter(([k]) => k !== 'world' && k !== 'EU');
+  const lo = ember.reduce((a, b) => (b[1].g < a[1].g ? b : a));
+  const hi = ember.reduce((a, b) => (b[1].g > a[1].g ? b : a));
+  has(new RegExp(`from ${lo[1].name} \\(${lo[1].g}\\) to ${hi[1].name} \\(${hi[1].g}\\)`));
+  const year = html.match(/Ember yearly electricity data, (\d{4}) values, retrieved \d{4}-\d{2}-\d{2} by tools\/ember-grids\.mjs/)[1];
+  has(new RegExp(`Ember\\]\\([^)]+\\) ${year} national annual intensities`));
+  assert.equal(MODEL.gridGPerKwh, GRIDS.world.g, 'MODEL.gridGPerKwh default should be the world average');
+});
 check('world, EU and US fallback match', () => {
   has(new RegExp(`world ${GRIDS.world.g}, EU ${GRIDS.EU.g}`));
   has(new RegExp(`Susty uses \\*\\*${GRIDS.US.g} g/kWh\\*\\*`));

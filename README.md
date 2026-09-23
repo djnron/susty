@@ -155,7 +155,7 @@ The absolute token coefficients (0.05 mWh per input token and 0.5 mWh per
 output token) and PUE 1.12 are Susty modeling assumptions, not direct
 measurements from the cited literature. They are deliberately easy to change
 as better provider/model measurements become available. The world grid
-fallback is 473 g/kWh.
+fallback is 471 g/kWh (Ember 2024).
 Grid intensity is user-selectable because it alone swings the answer more than
 tenfold.
 
