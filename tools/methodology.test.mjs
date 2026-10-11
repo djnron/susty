@@ -252,43 +252,47 @@ check('hidden pickers stay hidden despite .pick display: flex', () =>
 console.log('\nWorked example (METHODOLOGY 3)');
 {
   const WATER_GRIDS = objectLiteral(html, 'WATER_GRIDS');
+  const WATER_US_SUB = objectLiteral(html, 'WATER_US_SUB');
   const PHONE_CHARGE_WH = Number(html.match(/const PHONE_CHARGE_WH = (\d+);/)[1]);
   const sect = doc.slice(doc.indexOf('### Worked example'), doc.indexOf('### Why longer chats'));
   const row = (label, value) => assert.ok(sect.includes(value),
     `worked example: ${label} should read ${value}`);
   const f = (n, d = 3) => n.toFixed(d);
-  const factor = MODEL_ENERGY['gemini-3.5-flash-lite'].factor;
+  const factor = MODEL_ENERGY['claude-opus-4-8'].factor;
   const laptopW = DEVICE_BASE.laptop + PANELS.lcdLaptop.light;
-  const inf = (1000 * MODEL.whPerInputToken + 300 * MODEL.whPerOutputToken) * factor * MODEL.pue;
+  const chicago = US_SUB.RFCW;
+  const inf = (1000 * MODEL.whPerInputToken + 5000 * MODEL.whPerOutputToken) * factor * MODEL.pue;
   const req = inf + MODEL.whPerExchange;
   const dev = (sec) => laptopW * sec / 3600;
   const sg = req * MODEL.serverGridGPerKwh / 1000;
-  const g = (gridG, sec = 90) => sg + dev(sec) * gridG / 1000;
-  const central = g(GRIDS.GB.g);
-  const us = WATER_GRIDS.US, gb = WATER_GRIDS.GB;
+  const g = (gridG, sec = 300) => sg + dev(sec) * gridG / 1000;
+  const central = g(chicago);
+  const us = WATER_GRIDS.US, rfcw = WATER_US_SUB.RFCW;
   check('inputs are the ones the table names', () => {
-    assert.equal(factor, 0.85); assert.equal(laptopW, 10); assert.equal(GRIDS.GB.g, 217);
+    assert.equal(factor, 1.33); assert.equal(laptopW, 10); assert.equal(chicago, 416);
     assert.equal(GRIDS.NO.g, 30); assert.equal(GRIDS.ZA.g, 718);
     assert.equal(MODEL.serverGridGPerKwh, 307); assert.equal(MODEL.inferenceHighFactor, 2.7);
+    assert.match(html, /\['Illinois — northern \(Chicago\)','RFCW'\]/);
   });
   check('energy rows reproduce', () => {
     row('inference', `| ${f(inf)} Wh |`);
-    row('device', `| ${f(dev(90))} Wh |`);
-    row('electricity', `${f(req + dev(90))} Wh (${(100 * (req + dev(90)) / PHONE_CHARGE_WH).toFixed(1)}% of a ${PHONE_CHARGE_WH} Wh`);
+    row('device', `| ${f(dev(300))} Wh |`);
+    row('inference share', `inference is ${Math.round(100 * inf / (req + dev(300)))}% of it`);
+    row('electricity', `${f(req + dev(300))} Wh (${(100 * (req + dev(300)) / PHONE_CHARGE_WH).toFixed(1)}% of a ${PHONE_CHARGE_WH} Wh`);
   });
   check('carbon rows reproduce', () => {
     row('servers', `| ${f(sg)} g |`);
-    row('device', `| ${f(dev(90) * GRIDS.GB.g / 1000)} g |`);
+    row('device', `| ${f(dev(300) * chicago / 1000)} g |`);
     row('central', `**${f(central)} g CO2e**`);
     row('high end', `| ${f(central + (MODEL.inferenceHighFactor - 1) * inf * MODEL.serverGridGPerKwh / 1000)} g CO2e |`);
     row('grid span', `| ${f(g(GRIDS.NO.g))}–${f(g(GRIDS.ZA.g))} g CO2e |`);
-    row('reading time', `from ${f(g(GRIDS.GB.g, 30))} g to ${f(g(GRIDS.GB.g, 300))} g`);
+    row('reading time', `from ${f(g(chicago, 60))} g to ${f(g(chicago, 600))} g`);
   });
   check('water rows reproduce', () => {
-    row('on-site', `| ${f(inf / MODEL.pue * MODEL.onsiteWueLPerKwh + MODEL.whPerExchange * MODEL.onsiteWueLPerKwh)} mL |`);
-    row('power stations', `| ${f(req * us.offsite + dev(90) * gb.offsite)} mL |`);
-    row('hydro', `| ${f(req * us.hydro + dev(90) * gb.hydro)} mL |`);
-    row('US and GB factors', `× ${us.offsite} L/kWh (US) + 0.250 Wh × ${gb.offsite} L/kWh (GB)`);
+    row('on-site', `| ${f((inf / MODEL.pue + MODEL.whPerExchange) * MODEL.onsiteWueLPerKwh)} mL |`);
+    row('power stations', `| ${f(req * us.offsite + dev(300) * rfcw.offsite)} mL |`);
+    row('hydro', `| ${f(req * us.hydro + dev(300) * rfcw.hydro)} mL |`);
+    row('US and RFCW factors', `× ${us.offsite} L/kWh (US) + 0.833 Wh × ${rfcw.offsite} L/kWh (RFCW)`);
   });
 }
 check('the answered comparison row says when it leaves out thinking', () => {

@@ -1,6 +1,6 @@
 {
   "name": "susty",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "type": "module",
   "description": "A sustainability chatbot that meters the carbon cost of its own conversation.",

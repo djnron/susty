@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.1.1, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Version:** 2.1.2, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
 **Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-11-october-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 11 October 2026
 **Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026 (see [§14 Verification log](#14-verification-log))
@@ -160,26 +160,26 @@ Because attended device energy can continue to accrue after a response, the aver
 
 ### Worked example
 
-One question and answer, used in the methodology deck and the plain-language summary so that every figure they quote can be traced here. Inputs: Gemini 3.5 Flash-Lite (×0.85, §4.4), 1,000 input and 300 output tokens with thinking counted as output (§4.1), PUE 1.12 and 0.003 Wh hosting (§5), a laptop with an LCD panel in light mode, 10 W (§7.1), for 90 s of attended time (§7.3), a reader in the United Kingdom at Ember's 2024 yearly average of 217 g CO2e/kWh (§6.5), and the servers' grid of 307 g CO2e/kWh (§6.9).
+One heavy question and answer, used in the methodology deck and the plain-language summary so that every figure they quote can be traced here. It shows the case where the AI's computing, not the reader's device, dominates. Inputs: Claude Opus 4.8 (×1.33, §4.4), 1,000 input and 5,000 output tokens with thinking counted as output (§4.1), PUE 1.12 and 0.003 Wh hosting (§5), a laptop with an LCD panel in light mode, 10 W (§7.1), for 5 minutes of attended time (§7.3), a reader in Chicago on eGRID2023's RFCW subregion, 416 g CO2e/kWh (§6.4), and the servers' grid of 307 g CO2e/kWh (§6.9).
 
 | Step | Arithmetic | Result |
 |---|---|---:|
-| Inference | (1,000 × 0.05 + 300 × 0.5) mWh × 0.85 × 1.12 | 0.190 Wh |
+| Inference | (1,000 × 0.05 + 5,000 × 0.5) mWh × 1.33 × 1.12 | 3.798 Wh |
 | Hosting | fixed per request | 0.003 Wh |
-| Device | 10 W × 90 s | 0.250 Wh |
-| Electricity | sum | 0.443 Wh (2.3% of a 19 Wh phone charge, §9) |
-| Carbon, servers | (0.190 + 0.003) Wh × 307 g/kWh | 0.059 g |
-| Carbon, device | 0.250 Wh × 217 g/kWh | 0.054 g |
-| **Carbon, central** | sum | **0.114 g CO2e** |
-| Carbon, high end (§4.8) | central + (2.7 − 1) × 0.190 Wh × 307 g/kWh | 0.213 g CO2e |
-| Device on other grids | same exchange, reader's grid 30 g/kWh (Norway) to 718 g/kWh (South Africa) | 0.067–0.239 g CO2e |
-| Water, on-site (§16.2) | (0.190 ÷ 1.12 + 0.003) Wh × 1.15 L/kWh | 0.199 mL |
-| Water, power stations (§16.3) | 0.193 Wh × 1.082 L/kWh (US) + 0.250 Wh × 0.945 L/kWh (GB) | 0.446 mL |
-| Water, hydro reservoirs (§16.4) | 0.193 Wh × 0.918 L/kWh (US) + 0.250 Wh × 0.345 L/kWh (GB) | 0.264 mL |
+| Device | 10 W × 300 s | 0.833 Wh |
+| Electricity | sum; inference is 82% of it | 4.635 Wh (24.4% of a 19 Wh phone charge, §9) |
+| Carbon, servers | (3.798 + 0.003) Wh × 307 g/kWh | 1.167 g |
+| Carbon, device | 0.833 Wh × 416 g/kWh | 0.347 g |
+| **Carbon, central** | sum | **1.514 g CO2e** |
+| Carbon, high end (§4.8) | central + (2.7 − 1) × 3.798 Wh × 307 g/kWh | 3.496 g CO2e |
+| Device on other grids | same exchange, reader's grid 30 g/kWh (Norway) to 718 g/kWh (South Africa) | 1.192–1.765 g CO2e |
+| Water, on-site (§16.2) | (3.798 ÷ 1.12 + 0.003) Wh × 1.15 L/kWh | 3.904 mL |
+| Water, power stations (§16.3) | 3.801 Wh × 1.082 L/kWh (US) + 0.833 Wh × 1.461 L/kWh (RFCW) | 5.331 mL |
+| Water, hydro reservoirs (§16.4) | 3.801 Wh × 0.918 L/kWh (US) + 0.833 Wh × 0.170 L/kWh (RFCW) | 3.631 mL |
 
-- **Data-quality label: derived.** Each row is arithmetic on inputs labeled in the sections cited; the example adds no assumption of its own. The token counts, model, device and reading time are illustrative choices, not measurements of a typical session.
-- **Likely direction of error: low**, as for any Susty figure, because energy per token sits at the low end of published estimates (§4.3); the high-end row shows by how much under one published scenario. The 90 s of reading is a choice: 30 s to 300 s moves the central figure from 0.077 g to 0.240 g. Great Britain readers get NESO's live intensity in the app rather than the yearly 217.
-- **Not the §4.3 or §16.5 exchange.** Those checks use a different illustrative exchange (two turns, 831 input and 571 output tokens, 0.186 Wh with hosting), which is why its on-site water is 0.192 mL and this one's 0.199 mL. Under 2.0.0, when the reader's grid also priced the servers, this example came to 0.096 g.
+- **Data-quality label: derived.** Each row is arithmetic on inputs labeled in the sections cited; the example adds no assumption of its own. 5,000 output tokens is the median output of Oviedo et al.'s reasoning-length query (§4.3); the model, device, reading time and city are illustrative choices, not measurements of a typical session. A short everyday answer is far smaller, and on a laptop or desktop its device time can outweigh its inference.
+- **Likely direction of error: low**, as for any Susty figure, because energy per token sits at the low end of published estimates (§4.3); the high-end row shows by how much under one published scenario. For an Opus-class model EcoLogits' full model runs higher still (§4.4), so even the high end may be low. The 5 minutes of reading is a choice: 1 to 10 minutes moves the central figure from 1.236 g to 1.860 g. In the app, Chicago readers get EIA's hourly figure for the region (§6.3) rather than the yearly eGRID value.
+- **Not the §4.3 or §16.5 exchange.** Those checks use a different illustrative exchange (two turns, 831 input and 571 output tokens, 0.186 Wh with hosting, 0.192 mL on-site water).
 - `tools/methodology.test.mjs` recomputes every row from the constants in `index.html` and fails if this table drifts from them.
 
 ### Why longer chats cost more per turn

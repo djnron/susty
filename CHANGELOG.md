@@ -7,6 +7,17 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.1.2 — 11 October 2026
+
+A patch: no figure the app computes changes.
+
+- **A heavier, US worked example.** The §3 example is now one long-thinking
+  answer from Claude Opus 4.8 (1,000 in / 5,000 out, Oviedo et al.'s
+  reasoning-length query) read for 5 minutes on a laptop in Chicago (eGRID
+  RFCW, 416 g/kWh): 4.635 Wh, 82% of it inference; 1.514 g CO₂e, high end
+  3.496 g. It replaces the short Flash-Lite answer read in the UK, where the
+  laptop outweighed the AI. The test recomputes every row.
+
 ## 2.1.1 — 11 October 2026
 
 A patch: no figure the app computes changes.
