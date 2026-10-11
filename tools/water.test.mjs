@@ -135,7 +135,7 @@ console.log('\nRequest and device accrual');
                   serverWater: { offsite: 1.082, hydro: 0.918 }, gridWater: { offsite: 0.5, hydro: 3 } };
   const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 } };
   const state = { model: 'claude-sonnet-4-6', requests: [] };
-  const ctx = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
+  const ctx = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error, Date, METHODOLOGY_VERSION: '2.1.0' });
   vm.runInContext(`${fn('modelEnergy')}\n${fn('recordRequest')}\nthis.record = recordRequest;`, ctx);
 
   check('HTTP failure: hosting water off-site only, no cooling term', () => {

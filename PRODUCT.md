@@ -20,13 +20,14 @@ The only sustainability chatbot that measures its own environmental cost in real
 
 ## Operating Context
 
-Single-session, single-page. No login, no history, no account. The user arrives, asks a question or taps a chip, reads the reply, and may open the carbon ledger to see the methodology. The feedback link goes to a personal email. [Scope inferred as personal/exploratory from project structure and feedback routing; not confirmed.]
+Single-page. No login, no account. Chats with at least one question are saved in the reader's own browser (history and export, never sent anywhere). The user arrives, asks a question or taps a chip, reads the reply, and may open the carbon ledger to see the methodology. The feedback link goes to a personal email. [Scope inferred as personal/exploratory from project structure and feedback routing; not confirmed.]
 
 ## Capabilities and Constraints
 
 - Anthropic- and Gemini-powered chat via Vercel serverless proxy; API keys server-side only
 - Live operational-carbon accounting: provider token counts where available, modeled inference/service/device energy, and a completed-exchange functional unit
-- Grid intensity is user-selectable (world average to hydro/wind)
+- The reader's grid intensity is user-selectable for device time; the servers are priced on an assumed US data-centre grid. Location-based only: there is no renewable-tariff option
+- Water consumption is reported beside the carbon figure, as a separate indicator
 - No build step, no dependencies, no database, no auth
 - Rate-limited at 25 requests per IP per 10 minutes (in-memory; leaky on cold starts)
 - Feedback via mailto; no stored submissions. `api/feedback.js` exists and

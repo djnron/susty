@@ -19,6 +19,9 @@ echo "\n== water: data, generated tables, accrual ==========================="
 node tools/water-factors.mjs --check
 node tools/water.test.mjs
 
+echo "\n== history on this device ==========================================="
+node tools/history.test.mjs
+
 echo "\n== methodology matches code =========================================="
 node tools/methodology.test.mjs
 

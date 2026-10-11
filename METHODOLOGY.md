@@ -1,16 +1,26 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.0.0, released 23 September 2026 (see [CHANGELOG.md](CHANGELOG.md))
-**Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-23-september-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
-**Date:** 23 September 2026
-**Verified:** sources and code re-checked on 23 September 2026 (see [§14 Verification log](#14-verification-log))
+**Version:** 2.1.0, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-11-october-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
+**Date:** 11 October 2026
+**Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026 (see [§14 Verification log](#14-verification-log))
 
-Susty estimates the **operational carbon footprint of an AI conversation**. It combines modeled AI inference energy, modeled service/hosting energy, and estimated end-user device energy during attended use, then applies grid carbon intensity.
+Susty estimates the **operational carbon footprint of an AI conversation**. It combines modeled AI inference energy, modeled service/hosting energy, and estimated end-user device energy during attended use, then applies grid carbon intensity. Beside the carbon figure it reports, as a separate indicator, the operational water consumption of the same electricity (§16).
 
 This is an **operational estimate, not a full life-cycle assessment**. Training and embodied hardware emissions are excluded. Every material input is identified as measured, derived, inferred/declared, or modeled. Where a number is a guess, this document says so and, where known, which direction it errs. The product's argument depends on the arithmetic being checkable, so the uncomfortable parts are written down rather than rounded away.
 
 ---
+
+## Decisions taken on 11 October 2026
+
+For 2.1.0. The boundary and functional unit are unchanged.
+
+1. **Servers' grid.** Inference and hosting are priced on a US data-centre grid, 307 g CO2e/kWh, labeled "basis not stated by source" (§6.9). The reader's grid prices device time only.
+2. **Range.** The ledger total runs to a high end with inference at k = 2.7 (Oviedo et al.'s upper quartile over Susty's figure for the same query), inference only, ledger only (§4.8).
+3. **Long-chat notice.** Once input ≥ 10 × output tokens, thinking counted as output (§3).
+4. **Water** (§16): factors from Larsen & Drews (2019) Appendix B, cooling-tower row (D1), all water (D2), hydro on its own labeled row (D3), one factor table everywhere (D4); EIA `OTH` priced as bioenergy. JRC121030 is a cross-check only. ENTSO-E hourly generation is future work.
+5. **Not done:** user overrides of assumptions, market-based or renewable-tariff accounting, and repricing of frozen records.
 
 ## Decisions taken on 23 September 2026
 
@@ -559,6 +569,17 @@ The per-answer value is always labeled an average ("Average per answer"). It nev
 
 Token-normalized carbon may be reported as a secondary diagnostic in the future, but should not be presented as task effectiveness or answer quality.
 
+### 8.1 History on this device
+
+In the ledger, below the model comparison, Susty shows the reader's totals for today, the last 7 days and everything saved, from chats kept in this browser's local storage, with CSV and JSON export and a control to clear it.
+
+- **What is kept.** Every chat with at least one question: its frozen request records (each stamped with its time and the methodology version it was priced under) and its device time as **segments**. A new segment starts whenever anything that prices device time changes (grid, region, grid intensity, water intensity, device, theme or wattage), so the close-out rule of §3 also bounds each segment. Visits with no question are not kept.
+- **Never repriced.** Totals and exports read the stored figures only, never the current model, grid or methodology. An entry priced under an older methodology keeps its figures and is labeled with its version; the ledger says when the totals mix versions.
+- **Where it counts.** A request counts on its own timestamp; a device segment counts on the time it started. "Today" is the reader's local calendar day; "last 7 days" is the 168 hours before now.
+- **Retention.** Until the reader clears it. If the stored history would exceed 2,000,000 characters (well inside the roughly 5 MB browsers usually allow a page), the oldest chats are dropped first. Clearing deletes everything stored and stops saving the current chat; new chats are saved again.
+- **Privacy.** Storage is this browser's own; nothing leaves the browser, in line with the time-zone location stance of §6.8. Storage can be missing or blocked (private windows, previews): every access is wrapped, and the page then works as before, with only the current chat counted, and says so.
+- **Export.** CSV (one row per request record and per device segment) and JSON (the stored sessions as kept). Every row carries its methodology version. The CSV includes the high end of each request's range (§4.8) and its water (§16); device rows are not ranged.
+
 **Copy rules learned the hard way.** Copy shared across regions names no region and quotes no region-specific ratio (a "sunny California afternoon" line once went to every US reader). The source sentence always credits the provider that actually supplied the figure — NESO, EIA, EPA, Ember, or Electricity Maps. Assumptions are labeled as assumptions.
 
 ---
@@ -625,6 +646,7 @@ A modeled number is never described as directly measured. The interface uses pre
 12. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
 13. **Embodied emissions and training.** Both are outside the current boundary.
 14. **Water factors.** Per-fuel consumption factors are literature medians assuming cooling towers and all water (§16.3); Larsen & Drews could not validate consumption, only withdrawals. Geothermal entries in their table do not match the Macknick values they cite. Water intensities are annual except US hourly. The hydro row allocates all reservoir evaporation to electricity and errs high; whether Ember excludes pumped storage everywhere is unverified (§16.4). Water errs high while the energy it multiplies errs low (§16.6).
+15. **History is local.** Saved history lives in one browser and is lost if storage is cleared; device segments count on the day they started (§8.1).
 
 The result should be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
 
@@ -663,7 +685,7 @@ It also verifies that failed or partial exchanges do not increase the denominato
 
 ## 14. Verification log
 
-Re-checked on **23 September 2026** against primary sources where reachable.
+Re-checked on **23 September 2026** against primary sources where reachable. Rows marked "added 11 October 2026" were checked for 2.1.0.
 
 | Claim | Result | How checked |
 |---|---|---|

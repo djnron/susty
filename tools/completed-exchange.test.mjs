@@ -99,7 +99,7 @@ console.log('\nProduction recordRequest');
     onsiteWueLPerKwh: 1.15, serverWater: { offsite: 1.082, hydro: 0.918 }, gridWater: { offsite: 1, hydro: 1 } };
   const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 }, 'claude-opus-4-8': { factor: 1.33 } };
   const state = { model: 'claude-sonnet-4-6', requests: [] };
-  const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
+  const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error, Date, METHODOLOGY_VERSION: '2.1.0' });
   vm.runInContext(
     `${extractNamedFunction(html, 'modelEnergy')}\n${extractNamedFunction(html, 'recordRequest')}\n` +
     'this.recordRequest = recordRequest;',

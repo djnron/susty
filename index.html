@@ -601,6 +601,8 @@ textarea, input { caret-color: var(--ink); }
 .entry textarea:focus { outline: var(--bw) solid var(--ink); outline-offset: -6px; }
 
 .composer-meta { display: flex; justify-content: flex-start; padding-top: var(--s3); }
+/* Three text buttons in the ledger's history section: spaced, and free to wrap. */
+.history-actions { gap: var(--s4); flex-wrap: wrap; }
 .feedback-link {
   background: none;
   border: none;
@@ -1058,6 +1060,26 @@ textarea, input { caret-color: var(--ink); }
     <p class="note" id="compareEmpty">Appears after the first answer.</p>
     <table class="rows" id="compareTable" hidden><tbody id="compareRows"></tbody></table>
     <p class="note" id="compareNote" hidden>Hypothetical. The same question and answer length, priced with each model's energy factor on the servers' grid; hosting and your device are the same whichever model answers, so they are left out. Thinking tokens are left out too, because each model thinks differently and the Gemini models always add some, so a thinking model's real cost would be higher. The factors likely understate the gap between small and large models. Claude and Gemini also count tokens differently. Says nothing about which answer would have been better.</p>
+  </div>
+
+  <div class="sect">
+    <h3>Your history on this device</h3>
+    <table class="rows">
+      <tbody>
+        <tr><td>Today</td><td id="hToday">0.00 g CO₂e, 0 answers</td></tr>
+        <tr><td>Last 7 days</td><td id="hWeek">0.00 g CO₂e, 0 answers</td></tr>
+        <tr><td id="hAllLabel">All saved</td><td id="hAll">0.00 g CO₂e, 0 answers</td></tr>
+      </tbody>
+    </table>
+    <p class="note" id="hVersions" hidden></p>
+    <p class="note" id="hUnavailable" hidden>This browser isn't letting us save history, so only this chat is counted.</p>
+    <p class="note" id="hPaused" hidden>History cleared. This chat won't be saved; new chats will be.</p>
+    <p class="note">Saved only in this browser; nothing is sent anywhere. Chats with at least one question are kept until you clear them, oldest dropped first if space runs out. Each entry keeps the figures it was priced with, under the methodology version it was priced with; nothing is repriced. Central figures; the export has the high end too.</p>
+    <div class="composer-meta history-actions">
+      <button class="feedback-link" id="hCsv" type="button">Export CSV</button>
+      <button class="feedback-link" id="hJson" type="button">Export JSON</button>
+      <button class="feedback-link" id="hClear" type="button">Clear history</button>
+    </div>
   </div>
 
   <div class="sect">
@@ -1578,6 +1600,10 @@ const PHONE_CHARGE_WH = 19;
 // lower figure is used so the comparison does not flatter the conversation.
 const BURGER_G = 3800;
 
+// Carried on every record and history entry, so a figure priced under an
+// older methodology is labeled with it and never repriced.
+const METHODOLOGY_VERSION = '2.1.0';
+
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
 // state.history, so the estimate fallback has to add it back.
@@ -1602,12 +1628,15 @@ const state = {
   deviceWh: 0, deviceG: 0,
   // Off-site water for device time (mL), at the reader's grid, frozen tick
   // by tick like deviceG. The device has no on-site (cooling) term.
-  deviceWaterMl: 0, deviceHydroMl: 0
+  deviceWaterMl: 0, deviceHydroMl: 0,
+  // The same device time in segments, for history (METHODOLOGY 8.1).
+  deviceSegments: [],
+  historyPaused: false          // set by "clear history" for the rest of this chat
 };
 
 // Attended time, on the standards' "duration of use" footing rather than a
 // curve of my own invention. DIMPACT allocates a device to one service by the
-// service's share of total device use duration (Methodology v1.0, Eq. 19); no
+// service's share of total device use duration (Methodology v1.0, Eq. 16); no
 // published model weights by an attention decay, so this does not either.
 //
 // GRACE is the one parameter, and it is anchored: a susty reply runs roughly
@@ -1652,6 +1681,12 @@ function clockSync() {
       state.deviceG  += wh * MODEL.gridGPerKwh / 1000;
       state.deviceWaterMl += wh * MODEL.gridWater.offsite;
       state.deviceHydroMl += wh * MODEL.gridWater.hydro;
+      const seg = deviceSegment();
+      seg.attendedMs += creditedMs; seg.end = Date.now();
+      seg.wh += wh;
+      seg.g  += wh * MODEL.gridGPerKwh / 1000;
+      seg.waterMl += wh * MODEL.gridWater.offsite;
+      seg.hydroMl += wh * MODEL.gridWater.hydro;
     }
   }
   wasOn = onScreen();
@@ -1739,7 +1774,8 @@ function recordRequest(inTok, outTok, {
     waterOnsiteMl,  waterOnsiteMlHigh:  waterOnsiteMl * highFactor,
     waterOffsiteMl, waterOffsiteMlHigh: waterOffsiteMl + k1 * chipWh * serverWater.offsite,
     waterHydroMl,   waterHydroMlHigh:   waterHydroMl   + k1 * chipWh * serverWater.hydro,
-    status, stopReason
+    status, stopReason,
+    t: Date.now(), v: METHODOLOGY_VERSION
   }));
 }
 
@@ -1830,6 +1866,162 @@ const grams = () =>
 // record's inference at its frozen high factor. Device time is not ranged.
 // Shown in the ledger only; the meter, the average, the comparisons and the
 // offset all use the central figure.
+/* ---------------------------------------------------------------------------
+   History on this device (METHODOLOGY 8.1). Frozen records and device
+   segments are kept in this browser only, and nothing is ever repriced: each
+   entry carries the methodology version it was priced under. Storage can be
+   missing or blocked (private windows, previews), so every access is wrapped
+   and the page works the same without it.
+--------------------------------------------------------------------------- */
+const HISTORY_KEY = 'susty-history-v1';
+// Well inside the ~5 MB most browsers give a page; oldest sessions go first.
+const HISTORY_MAX_CHARS = 2000000;
+const SESSION_ID = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+const SESSION_START = Date.now();
+let historyOthers = [];          // every stored session but this one
+let historyAvailable = true;
+
+// Device time as segments, split whenever anything that prices it changes,
+// so the same close-out rule that freezes carbon also bounds each segment.
+function deviceSegment() {
+  const w = MODEL.gridWater;
+  const key = [state.grid, state.region, MODEL.gridGPerKwh, w.offsite, w.hydro, state.screen, theme(), deviceWattsNow()].join('|');
+  let seg = state.deviceSegments[state.deviceSegments.length - 1];
+  if (!seg || seg.key !== key) {
+    seg = { key, v: METHODOLOGY_VERSION, start: Date.now(), end: Date.now(),
+            grid: state.grid, region: state.region, gridGPerKwh: MODEL.gridGPerKwh,
+            gridWaterOffsite: w.offsite, gridWaterHydro: w.hydro,
+            screen: state.screen, theme: theme(), watts: deviceWattsNow(),
+            attendedMs: 0, wh: 0, g: 0, waterMl: 0, hydroMl: 0 };
+    state.deviceSegments.push(seg);
+  }
+  return seg;
+}
+
+function sessionSnapshot() {
+  return {
+    id: SESSION_ID, startedAt: SESSION_START, v: METHODOLOGY_VERSION,
+    requests: state.requests.map(r => ({ ...r })),
+    device: state.deviceSegments.map(({ key, ...d }) => ({ ...d }))
+  };
+}
+
+function readStoredSessions(storage) {
+  const raw = storage.getItem(HISTORY_KEY);
+  const j = raw ? JSON.parse(raw) : null;
+  return j && Array.isArray(j.sessions) ? j.sessions : [];
+}
+
+// Merge with whatever is stored now (another tab may have written), add this
+// session, drop the oldest sessions past the cap, write. Returns false if the
+// browser would not let us.
+function saveHistory(storage = window.localStorage, cap = HISTORY_MAX_CHARS) {
+  if (state.historyPaused || !state.requests.length) return false;   // no question, nothing to keep
+  try {
+    const others = readStoredSessions(storage).filter(x => x.id !== SESSION_ID);
+    let sessions = [...others, sessionSnapshot()];
+    let json = JSON.stringify({ v: 1, sessions });
+    while (json.length > cap && sessions.length > 1) {
+      sessions.shift();
+      json = JSON.stringify({ v: 1, sessions });
+    }
+    storage.setItem(HISTORY_KEY, json);
+    historyOthers = sessions.filter(x => x.id !== SESSION_ID);
+    historyAvailable = true;
+    return true;
+  } catch {
+    historyAvailable = false;
+    return false;
+  }
+}
+
+// Totals from frozen values only. Requests count on their own timestamp;
+// device segments on the time they started.
+function historyTotals(sessions, now) {
+  const day = new Date(now); day.setHours(0, 0, 0, 0);
+  const t0 = day.getTime(), w0 = now - 7 * 864e5;
+  const b = () => ({ g: 0, answers: 0, waterMl: 0 });
+  const out = { today: b(), week: b(), all: b(), since: null, versions: [] };
+  const add = (when, g, ans, ml) => {
+    for (const [k, ok] of [['today', when >= t0], ['week', when >= w0], ['all', true]]) {
+      if (!ok) continue;
+      out[k].g += g; out[k].answers += ans; out[k].waterMl += ml;
+    }
+    if (out.since === null || when < out.since) out.since = when;
+  };
+  const vs = new Set();
+  for (const s of sessions) {
+    for (const r of s.requests || []) {
+      add(r.t, r.grams || 0, r.status === 'completed' ? 1 : 0, (r.waterOnsiteMl || 0) + (r.waterOffsiteMl || 0));
+      if (r.v) vs.add(r.v);
+    }
+    for (const d of s.device || []) {
+      add(d.start, d.g || 0, 0, d.waterMl || 0);
+      if (d.v) vs.add(d.v);
+    }
+  }
+  out.versions = [...vs].sort();
+  return out;
+}
+
+// One row per request record and per device segment, each with the
+// methodology version it was priced under. Values are copied from the
+// frozen entries, never recomputed.
+const CSV_COLUMNS = ['methodology_version', 'session_id', 'kind', 'time_utc', 'status', 'model',
+  'input_tokens', 'output_tokens', 'thinking_tokens', 'model_factor', 'energy_wh', 'grid_g_per_kwh',
+  'g_co2e', 'g_co2e_high', 'water_onsite_ml', 'water_offsite_ml', 'water_hydro_ml',
+  'reader_grid', 'screen', 'theme', 'attended_s'];
+function historyCsv(sessions) {
+  const esc = v => {
+    if (v === undefined || v === null) return '';
+    const str = String(v);
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  };
+  const iso = ms => (typeof ms === 'number' ? new Date(ms).toISOString() : '');
+  const rows = [CSV_COLUMNS.join(',')];
+  for (const s of sessions) {
+    for (const r of s.requests || []) rows.push([
+      r.v || s.v, s.id, 'request', iso(r.t), r.status, r.model, r.inTok, r.outTok, r.thinkTok, r.factor,
+      r.wh, r.serverGridGPerKwh, r.grams, r.gramsHigh, r.waterOnsiteMl, r.waterOffsiteMl, r.waterHydroMl,
+      '', '', '', ''
+    ].map(esc).join(','));
+    for (const d of s.device || []) rows.push([
+      d.v || s.v, s.id, 'device', iso(d.start), '', '', '', '', '', '',
+      d.wh, d.gridGPerKwh, d.g, d.g, 0, d.waterMl, d.hydroMl,
+      d.grid + (d.region ? '/' + d.region : ''), d.screen, d.theme, d.attendedMs / 1000
+    ].map(esc).join(','));
+  }
+  return rows.join('\n') + '\n';
+}
+
+function allSessions() {
+  return state.historyPaused || !state.requests.length ? historyOthers : [...historyOthers, sessionSnapshot()];
+}
+
+function downloadFile(name, type, text) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function paintHistory() {
+  const h = historyTotals(allSessions(), Date.now());
+  const row = x => fmt(x.g) + ' g CO₂e, ' + x.answers + (x.answers === 1 ? ' answer' : ' answers');
+  $('hToday').textContent = row(h.today);
+  $('hWeek').textContent  = row(h.week);
+  $('hAll').textContent   = row(h.all);
+  $('hAllLabel').textContent = !historyAvailable ? 'This chat (not saved)'
+    : h.since === null ? 'All saved' : 'All saved, since ' + new Date(h.since).toLocaleDateString();
+  const older = h.versions.filter(v => v !== METHODOLOGY_VERSION);
+  $('hVersions').hidden = !older.length;
+  $('hVersions').textContent = older.length
+    ? 'Includes entries priced under methodology ' + older.join(', ') + ', kept at the figures they were priced with.' : '';
+  $('hUnavailable').hidden = historyAvailable;
+  $('hPaused').hidden = !state.historyPaused;
+}
+
 // Water totals for the ledger, from frozen records and the device accrual.
 function waterTotals() {
   const t = { onsite: 0, onsiteHigh: 0, offsite: state.deviceWaterMl, offsiteHigh: state.deviceWaterMl,
@@ -2058,6 +2250,7 @@ function paintLedger() {
       : floor >= 2 ? 'Even the smallest of these three actions covers it about ' + floor.toLocaleString() + ' times over:'
       : 'The two yearly changes below each cover it many times over:');
 
+  paintHistory();
   paintScreen();
 }
 
@@ -2145,6 +2338,25 @@ setInterval(() => {
   if (ledger.classList.contains('open')) paintLedger();
 }, 2000);
 meter.addEventListener('click', openLedger);
+
+// History: load what is stored, keep it current, and offer export and clear.
+try { historyOthers = readStoredSessions(window.localStorage).filter(x => x.id !== SESSION_ID); }
+catch { historyAvailable = false; }
+let historyTick = 0;
+setInterval(() => { if (++historyTick % 5 === 0) saveHistory(); }, 2000);   // every 10 s
+document.addEventListener('visibilitychange', () => { if (document.hidden) { clockSync(); saveHistory(); } });
+window.addEventListener('pagehide', () => { clockSync(); saveHistory(); });
+const stamp = () => new Date().toISOString().slice(0, 10);
+$('hCsv').addEventListener('click', () => downloadFile('susty-history-' + stamp() + '.csv', 'text/csv', historyCsv(allSessions())));
+$('hJson').addEventListener('click', () => downloadFile('susty-history-' + stamp() + '.json', 'application/json',
+  JSON.stringify({ exported: new Date().toISOString(), methodology: METHODOLOGY_VERSION, sessions: allSessions() }, null, 2)));
+$('hClear').addEventListener('click', () => {
+  if (!confirm('Delete all saved history from this browser? This cannot be undone.')) return;
+  try { window.localStorage.removeItem(HISTORY_KEY); } catch {}
+  historyOthers = [];
+  state.historyPaused = true;
+  paintLedger();
+});
 $('shut').addEventListener('click', closeLedger);
 // The shelf no longer dims anything: docked it reflows, overlaid it is opaque
 // and full-bleed. Only the feedback drawer still sits over live page.
@@ -2649,6 +2861,7 @@ async function send(raw) {
     }
 
     repaintAccounting(status === REQUEST_STATUS.COMPLETED);
+    saveHistory();
   } catch (err) {
     console.error('Chat error:', err);
     if (!responseRetained) {

@@ -1,8 +1,8 @@
 # susty
 
-A sustainability chatbot that estimates the operational carbon of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
+A sustainability chatbot that estimates the operational carbon, and separately the water, of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
-**Version 2.0.0** (23 September 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Every release is tagged in git (`v2.0.0`, `v1.0.0`).
+**Version 2.1.0** (11 October 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are meant to be tagged in git (`v2.1.0`); as of 11 October 2026 no tags have been pushed to GitHub, so a past version is recovered from its release commit.
 
 No build step, no framework, no dependencies.
 
@@ -198,6 +198,11 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
   every Gemini reply carries some reasoning tokens. They are measured and
   priced; the default, Flash-Lite, runs at the lowest level Google offers.
+- **History is browser-local.** Saved chats live in one browser's storage and
+  are gone if it is cleared; nothing is sent anywhere (METHODOLOGY §8.1).
+- **Water figures err high** (cooling towers everywhere, all water, a proxy WUE),
+  while the energy they multiply errs low (METHODOLOGY §16.6). Hydro reservoir
+  evaporation is shown on its own row because its allocation is contested.
 - **Rate limiting is in-memory**, so it resets on cold start. It deters casual
   abuse; it is not a quota.
 - **`api/feedback.js` is not wired up.** The client opens a `mailto:` link
