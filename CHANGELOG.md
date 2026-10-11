@@ -25,7 +25,7 @@ and what the ledger reports beside it.
   a high end with AI energy at Oviedo et al.'s upper quartile, ×2.7 on
   inference only. Not a statistical interval; the meter stays central.
 - **Water**, as a separate indicator: cooling at the data centre (Google's
-  1.15 L/kWh), power stations excluding hydro (Larsen & Drews 2019 tower
+  1.15 L/kWh, on inference and on hosting), power stations excluding hydro (Larsen & Drews 2019 tower
   medians × Ember 2024, eGRID2023 or EIA hourly mixes), and hydro reservoir
   evaporation on its own row. Not part of the carbon figure.
 - **Burger comparison sourced**: a quarter-pound patty at Poore & Nemecek's

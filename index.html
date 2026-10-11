@@ -1755,12 +1755,15 @@ function recordRequest(inTok, outTok, {
   const gramsHigh  = grams + (highFactor - 1) * chipWh * serverGridGPerKwh / 1000;
   // Water, frozen the same way. L/kWh is mL/Wh, so these come out in mL.
   // On-site cooling scales with IT energy (chip energy before PUE), as in
-  // Google's own method; Susty's hosting has no on-site term (not known).
+  // Google's own method. Hosting is cooled too: Vercel publishes no WUE or
+  // overhead split, so the whole hosting term takes the same 1.15 L/kWh,
+  // undivided by PUE, which errs high (AWS, which Vercel's region names
+  // suggest, reports 0.08 L/kWh for North America).
   // Off-site is every kWh the request drew, hosting included, at the
   // servers' mix; hydro is kept apart. The high end scales inference only.
   const wueLPerKwh  = MODEL.onsiteWueLPerKwh;
   const serverWater = MODEL.serverWater;
-  const waterOnsiteMl  = chipWh / MODEL.pue * wueLPerKwh;
+  const waterOnsiteMl  = (chipWh / MODEL.pue + hostingWh) * wueLPerKwh;
   const waterOffsiteMl = wh * serverWater.offsite;
   const waterHydroMl   = wh * serverWater.hydro;
   const k1 = highFactor - 1;
@@ -1771,7 +1774,7 @@ function recordRequest(inTok, outTok, {
     model, factor, eIn, eOut, chipWh, hostingWh, wh,
     serverGridGPerKwh, grams, highFactor, gramsHigh,
     wueLPerKwh, serverWaterOffsite: serverWater.offsite, serverWaterHydro: serverWater.hydro,
-    waterOnsiteMl,  waterOnsiteMlHigh:  waterOnsiteMl * highFactor,
+    waterOnsiteMl,  waterOnsiteMlHigh:  waterOnsiteMl + k1 * chipWh / MODEL.pue * wueLPerKwh,
     waterOffsiteMl, waterOffsiteMlHigh: waterOffsiteMl + k1 * chipWh * serverWater.offsite,
     waterHydroMl,   waterHydroMlHigh:   waterHydroMl   + k1 * chipWh * serverWater.hydro,
     status, stopReason,

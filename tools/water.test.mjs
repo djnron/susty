@@ -138,21 +138,22 @@ console.log('\nRequest and device accrual');
   const ctx = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error, Date, METHODOLOGY_VERSION: '2.1.0' });
   vm.runInContext(`${fn('modelEnergy')}\n${fn('recordRequest')}\nthis.record = recordRequest;`, ctx);
 
-  check('HTTP failure: hosting water off-site only, no cooling term', () => {
+  check('HTTP failure: hosting water only, cooled at the same WUE and not ranged', () => {
     ctx.record(0, 0, { status: 'failed', model: null, stopReason: 'http_503' });
     const r = state.requests.at(-1);
-    near(r.waterOnsiteMl, 0);
+    near(r.waterOnsiteMl, 0.003 * 1.15);
+    near(r.waterOnsiteMlHigh, r.waterOnsiteMl);
     near(r.waterOffsiteMl, 0.003 * 1.082);
     near(r.waterHydroMl, 0.003 * 0.918);
     near(r.waterOffsiteMlHigh, r.waterOffsiteMl);
   });
-  check('a request freezes on-site (IT energy x WUE), off-site and hydro, and their high ends', () => {
+  check('a request freezes on-site ((IT energy + hosting) x WUE), off-site and hydro, and their high ends', () => {
     ctx.record(831, 571, { status: 'completed', model: 'claude-sonnet-4-6', stopReason: 'end_turn' });
     const r = state.requests.at(-1);
-    near(r.waterOnsiteMl, r.chipWh / 1.12 * 1.15);
+    near(r.waterOnsiteMl, (r.chipWh / 1.12 + 0.003) * 1.15);
     near(r.waterOffsiteMl, r.wh * 1.082);
     near(r.waterHydroMl, r.wh * 0.918);
-    near(r.waterOnsiteMlHigh, r.waterOnsiteMl * 2.7);
+    near(r.waterOnsiteMlHigh, r.waterOnsiteMl + 1.7 * r.chipWh / 1.12 * 1.15);   // hosting not ranged
     near(r.waterOffsiteMlHigh, r.waterOffsiteMl + 1.7 * r.chipWh * 1.082);
     assert.equal(r.wueLPerKwh, 1.15);
     assert.equal(r.serverWaterOffsite, 1.082);
@@ -188,10 +189,12 @@ console.log('\nRequest and device accrual');
 console.log('\nOrder-of-magnitude check (not a validation)');
 check('illustrative exchange on-site water sits between Google\'s narrow and comprehensive figures', () => {
   const chipWh = (831 * 0.05 + 571 * 0.5) / 1000 * 1.12 / 2;   // per exchange, as METHODOLOGY 4.3
-  const onsite = chipWh / 1.12 * 1.15;
-  near(Math.round(onsite * 1000) / 1000, 0.188);
+  const itWh = chipWh / 1.12 + 0.003;                            // plus hosting, cooled the same way
+  const onsite = itWh * 1.15;
+  near(Math.round(onsite * 1000) / 1000, 0.192);
   assert.ok(onsite >= 0.12 && onsite <= 0.26, `${onsite} mL outside Google's 0.12-0.26 mL`);
-  near(onsite / (chipWh / 1.12), 1.15);                         // implied WUE is Google's
+  near(onsite / itWh, 1.15);                                     // implied WUE is Google's
+  has(/is \*\*0\.192 mL\*\*/);
   has(/An order-of-magnitude check, \*\*not a validation\*\*/);
 });
 

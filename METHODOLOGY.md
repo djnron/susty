@@ -766,7 +766,7 @@ Susty reports **operational water consumption** beside the carbon figure, as a s
 Following Li et al. ("Making AI Less Thirsty"), operational water = energy × (on-site WUE + PUE × off-site water intensity). Susty's `inference_Wh` already includes PUE, so for request `j` and device slice `t`, in millilitres (L/kWh = mL/Wh):
 
 ```text
-onsite_mL(j)   = inference_Wh(j) / PUE x WUE_onsite
+onsite_mL(j)   = (inference_Wh(j) / PUE + service_Wh(j)) x WUE_onsite
 offsite_mL(j)  = (inference_Wh(j) + service_Wh(j)) x offsite_server
 hydro_mL(j)    = (inference_Wh(j) + service_Wh(j)) x hydro_server
 offsite_mL(t)  = device_Wh(t) x offsite_reader(t)
@@ -784,7 +784,7 @@ The ledger shows three rows: cooling at the data centre (on-site), power station
 | Value | **1.15 L/kWh** of IT energy, every tier |
 | Source | Google (2025), *Measuring the environmental impact of delivering AI at Google scale* (arXiv 2508.15734): "For both 2023 and 2024, Google's WUE Category 2 value was 1.15 L/kWh", a fleet average weighted by AI-serving energy, applied as `(E_total − E_overhead) × WUE`, i.e. to IT energy |
 | Data-quality label | **Measured** (by Google, for Google's fleet); applied to Anthropic tiers as a **modeled** proxy |
-| Likely direction of error | **High** for any Claude traffic served from AWS, whose 2025 North America average WUE was 0.08 L/kWh (AWS fact sheet); Anthropic does not disclose where it serves. Hosting (Vercel) has no on-site term because none is published: errs low, by a small amount |
+| Likely direction of error | **High** for any Claude traffic served from AWS, whose 2025 North America average WUE was 0.08 L/kWh (AWS fact sheet); Anthropic does not disclose where it serves. Hosting (Vercel) takes the same WUE on its whole 0.003 Wh, not divided by PUE, because Vercel publishes neither a WUE nor an overhead split: about 0.003 mL per request, and errs **high** (Vercel's default region `iad1` is listed as `us-east-1`, AWS's naming, and AWS reports 0.08 L/kWh for North America; Vercel does not name its provider) |
 
 Microsoft's figures are not used (no Susty tier runs on Azure). For the record, Microsoft's current WUE is 0.27 L/kWh globally in FY25, not the 0.1–1.65 regional range often quoted from older reports (§14).
 
@@ -847,11 +847,11 @@ JRC121030 is used as a cross-check only; it publishes no per-technology factors 
 
 ### 16.5 Order-of-magnitude check
 
-An order-of-magnitude check, **not a validation**: `tools/clock.test.mjs` asserts that the on-site water for the illustrative exchange of §4.3 (0.183 Wh of inference including PUE, 0.164 Wh of IT energy) is **0.188 mL**, between Google's narrow (0.12 mL, its Table 2) and comprehensive (0.26 mL) figures for a median Gemini Apps prompt, and that the implied WUE equals Google's 1.15 L/kWh. The check cannot validate Susty's figure: it compares a modeled Susty exchange with Google's measured prompt, which used more energy (0.24 Wh), and Google's own narrow figure is inconsistent in its paper (0.12 mL in Table 2, 0.15 mL in the text). The off-site water for the same exchange (0.201 mL excluding hydro, 0.171 mL more for hydro, at the US mix) is reported separately; Google's figure has no off-site term.
+An order-of-magnitude check, **not a validation**: `tools/water.test.mjs` asserts that the on-site water for the illustrative exchange of §4.3 (0.183 Wh of inference including PUE, 0.164 Wh of IT energy, plus 0.003 Wh of hosting) is **0.192 mL**, between Google's narrow (0.12 mL, its Table 2) and comprehensive (0.26 mL) figures for a median Gemini Apps prompt, and that the implied WUE equals Google's 1.15 L/kWh. Without hosting it would be 0.188 mL. The check cannot validate Susty's figure: it compares a modeled Susty exchange with Google's measured prompt, which used more energy (0.24 Wh), and Google's own narrow figure is inconsistent in its paper (0.12 mL in Table 2, 0.15 mL in the text). The off-site water for the same exchange (0.201 mL excluding hydro, 0.171 mL more for hydro, at the US mix) is reported separately; Google's figure has no off-site term.
 
 ### 16.6 Net direction of error
 
-Water and energy err in **opposite directions**. Every water choice that is not neutral errs high: cooling towers for every thermal plant (D1), all water rather than freshwater (D2), the pooled geothermal factor, Google's WUE applied to Claude traffic that may run on AWS, and the separate hydro row allocating all evaporation to power. The energy those intensities multiply errs **low**: Susty's token coefficients sit at the low end of published estimates (§4.3), with no idle-capacity term (§5). The two partly offset; Susty does not claim they cancel, and the ledger's range (§4.8) shows the energy side's upper scenario for water as well as carbon.
+Water and energy err in **opposite directions**. Every water choice that is not neutral errs high: cooling towers for every thermal plant (D1), all water rather than freshwater (D2), the pooled geothermal factor, Google's WUE applied to Claude traffic that may run on AWS and to Vercel hosting undivided by PUE, and the separate hydro row allocating all evaporation to power. The energy those intensities multiply errs **low**: Susty's token coefficients sit at the low end of published estimates (§4.3), with no idle-capacity term (§5). The two partly offset; Susty does not claim they cancel, and the ledger's range (§4.8) shows the energy side's upper scenario for water as well as carbon.
 
 ---
 
