@@ -678,10 +678,13 @@ textarea, input { caret-color: var(--ink); }
 .rows { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 .rows td { padding: var(--s2) 0; border-bottom: 1px solid var(--hairline); vertical-align: baseline; }
 .rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: var(--s4); }
-/* These two hold text rather than a figure, so they may wrap instead of
+/* These hold text rather than a figure, so they may wrap instead of
    pushing the column off a narrow screen. */
-#rModel, #rThinking { white-space: normal; }
+#rModel, #rThinking, #rServerGrid { white-space: normal; }
 .rows tr.muted td:first-child { padding-left: var(--s4); }
+/* A note spanning the table: one cell is both first and last child, so undo
+   the right-aligned, unwrapped number styling it would otherwise inherit. */
+.rows td[colspan] { text-align: left; white-space: normal; }
 .rows tr.total td {
   border-bottom: none;
   border-top: var(--bw) solid var(--ink);
@@ -983,6 +986,7 @@ textarea, input { caret-color: var(--ink); }
     <table class="rows">
       <tbody>
         <tr class="total"><td>This chat so far</td><td id="rTotal">0.00 g CO₂e</td></tr>
+        <tr class="muted"><td colspan="2" id="rRangeNote">Low end: our estimate. High end: if AI energy is at the upper quartile of published estimates (Oviedo et al. 2026), about 2.7 times ours. Your device and the grids are not ranged. A plausible spread, not a statistical margin of error.</td></tr>
         <tr><td>Answers</td><td id="rCompleted">0</td></tr>
         <tr><td>Average per answer</td><td id="rPerExchange">—</td></tr>
         <tr id="rIncompleteRow" hidden><td>Cut off or failed (in the total, not counted as answers)</td><td id="rIncomplete">0</td></tr>
@@ -1072,7 +1076,7 @@ textarea, input { caret-color: var(--ink); }
       </li>
       <li>
         <b>Energy per token (modelled assumption)</b>
-        <span>Susty currently models 0.05 mWh per input token and 0.5 mWh per output token. These coefficients are assumptions, not direct measurements from the cited literature, and they sit at the low end of published estimates: provider figures and research for a comparable question run from about the same to several times higher. Model differences are scaled from EcoLogits' estimates of each model's size, using a simplified form that likely understates how much more large models use. Luccioni, Jernite &amp; Strubell (FAccT 2024) is background on AI inference energy: <a href="https://arxiv.org/abs/2311.16863" target="_blank" rel="noopener">Power Hungry Processing: Watts Driving the Cost of AI Deployment?</a></span>
+        <span>Susty currently models 0.05 mWh per input token and 0.5 mWh per output token. These coefficients are assumptions, not direct measurements from the cited literature, and they sit at the low end of published estimates: provider figures and research for a comparable question run from about the same to several times higher. That is why the ledger shows this chat as a range: the high end assumes AI energy at the upper quartile of one published estimate (Oviedo et al., 0.60 Wh for a standard question), about 2.7 times ours. Model differences are scaled from EcoLogits' estimates of each model's size, using a simplified form that likely understates how much more large models use. Luccioni, Jernite &amp; Strubell (FAccT 2024) is background on AI inference energy: <a href="https://arxiv.org/abs/2311.16863" target="_blank" rel="noopener">Power Hungry Processing: Watts Driving the Cost of AI Deployment?</a></span>
       </li>
       <li>
         <b>Data centre overhead PUE ×1.12 (modelled assumption)</b>
@@ -1189,7 +1193,15 @@ const MODEL = {
   // "AI emissions by region", 16 Sept 2026). Watershed does not say which
   // accounting basis that figure uses, and the ledger says so. Hosting
   // (Vercel, US East by default) is priced on it too.
-  serverGridGPerKwh: 307
+  serverGridGPerKwh: 307,
+  // High end of the ledger's range. Susty's token coefficients sit at the low
+  // end of published estimates (METHODOLOGY 4.3), so the range runs upward
+  // from the central figure: inference energy (chip x PUE) scaled to Oviedo
+  // et al.'s upper quartile for a standard query, 0.60 Wh, against Susty's
+  // own figure for that query, 0.224 Wh (1,000 in / 300 out on the Sonnet
+  // anchor). 0.60 / 0.224 = 2.68, rounded up to 2.7. Hosting, device time
+  // and both grids are not ranged. Not a statistical interval.
+  inferenceHighFactor: 2.7
 };
 // No embodied-hardware term. The old +15% treated manufacturing emissions as
 // electricity, which they are not — see METHODOLOGY's "what the total
@@ -1567,9 +1579,14 @@ function recordRequest(inTok, outTok, {
   const hostingWh = includeHosting ? MODEL.whPerExchange : 0;
   const wh        = chipWh + hostingWh;
   const serverGridGPerKwh = MODEL.serverGridGPerKwh;
+  // The high end is frozen with the record too, factor included, so a later
+  // change to the factor never reprices history in either direction.
+  const highFactor = MODEL.inferenceHighFactor;
+  const grams      = wh * serverGridGPerKwh / 1000;
+  const gramsHigh  = grams + (highFactor - 1) * chipWh * serverGridGPerKwh / 1000;
   state.requests.push(Object.freeze({
     model, factor, eIn, eOut, chipWh, hostingWh, wh,
-    serverGridGPerKwh, grams: wh * serverGridGPerKwh / 1000,
+    serverGridGPerKwh, grams, highFactor, gramsHigh,
     status, stopReason
   }));
 }
@@ -1611,6 +1628,13 @@ const deviceEnergy = () => state.deviceWh;
 // time; the device total's grams were frozen tick by tick in clockSync().
 const grams = () =>
   state.requests.reduce((sum, r) => sum + r.grams, 0) + state.deviceG;
+
+// The high end of the ledger's range: the same frozen history with each
+// record's inference at its frozen high factor. Device time is not ranged.
+// Shown in the ledger only; the meter, the average, the comparisons and the
+// offset all use the central figure.
+const gramsHigh = () =>
+  state.requests.reduce((sum, r) => sum + r.gramsHigh, 0) + state.deviceG;
 
 const gramsPerCompletedExchange = () => {
   const n = completedExchangeCount();
@@ -1760,7 +1784,10 @@ function paintLedger() {
   parts.push(gridBasis() === 'operational' ? L.basisOperational : L.basisLifecycle);
 
   $('gridNote').innerHTML = parts.map(s => (s || '').trim()).filter(Boolean).join(' ');
-  $('rTotal').textContent = fmt(g) + ' g CO₂e';
+  // A range only once it is a range at the displayed precision: before any
+  // inference (or with only failed HTTP attempts) both ends are equal.
+  const lo = fmt(g), hi = fmt(gramsHigh());
+  $('rTotal').textContent = (lo === hi ? lo : lo + '–' + hi) + ' g CO₂e';
 
   const comparisons = [
     ['Driving a gas car',             g / 170 * 1000, 'm'],

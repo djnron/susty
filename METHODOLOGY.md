@@ -276,6 +276,35 @@ The endpoint is public, so:
 
 Deltas are rendered as they arrive, coalesced to one render per animation frame, and flushed synchronously when the stream closes (`requestAnimationFrame` does not run in a hidden tab). Partial text from an interrupted or truncated reply is kept on screen and recorded as **incomplete** rather than stored as a complete reply. If nothing usable arrives, the exchange is removed from both transcript and history, and the question is returned to the input box.
 
+### 4.8 The high end of the range
+
+Because the token coefficients sit at the low end of published estimates (§4.3), the ledger shows the session total as a range that runs **upward** from Susty's central figure, for example `0.21–0.45 g CO2e`.
+
+```text
+high_gCO2e(j)
+= request_gCO2e(j)
+  + (k - 1) x inference_Wh(j) x server_grid_intensity(j) / 1000
+
+k = 0.60 Wh / 0.224 Wh = 2.68, rounded up to 2.7
+```
+
+| | |
+|---|---|
+| High-bound factor k | **2.7** |
+| Numerator | Oviedo et al. (2026) upper quartile for a standard query on frontier-scale models: **0.60 Wh** (IQR 0.16–0.60; §4.3) |
+| Denominator | Susty's own figure for the same standard query: 1,000 input / 300 output tokens on the Sonnet anchor at PUE 1.12, (1,000 × 0.05 + 300 × 0.5) mWh × 1.12 = **0.224 Wh** (the §4.3 table row) |
+| Data-quality label | **Derived** (a ratio of a published statistic to Susty's modeled figure) |
+| Applies to | Inference energy only (chip energy × PUE). Hosting, device time and both grid intensities are not ranged; they carry their own, separately disclosed uncertainty (§5, §6, §7). |
+| Likely direction of error | The upper quartile is not a maximum: a quarter of Oviedo et al.'s modeled queries use more. EcoLogits' full model puts Sonnet-class models at up to about 4.5× Susty's coefficient (§4.3), so for large models the high end may still be low. For small models such as Haiku 4.5 the same full model sits below Susty's figure (§4.4), so there the high end is generous. |
+
+**Not a statistical interval.** Oviedo et al.'s IQR describes the spread of their own modeled queries; dividing it by a Susty figure gives a plausible upper scenario, not a confidence bound on Susty's estimate. The ledger says so in words.
+
+**Rounding.** 2.68 is rounded **up** to 2.7, the conservative direction for a high bound, and to avoid presenting a ratio of two uncertain numbers to three figures.
+
+**Frozen with the record.** Each request record stores the factor it was priced with (`highFactor`) and its high-end grams (`gramsHigh`), so a later change to k never reprices history. An HTTP failure with no inference has `gramsHigh` equal to `grams`.
+
+**Where it shows.** Only on the ledger's "This chat so far" row. The headline meter, the average per answer, the everyday comparisons, the offset cost and the "get a plan" prompt use the central figure, so the meter's contract (§8) is unchanged.
+
 ---
 
 ## 5. PUE and service overhead
@@ -478,7 +507,7 @@ The functional-unit value was the headline until 23 September 2026. As an averag
 
 The ledger opens with:
 
-- this chat so far (the session total);
+- this chat so far (the session total), shown as a range from Susty's central figure to the high end in §4.8, with a note saying what each end means;
 - answers (completed exchanges);
 - average per answer;
 - cut-off or failed attempts, which are in the total but not counted as answers (only when there are any);
@@ -526,7 +555,7 @@ The note beneath it compares the session with three everyday actions. The claim 
 | Class | Examples |
 |---|---|
 | **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity |
-| **Derived** | EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
+| **Derived** | the high-bound factor k = 2.7 (§4.8), EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
 | **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
 | **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, the assumption that requests are served on the US data-centre grid (§6.9) |
@@ -537,7 +566,7 @@ A modeled number is never described as directly measured. The interface uses pre
 
 ## 12. Known limitations
 
-1. **Absolute inference energy.** The input/output token coefficients are assumptions, not provider-specific measurements, and sit at the low end of published per-query estimates (§4.3). The fixed 10:1 output-to-input ratio is not separately calibrated.
+1. **Absolute inference energy.** The input/output token coefficients are assumptions, not provider-specific measurements, and sit at the low end of published per-query estimates (§4.3). The fixed 10:1 output-to-input ratio is not separately calibrated. The ledger's range (§4.8) shows one published upper scenario; it is not a statistical interval, and the upper quartile it uses is not a maximum.
 2. **Model calibration.** Anthropic and Google architectures are inferred by EcoLogits, not disclosed. The factors omit GPU count, so they compress the spread between small and large models (§4.4).
 3. **Idle and host overhead.** No explicit term for idle reserved capacity (§5).
 4. **PUE.** The actual facility serving a request is unknown.
@@ -582,7 +611,7 @@ else:
     = session total / completed exchanges
 ```
 
-It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; and that the illustrative exchange stays inside Oviedo et al.'s IQR.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
 
 ---
 
@@ -592,6 +621,7 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 
 | Claim | Result | How checked |
 |---|---|---|
+| High-bound factor k: 0.60 / 0.224 = 2.68 → 2.7 (added 11 October 2026) | Computed; 0.224 Wh reproduces from the §4.3 coefficients, 0.60 Wh from the Oviedo row below | `tools/clock.test.mjs` |
 | Oviedo et al.: 0.31 Wh median, IQR 0.16–0.60; 13× to 3.91 Wh at 5,000 output tokens; 300-token standard query; PUE P5–P95 1.05–1.40 | Confirmed | Full text (arXiv 2509.20241) |
 | Luccioni, Jernite & Strubell: measures per 1,000 inferences; no per-token coefficients | Confirmed; previous citation (arXiv 2311.16433, "Luccioni, Viguier & Ligozat") pointed at an unrelated paper and wrong authors | Full text (arXiv 2311.16863) |
 | Uptime: 1.58 average, 1.47 capacity-weighted | Confirmed | Uptime Institute publications |
@@ -638,7 +668,7 @@ In priority order. None of these changes numbers until the data exists; each sho
 | Input/output split | Measured prefill vs decode energy per token at production batch sizes | ML.ENERGY; serving-framework benchmarks; Oviedo et al.'s simulation code | Replaces the fixed 10:1 ratio |
 | Model scaling | GPU-count-aware, hardware-specific (TPU vs GPU) scaling with batch and utilisation assumptions | EcoLogits full model, reconciled to provider disclosures | Wider, better-grounded spread between models |
 | Idle and host overhead | Share of idle reserved capacity and host energy | Google 2025 (0.10 → 0.24 Wh) | Adds a documented term |
-| Uncertainty | A distribution for each parameter, propagated by Monte Carlo | Oviedo et al.'s approach | Ranges instead of single figures |
+| Uncertainty | A distribution for each parameter, propagated by Monte Carlo | Oviedo et al.'s approach | A statistical interval in place of the single-scenario high end (§4.8), covering device and grid as well as inference |
 | Device power | Measured whole-device power during Susty-type sessions on phone, tablet and laptop | Lab measurement following Kirkeby & Lagermann | Validates the 1.35–10 W values |
 | Attended time | Distribution of reading and idle time per exchange | Aggregated, privacy-preserving interaction statistics | Validates the 75-second grace window |
 | Grid | One source with both bases, hourly for every region; the actual serving region (replacing the US data-centre assumption, §6.9); marginal-emissions sensitivity | Electricity Maps (direct and life-cycle); provider region disclosure | Consistent basis; correct grid for the server share |

@@ -183,6 +183,19 @@ console.log('\nModel-relative energy factors');
   const inRange = perExchange >= 0.16 && perExchange <= 0.60;
   if (!inRange) fails++;
   console.log(`${inRange ? 'pass' : 'FAIL'}  ${perExchange.toFixed(3)} Wh/exchange inside Oviedo IQR 0.16-0.60`);
+
+  // The ledger's high end (METHODOLOGY 4.8): Oviedo's upper quartile over
+  // Susty's own figure for the same standard query, rounded up to one place.
+  // Keep in step with MODEL.inferenceHighFactor in index.html.
+  const HIGH = 2.7;
+  const standardQuery = (1000 * 0.00005 + 300 * 0.0005) * 1.12;   // Sonnet anchor
+  const k = 0.60 / standardQuery;
+  const kOk = Math.abs(standardQuery - 0.224) < 1e-9 && HIGH === Math.ceil(k * 10) / 10;
+  if (!kOk) fails++;
+  console.log(`${kOk ? 'pass' : 'FAIL'}  high-bound factor ${HIGH} = 0.60 / ${standardQuery.toFixed(3)} Wh (${k.toFixed(3)}), rounded up`);
+  const above = HIGH > 1;
+  if (!above) fails++;
+  console.log(`${above ? 'pass' : 'FAIL'}  high-bound factor runs upward from the central figure`);
 }
 
 // The regression that prompted the tablet class in the first place.

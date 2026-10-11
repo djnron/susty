@@ -49,6 +49,13 @@ check('token coefficients match', () => {
   has(/Input tokens \| 0\.05 mWh\/token/);
   has(/Output tokens \| 0\.5 mWh\/token/);
 });
+check(`high-bound factor ${MODEL.inferenceHighFactor} matches, in doc and in-page copy`, () => {
+  has(new RegExp(`High-bound factor k \\| \\*\\*${MODEL.inferenceHighFactor}\\*\\*`));
+  has(/\*\*0\.60 Wh\*\* \(IQR 0\.16–0\.60/);
+  has(/### 4\.8 The high end of the range/);
+  has(/\*\*Not a statistical interval\.\*\*/);
+  assert.match(html, new RegExp(`about ${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
+});
 check(`PUE ${MODEL.pue} matches`, () => has(new RegExp(`PUE of ${MODEL.pue}\\*\\*`)));
 check(`hosting ${MODEL.whPerExchange} Wh matches`, () =>
   has(new RegExp(`${MODEL.whPerExchange} Wh per request handled by Susty`)));
@@ -198,6 +205,12 @@ check('package.json, README, CHANGELOG and METHODOLOGY carry the same version', 
 });
 
 console.log('\nLayout');
+check('long text values and spanning notes may wrap on a narrow screen', () => {
+  // "307 g/kWh, basis not stated by source" unwrapped pushed the ledger to
+  // 429 px on a 360 px phone.
+  assert.match(html, /#rModel, #rThinking, #rServerGrid \{ white-space: normal; \}/);
+  assert.match(html, /\.rows td\[colspan\] \{ text-align: left; white-space: normal; \}/);
+});
 check('hidden pickers stay hidden despite .pick display: flex', () =>
   assert.match(html, /\.pick\[hidden\] \{ display: none; \}/));
 

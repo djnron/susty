@@ -188,6 +188,9 @@ Declared rather than fixed, and all in METHODOLOGY:
   model multipliers leave out how many GPUs a model needs, so they likely
   understate large models and overstate small ones. Both stay as they are
   until they can be calibrated against provider data (METHODOLOGY §4.3–4.4, §15).
+  The ledger therefore shows the chat as a range: the high end puts AI energy
+  at the upper quartile of Oviedo et al.'s estimates, about 2.7× Susty's
+  (METHODOLOGY §4.8). It is one published scenario, not a statistical interval.
 - **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
   every Gemini reply carries some reasoning tokens. They are measured and
   priced; the default, Flash-Lite, runs at the lowest level Google offers.

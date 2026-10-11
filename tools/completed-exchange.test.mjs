@@ -95,7 +95,7 @@ console.log('\nFunctional-unit arithmetic');
 console.log('\nProduction recordRequest');
 {
   const REQUEST_STATUS = Object.freeze({ COMPLETED: 'completed', INCOMPLETE: 'incomplete', FAILED: 'failed' });
-  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400, serverGridGPerKwh: 307 };
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400, serverGridGPerKwh: 307, inferenceHighFactor: 2.7 };
   const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 }, 'claude-opus-4-8': { factor: 1.33 } };
   const state = { model: 'claude-sonnet-4-6', requests: [] };
   const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
@@ -134,6 +134,27 @@ console.log('\nProduction recordRequest');
     assert.ok(Object.isFrozen(r));
     assert.equal(r.serverGridGPerKwh, 307);
     assert.equal(r.grams, before);
+  });
+  check('HTTP failure has no range: high end equals central', () => {
+    const r = state.requests[0];
+    assert.equal(r.chipWh, 0);
+    near(r.gramsHigh, r.grams);
+  });
+  check('high end scales inference only, at the frozen factor', () => {
+    const r = state.requests[1];
+    assert.equal(r.highFactor, 2.7);
+    near(r.gramsHigh, r.grams + 1.7 * r.chipWh * 307 / 1000);
+    assert.ok(r.gramsHigh > r.grams);
+    // Hosting is not ranged: removing it leaves the same increment.
+    near(r.gramsHigh - r.grams, (r.wh - r.hostingWh) * 1.7 * 307 / 1000);
+  });
+  check('high end is frozen against a later factor change', () => {
+    const r = state.requests[1];
+    const before = r.gramsHigh;
+    MODEL.inferenceHighFactor = 9;
+    assert.equal(r.gramsHigh, before);
+    assert.equal(r.highFactor, 2.7);
+    MODEL.inferenceHighFactor = 2.7;
   });
   check('a reader-grid change alone does not move new request pricing', () => {
     MODEL.serverGridGPerKwh = 307;
@@ -193,6 +214,13 @@ check('under the headline: the number of answers; the average is in the ledger',
   assert.match(html, /completed === 0 \? 'No answers yet'/);
   assert.match(html, /<td>Average per answer<\/td><td id="rPerExchange">/);
   assert.match(html, /id="rTotal">0\.00 g CO₂e/);
+});
+check('the range is on the ledger total only; meter and average stay central', () => {
+  assert.match(html, /const lo = fmt\(g\), hi = fmt\(gramsHigh\(\)\);/);
+  assert.match(html, /\$\('rTotal'\)\.textContent = \(lo === hi \? lo : lo \+ '–' \+ hi\) \+ ' g CO₂e';/);
+  assert.match(html, /return n > 0 \? grams\(\) \/ n : null/);
+  assert.doesNotMatch(extractNamedFunction(html, 'paintMeter'), /gramsHigh/);
+  assert.match(html, /id="rRangeNote">[^<]*not a statistical margin of error/);
 });
 check('units are never forced to capitals (g would read as G, giga)', () => {
   assert.match(html, /\.meter-unit \{ white-space: normal; text-transform: none; \}/);
