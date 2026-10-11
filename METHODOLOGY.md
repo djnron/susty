@@ -569,8 +569,14 @@ Everyday comparisons are based on the **session total**, not the average per exc
 | Driving a gasoline car | 170 per km | Typical of a European petrol car; a typical US passenger vehicle is ~250 g/km (EPA, ~400 g/mile) |
 | Boiling water for tea | 20 per cup | Order of magnitude; not traced to a primary source |
 | Hot shower, 8 minutes | 500 | Order of magnitude; varies strongly with water heating; not traced to a primary source |
-| A beef burger | 3,000 | Order of magnitude; not traced to a primary source |
+| A quarter-pound beef burger | 3,800 | **Derived.** 113 g × 33.3 kg CO2e per kg, Poore & Nemecek (2018) global mean for beef from dairy herds, via Our World in Data. Beef from beef herds (99.48 kg/kg) gives about 11,200 g; the lower figure is used so the comparison errs toward making the conversation look *larger*, not smaller. Until 2.1.0 this row was 3,000 g, untraced. |
 | New York to Los Angeles, one economy seat | 250,000 | Consistent with published one-way estimates of ~250–310 kg CO2 |
+
+**Electricity equivalent.** Above the carbon comparisons the ledger states the session's electricity (inference, hosting and device, central figure) and its share of one smartphone charge:
+
+| Equivalent | Value | Evidence |
+|---|---:|---|
+| One smartphone charge | 19 Wh | **Derived** by US EPA: 0.019 kWh per charge = (28.446 Wh per 24 h, US DOE, less 22 h × 0.411 W maintenance) ÷ 1,000; Greenhouse Gas Equivalencies Calculator, page updated 4 August 2026. Includes charger losses, so it exceeds battery capacity: it errs toward a *smaller* percentage than a battery-only figure would give. |
 
 These are order-of-magnitude figures. Their job is to show that the footprint of asking is small next to the footprint of acting on the answer — which is the product's argument, not a disclaimer on it. Any statement such as "thousands of times larger" should be calculated from the current session total rather than hard-coded.
 
@@ -591,7 +597,7 @@ The note beneath it compares the session with three everyday actions. The claim 
 | Class | Examples |
 |---|---|
 | **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity |
-| **Derived** | the high-bound factor k = 2.7 (§4.8), EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
+| **Derived** | the smartphone-charge equivalent (EPA) and the burger comparison (Poore & Nemecek) (§9), the high-bound factor k = 2.7 (§4.8), EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
 | **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
 | **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, the assumption that requests are served on the US data-centre grid (§6.9) |
@@ -680,7 +686,9 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | Offset at "$100/t for durable removal (Frontier 2024)" | **Corrected** — $100/t is a target; ledger now uses the 2024 average, $320/t | CDR.fyi 2024 review; US DOE |
 | "These three actions each cover it thousands of times over" | **Not always true**; now computed from the session total | Code |
 | Offset actions: cold wash ~200 g/load, thermostat −2°F ~300 kg/yr, one beef meal a week swapped ~200 kg/yr | Order of magnitude; not traced to a primary source | — |
-| Comparisons: tea, shower, burger | Not traced to a primary source | — |
+| Comparisons: tea, shower | Not traced to a primary source | — |
+| Burger: Poore & Nemecek (2018) beef, 99.48 (beef herd) and 33.3 (dairy herd) kg CO2e per kg of product (added 11 October 2026) | Confirmed; quarter-pound (113 g) patty at the dairy-herd figure gives 3,763 g, shown as 3,800 | Our World in Data, ghg-per-kg-poore dataset |
+| EPA smartphone charge 0.019 kWh (added 11 October 2026) | Confirmed: [28.446 Wh − 22 h × 0.411 W] ÷ 1,000 | EPA Greenhouse Gas Equivalencies Calculator, calculations and references |
 | Google median Gemini Apps text prompt: 0.24 Wh comprehensive, 0.10 Wh accelerators only | Confirmed | Google 2025, arXiv 2508.15734 |
 | OpenAI average ChatGPT query 0.34 Wh | Confirmed as cited by Oviedo et al.; OpenAI's method unpublished | Oviedo et al. 2026 |
 | EcoLogits full-model energy per request (Haiku, Sonnet, Opus, Gemini Flash-Lite and Flash; 300 output tokens) | Computed with EcoLogits 0.11.1 and its current model registry | EcoLogits source |
@@ -740,5 +748,7 @@ In priority order. None of these changes numbers until the data exists; each sho
 - Dash & Hu (2021), **How much battery does dark mode save?**, MobiSys '21 — https://dl.acm.org/doi/10.1145/3458864.3467682
 - Sustainable Web Design Model v4 — https://sustainablewebdesign.org/estimating-digital-emissions/
 - Omdia via OLED-Info, **OLED smartphone display penetration** — https://www.oled-info.com/omdia-oled-smartphone-display-penetration-exceed-60-2025
+- US EPA, **Greenhouse Gas Equivalencies Calculator: Calculations and References** — https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-calculations-and-references
+- Poore & Nemecek (2018), **Reducing food's environmental impacts through producers and consumers**, *Science* 360, 987–992; data via Our World in Data — https://ourworldindata.org/grapher/ghg-per-kg-poore
 - CDR.fyi, **Durable CDR Market 2024: Year in Review** — https://www.cdr.fyi/blog/2024-year-in-review
 - U.S. DOE, **Carbon Negative Shot Strategy** (target: under $100 per net tonne CO2e, durably stored) — https://www.energy.gov/fecm/carbon-negative-shot-strategy

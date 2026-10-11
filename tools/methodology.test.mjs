@@ -187,6 +187,20 @@ check('ledger never credits NESO for a non-NESO live figure', () => {
 });
 check('in-page methodology does not call NESO regional figures actuals', () =>
   assert.doesNotMatch(html, /Half-hourly actuals for 14/));
+check('smartphone charge matches EPA arithmetic and the doc', () => {
+  const wh = Number(html.match(/const PHONE_CHARGE_WH = (\d+);/)[1]);
+  const epa = 28.446 - 22 * 0.411;                 // EPA: 19.404 Wh, published as 0.019 kWh
+  assert.equal(wh, Math.round(epa));
+  has(new RegExp(`\\| One smartphone charge \\| ${wh} Wh \\|`));
+  assert.match(html, /totalWh \/ PHONE_CHARGE_WH/);
+});
+check('burger comparison is the sourced figure, in code and doc', () => {
+  const g = Number(html.match(/const BURGER_G = (\d+);/)[1]);
+  assert.equal(g, Math.round(113 * 33.3 / 100) * 100);
+  has(new RegExp(`\\| A quarter-pound beef burger \\| ${g.toLocaleString('en-US')} \\|`));
+  assert.match(html, /g \/ BURGER_G/);
+  assert.doesNotMatch(html, /g \/ 3000/);
+});
 check('offset price matches and is the current average, not the target', () => {
   const usd = Number(html.match(/const OFFSET_USD_PER_TONNE = (\d+);/)[1]);
   has(new RegExp(`converts grams to money at \\*\\*\\$${usd} per tonne\\*\\*`));

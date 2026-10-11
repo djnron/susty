@@ -1064,6 +1064,7 @@ textarea, input { caret-color: var(--ink); }
 
   <div class="sect">
     <h3>To put it in perspective</h3>
+    <p class="note" id="energyEquiv"></p>
     <ul class="scale" id="scale"></ul>
     <p class="note">The footprint of asking is small next to the footprint of what you do with the answer.</p>
   </div>
@@ -1114,6 +1115,10 @@ textarea, input { caret-color: var(--ink); }
       <li>
         <a href="https://www.cdr.fyi/blog/2024-year-in-review" target="_blank" rel="noopener">Carbon removal priced at about $320/tonne</a>
         <span>CDR.fyi: the weighted-average price of durable carbon removal sold in 2024, down from about $490 in 2023. The often-quoted $100 per tonne is the US Department of Energy's long-run <a href="https://www.energy.gov/fecm/carbon-negative-shot-strategy" target="_blank" rel="noopener">target</a>, not today's price.</span>
+      </li>
+      <li>
+        <a href="https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-calculations-and-references" target="_blank" rel="noopener">One smartphone charge is about 19 Wh</a>
+        <span>US EPA's figure (0.019 kWh), from US Department of Energy data, including what the charger loses, so it is more than the battery itself holds. The burger comparison is a quarter-pound patty at Poore &amp; Nemecek's (2018) global average for beef from dairy herds; beef from beef herds would be about three times higher. The tea and shower figures are order-of-magnitude estimates we have not traced to a primary source.</span>
       </li>
       <li>
         <a href="https://dl.acm.org/doi/10.1145/3458864.3467682" target="_blank" rel="noopener">Dark mode display power (3–9% at normal brightness)</a>
@@ -1459,6 +1464,16 @@ const COPY = {
 const OFFSET_USD_PER_TONNE = 320;
 // One cold wash instead of hot, the smallest action in the offset list.
 const SMALLEST_ACTION_G = 200;
+// One smartphone charge, 0.019 kWh: EPA's Greenhouse Gas Equivalencies
+// calculator ("smartphones charged"), from U.S. DOE's 28.446 Wh a day less
+// 22 h of maintenance draw at 0.411 W. Includes charger losses, so it is
+// more than the battery holds. METHODOLOGY 9.
+const PHONE_CHARGE_WH = 19;
+// A quarter-pound (113 g) beef patty at Poore & Nemecek's (2018) global mean
+// for dairy-herd beef, 33.3 kg CO2e per kg of product: 3,763 g, rounded to
+// 3,800 g. Beef-herd beef (99.48 kg/kg) would make it about 11,200 g; the
+// lower figure is used so the comparison does not flatter the conversation.
+const BURGER_G = 3800;
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1858,11 +1873,20 @@ function paintLedger() {
   const lo = fmt(g), hi = fmt(gramsHigh());
   $('rTotal').textContent = (lo === hi ? lo : lo + '–' + hi) + ' g CO₂e';
 
+  // Electricity alongside the carbon comparisons, central figure, the whole
+  // session: inference, hosting and your device.
+  const charge = totalWh / PHONE_CHARGE_WH;
+  const pct = charge * 100;
+  $('energyEquiv').textContent = 'This chat has used about ' + fmt(totalWh, 2) + ' Wh of electricity, ' +
+    (charge >= 1 ? 'about ' + fmt(charge, 1) + ' smartphone charges.'
+      : pct < 0.1 ? 'under 0.1% of a smartphone charge.'
+      : 'about ' + fmt(pct, pct < 10 ? 1 : 0) + '% of a smartphone charge.');
+
   const comparisons = [
     ['Driving a gas car',             g / 170 * 1000, 'm'],
     ['Boiling water for tea',        g / 20,         ' cups'],
     ['A hot shower, 8 minutes',      g / 500,        ' showers'],
-    ['A beef burger',                g / 3000,       ' burgers'],
+    ['A quarter-pound beef burger',  g / BURGER_G,   ' burgers'],
     ['New York to LA, one seat',     g / 250000,     ' flights']
   ];
   $('scale').innerHTML = comparisons.map(([label, val, unit]) => {
