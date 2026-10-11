@@ -996,12 +996,13 @@ textarea, input { caret-color: var(--ink); }
         <tr class="muted"><td>Hosting &amp; network @ 0.003 Wh/request</td><td id="rHosting">0 Wh</td></tr>
         <tr class="muted"><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
         <tr><td>Electricity attributed to this session</td><td id="rWh">0 Wh</td></tr>
-        <tr><td>Current grid intensity</td><td id="rGrid">471 g/kWh, life-cycle</td></tr>
+        <tr><td>Your device's grid</td><td id="rGrid">471 g/kWh, life-cycle</td></tr>
+        <tr><td>Servers' grid (assumption: US data centres)</td><td id="rServerGrid">307 g/kWh, basis not stated by source</td></tr>
       </tbody>
     </table>
 
     <div class="pick">
-      <label for="grid">Grid carbon intensity</label>
+      <label for="grid">Your grid (for your device)</label>
       <select id="grid"></select>
     </div>
     <div class="pick" id="regionPick" hidden>
@@ -1058,7 +1059,7 @@ textarea, input { caret-color: var(--ink); }
     <h3>Notes</h3>
     <p class="note" id="noteIntro">We do our best to make these calculations as accurate as possible. Some of it has to be estimated, so here's where the numbers come from and where we're guessing. The <a href="https://github.com/djnron/susty/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">full method</a> has all of it.</p>
     <p class="note" id="gridNote"></p>
-    <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. We've assumed they're close to you and on the same energy sources, which is an estimate. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
+    <p class="note" id="noteDataCenter">One thing we don't know precisely, but would be great to find out: which specific servers are answering your questions, in a data center somewhere else, running on their own electricity. Your device is counted on your own grid, above. For the servers we assume a typical US data center: weighted by capacity, US data centers sit on grids averaging about 307 g CO₂e per kWh, according to Watershed (September 2026). Watershed doesn't say whether that figure counts only what power stations emit or the full life cycle, so we say so too. We'd love to know exactly which servers are doing the work and what that data center draws, but that isn't public information right now. Our goal is to run this locally on a sustainable server ourselves. </p>
     <p class="note" id="noteSum">The large meter is the carbon of this chat so far, and it goes up with every answer. The ledger also shows the average per answer: that total divided by the answers that finished normally. Failed or cut-off attempts stay in the total when their energy can be measured or modelled, but they do not count as answers. The total includes AI inference, hosting/network, and the whole device you're reading on during estimated attended time. Typing and scrolling are evidence of attention; after a period without activity we stop counting device time. Longer chats also cost more per answer because the conversation context is sent back each time.</p>
   </div>
 
@@ -1076,6 +1077,10 @@ textarea, input { caret-color: var(--ink); }
       <li>
         <b>Data centre overhead PUE ×1.12 (modelled assumption)</b>
         <span>Susty uses 1.12 as a hyperscale-data-centre assumption. It is not the Uptime Institute global average; the serving facility is unknown.</span>
+      </li>
+      <li>
+        <a href="https://watershed.com/blog/ai-emissions-by-region" target="_blank" rel="noopener">The servers' grid: about 307 g/kWh (assumption)</a>
+        <span>AI inference and hosting are priced on a typical US data center's grid, not yours: Watershed's capacity-weighted average for US data centers, about 307 g CO₂e/kWh (September 2026). Which data center serves a request is not public, and Watershed does not state the accounting basis of that figure. The grid sources below apply to your device only.</span>
       </li>
       <li>
         <a href="https://api.carbonintensity.org.uk/" target="_blank" rel="noopener">Great Britain: live, by region</a>
@@ -1176,7 +1181,15 @@ const MODEL = {
   whPerOutputToken: 0.0005,
   pue             : 1.12,    // Susty hyperscale-data-centre assumption
   whPerExchange   : 0.003,   // Vercel function + network per round trip
-  gridGPerKwh     : 471      // GRIDS.world; replaced at init by the guess
+  gridGPerKwh     : 471,     // the reader's grid, for device time only;
+                             // GRIDS.world, replaced at init by the guess
+  // The servers' grid, for inference and hosting. Nobody outside the
+  // provider can see which data centre answers, so this is an assumption:
+  // US data centres weighted by capacity, about 307 g CO2e/kWh (Watershed,
+  // "AI emissions by region", 16 Sept 2026). Watershed does not say which
+  // accounting basis that figure uses, and the ledger says so. Hosting
+  // (Vercel, US East by default) is priced on it too.
+  serverGridGPerKwh: 307
 };
 // No embodied-hardware term. The old +15% treated manufacturing emissions as
 // electricity, which they are not — see METHODOLOGY's "what the total
@@ -1407,13 +1420,13 @@ const COPY = {
     refine:    "",
     worldPick: "",
 
-    sourceHourly:     "Currently the electricity figure comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
-    sourceRecent:     "Currently the electricity figure comes from the {source}, which tracks what's actually generating power each hour. Their data runs behind, so we use the most recent complete hour they have published.",
-    sourceLive:       "The electricity figure comes from {source}, updated every half hour, so it follows the real ups and downs of the day.",
-    sourceLiveOther:  "The electricity figure comes from {source}, which reports a current reading for your grid.",
+    sourceHourly:     "Currently the figure for your device comes from the {source}, which tracks what's actually generating power each hour. The energy mix shifts through the day as solar comes and goes, but their data runs about a day behind, so we use the same hour from yesterday.",
+    sourceRecent:     "Currently the figure for your device comes from the {source}, which tracks what's actually generating power each hour. Their data runs behind, so we use the most recent complete hour they have published.",
+    sourceLive:       "The figure for your device comes from {source}, updated every half hour, so it follows the real ups and downs of the day.",
+    sourceLiveOther:  "The figure for your device comes from {source}, which reports a current reading for your grid.",
     usNationalAverage:"We are currently using Ember's 2024 United States national average (384 g/kWh). If you haven't already, pick a more specific location above to make this more accurate. ",
-    sourceAnnualUS:   "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
-    sourceAnnual:     "The electricity figure is a yearly average from {source}, because we don't have hourly data for your region.",
+    sourceAnnualUS:   "The figure for your device is a yearly average from {source}, because we don't have hourly data for your region.",
+    sourceAnnual:     "The figure for your device is a yearly average from {source}, because we don't have hourly data for your region.",
     basisOperational: "It counts what power stations emit.",
     basisLifecycle:   "It counts life-cycle emissions, including fuel supply chains, so it runs a little higher than a figure counting only what power stations emit."
   }
@@ -1486,7 +1499,8 @@ function clockSync() {
     const cutoff = Math.max(lastSlice - dt, Math.min(now, lastActivity + GRACE));
     const creditedMs = Math.max(0, cutoff - (lastSlice - dt));
     attendedMs += creditedMs;
-    // Priced immediately, at this instant's wattage and grid — not stored as
+    // Priced immediately, at this instant's wattage and the reader's grid
+    // (the device sits on the reader's grid, not the servers') — not stored as
     // raw seconds and multiplied later, which is what let a screen or grid
     // change reprice time that had already elapsed.
     if (creditedMs > 0) {
@@ -1533,8 +1547,9 @@ function requestStatus({ fullText, streamError, sawMessageStop, stopReason }) {
 }
 
 // One frozen record per accounted attempt, priced with the model factor and
-// grid in effect right now — never recomputed later against whatever they
-// have become. Status is required so an interrupted attempt can remain in the
+// the servers' grid in effect right now — never recomputed later against
+// whatever they have become. The reader's grid plays no part here: it prices
+// device time only (clockSync). Status is required so an interrupted attempt can remain in the
 // session numerator without accidentally entering the completed denominator.
 function recordRequest(inTok, outTok, {
   status,
@@ -1551,10 +1566,10 @@ function recordRequest(inTok, outTok, {
   const chipWh    = (eIn + eOut) * MODEL.pue;
   const hostingWh = includeHosting ? MODEL.whPerExchange : 0;
   const wh        = chipWh + hostingWh;
-  const gridGPerKwh = MODEL.gridGPerKwh;
+  const serverGridGPerKwh = MODEL.serverGridGPerKwh;
   state.requests.push(Object.freeze({
     model, factor, eIn, eOut, chipWh, hostingWh, wh,
-    gridGPerKwh, grams: wh * gridGPerKwh / 1000,
+    serverGridGPerKwh, grams: wh * serverGridGPerKwh / 1000,
     status, stopReason
   }));
 }
@@ -1681,6 +1696,7 @@ function paintLedger() {
   $('rHosting').textContent  = fmt(totals.hostingWh, 3) + ' Wh';
   $('rWh').textContent       = fmt(totalWh, 3) + ' Wh';
   $('rGrid').textContent  = MODEL.gridGPerKwh + ' g/kWh, ' + gridBasis();
+  $('rServerGrid').textContent = MODEL.serverGridGPerKwh + ' g/kWh, basis not stated by source';
   // Show the latest successfully completed model. A later interrupted request
   // may update state.model while streaming, but it must not replace the model
   // label for the completed functional unit.

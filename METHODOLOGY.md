@@ -108,10 +108,10 @@ service_Wh(j)
 
 request_gCO2e(j)
 = (inference_Wh(j) + service_Wh(j))
-  x grid_intensity(j) / 1000
+  x server_grid_intensity(j) / 1000
 ```
 
-Token coefficients are in **mWh per token** before conversion to Wh. Each request is priced once, at the model factor and grid intensity in effect when it is recorded, and the record is then frozen. Changing model, grid, device, panel, or theme later never reprices it.
+Token coefficients are in **mWh per token** before conversion to Wh. Each request is priced once, at the model factor and **server** grid intensity in effect when it is recorded, and the record is then frozen. Changing model, grid, device, panel, or theme later never reprices it. The reader's grid plays no part in request pricing; it prices device time only (§6.9).
 
 ### Device energy
 
@@ -122,10 +122,10 @@ device_Wh(t)
 = device_watts(t) x attended_hours(t)
 
 device_gCO2e(t)
-= device_Wh(t) x grid_intensity(t) / 1000
+= device_Wh(t) x reader_grid_intensity(t) / 1000
 ```
 
-Each slice is priced at the wattage and grid in effect during that slice. Before a grid, device or theme change takes effect, the elapsed slice is closed out at the old values, so time already spent is never billed at a rate set after it.
+Each slice is priced at the wattage and the reader's grid in effect during that slice. Before a grid, device or theme change takes effect, the elapsed slice is closed out at the old values, so time already spent is never billed at a rate set after it.
 
 ### Session total
 
@@ -306,7 +306,7 @@ An unsuccessful request still incurs this service term when the browser receives
 
 ## 6. Grid carbon intensity
 
-The single largest lever in the formula. Electricity is converted to carbon using the best available source for the user's selected or inferred region, and the ledger names the source in force.
+The single largest lever in the formula. Susty uses **two grids**: the servers' grid for inference and hosting (§6.9), and the reader's grid for device time. The reader's grid comes from the best available source for the user's selected or inferred region, and the ledger names the source in force. §6.1–6.8 describe the reader's grid.
 
 ### 6.1 Accounting basis
 
@@ -319,6 +319,7 @@ The sources do **not** share one accounting boundary:
 | EPA eGRID2023 Rev 2 | US subregions, annual | Operational (CO2e output emission rates) |
 | Ember yearly data | All other countries, EU, world, US national fallback | **Life-cycle** (IPCC AR5 Annex III factors, including supply chain and upstream methane) |
 | Electricity Maps (optional) | Any zone, when configured | **Life-cycle** (the API's default `emissionFactorType`) |
+| Watershed, US data centres, capacity-weighted | Servers (inference and hosting), every reader | **Basis not stated by source** (§6.9) |
 
 **The ledger names the basis in force.** The grid-intensity row reads, for example, `384 g/kWh, life-cycle` or `212 g/kWh, operational`, and the source note says in plain words which one applies.
 
@@ -373,7 +374,7 @@ Live intensity for any zone via `ELECTRICITY_MAPS_TOKEN`. Not used by default: a
 Susty offered a "Renewable tariff (hydro or wind)" preset at 30 g CO2/kWh until 23 September 2026. It was removed because:
 
 - it had no recorded source;
-- a tariff is a contractual (market-based) instrument, while every other figure in Susty is location-based — the electricity the local grid physically supplies to the reader's device and, by approximation, the servers;
+- a tariff is a contractual (market-based) instrument, while every other figure in Susty is location-based — the electricity the local grid physically supplies to the reader's device, and the grid mix around the data centres (§6.9);
 - choosing it let a reader remove most of the footprint by picking a label.
 
 Susty is a location-based estimate. A reader on a renewable tariff still draws from the same grid; the tariff changes who is paid for which generation, not what their device runs on. A visitor who had the preset saved falls back to their time-zone guess.
@@ -382,9 +383,23 @@ Susty is a location-based estimate. A reader on a renewable tariff still draws f
 
 Country is inferred from the browser's IANA time zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`). Geolocation needs a permission prompt; IP lookup hands a third party the visitor's address and adds a network request with its own footprint. The time zone is permissionless, instant, offline, and nothing leaves the browser. Unlisted European zones fall back to the EU average; anything else to the world average. The user can refine the country, and a region where a sub-picker exists.
 
-### 6.9 Server-grid approximation
+### 6.9 The servers' grid
 
-Susty applies the selected grid intensity to both the user's device and the remote AI/service energy. The device-side use is geographically plausible. The server-side use is a known approximation: the serving data center may be in another region on a different mix, and there is no way to see which from the browser. The ledger discloses this explicitly.
+Inference and hosting energy are priced on a servers' grid of **307 g CO2e/kWh**, every reader alike. The reader's own grid (§6.2–6.8) prices device time only.
+
+| | |
+|---|---|
+| Value | 307 g CO2e/kWh |
+| Source | Watershed, [AI emissions by region](https://watershed.com/blog/ai-emissions-by-region), 16 September 2026: US data-centre grid intensity "weighted by data center capacity", "about 307 grams of CO2e per kWh today", rising to 351 with planned projects |
+| Accounting basis | **Basis not stated by source.** Watershed attributes its state maps to location-based eGRID CO2e output rates (operational), but does not say which source or basis produced the 307 figure. The ledger shows it as "basis not stated by source". |
+| Data-quality label | **Modeled** (a Susty assumption about where requests are served), using a figure **derived** by Watershed |
+| Likely direction of error | Unknown. The serving region is not disclosed by either provider. A capacity weighting over all US data centres need not match the facilities that serve AI requests, and a request served outside the US could sit on a cleaner or dirtier grid. |
+
+**Why a US figure.** Neither provider Susty calls (Anthropic, Google) discloses which facility served a given request, so any server grid is an assumption. A US figure is the assumption chosen because it is the only capacity-weighted data-centre figure found with a stated source, and because Susty's own hosting is on Vercel, whose functions run in Washington, D.C. (`iad1`) by default for new projects ([Vercel docs](https://vercel.com/docs/functions/configuring-functions/region)); `vercel.json` sets no region (a dashboard setting could override this and is not visible from the repository). A single, sourced default is used rather than a region picker, which would let the reader choose a number Susty cannot check.
+
+**What changed in 2.1.0.** Until 2.1.0 Susty applied the reader's grid to the servers too, which was geographically plausible only for the device. A reader in France (40 g/kWh) saw their AI energy priced at 40, one in India (707) at 707, though both were almost certainly served from the same kind of facility. The split raises the server share for readers on clean grids and lowers it for readers on carbon-intensive ones; the boundary and functional unit are unchanged.
+
+**Records freeze it.** Each request record stores the server grid it was priced at (`serverGridGPerKwh`), so a later change to the assumption never reprices history. Hosting is server-side and is priced on the same figure.
 
 ---
 
@@ -511,10 +526,10 @@ The note beneath it compares the session with three everyday actions. The claim 
 | Class | Examples |
 |---|---|
 | **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity |
-| **Derived** | EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic |
+| **Derived** | EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
 | **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
-| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage |
+| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, the assumption that requests are served on the US data-centre grid (§6.9) |
 
 A modeled number is never described as directly measured. The interface uses precision appropriate to the uncertainty of its inputs.
 
@@ -526,7 +541,7 @@ A modeled number is never described as directly measured. The interface uses pre
 2. **Model calibration.** Anthropic and Google architectures are inferred by EcoLogits, not disclosed. The factors omit GPU count, so they compress the spread between small and large models (§4.4).
 3. **Idle and host overhead.** No explicit term for idle reserved capacity (§5).
 4. **PUE.** The actual facility serving a request is unknown.
-5. **Server location.** The user's grid is used as a proxy for remote service energy.
+5. **Server location.** The serving data centre is not disclosed. Inference and hosting are priced on an assumed US data-centre grid (307 g CO2e/kWh, Watershed), whose accounting basis the source does not state (§6.9).
 6. **Grid accounting basis.** Ember and Electricity Maps (life-cycle) and eGRID/EIA/NESO (operational) are mixed. The ledger labels which applies; see §6.1.
 7. **Regional GB figures are forecasts.** NESO publishes only forecasts at regional level.
 8. **Device power.** Real power varies by hardware, brightness, battery state, workload, and background processes.
@@ -567,7 +582,7 @@ else:
     = session total / completed exchanges
 ```
 
-It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; and that the illustrative exchange stays inside Oviedo et al.'s IQR.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; and that the illustrative exchange stays inside Oviedo et al.'s IQR.
 
 ---
 
@@ -607,6 +622,8 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | Renewable tariff 30 g/kWh | No source found; **preset removed** | — |
 | Ember factors | Coal 820, gas 490, other fossil 700, wind 11 g/kWh, global | Ember methodology |
 | Electricity Maps default basis | Life-cycle (`emissionFactorType` default) | Electricity Maps API reference |
+| Watershed US data-centre grid, capacity-weighted: about 307 g CO2e/kWh, 351 with planned projects (added 11 October 2026) | Confirmed; published 16 September 2026; the article does not state the source or accounting basis of the 307 figure (its state maps use location-based eGRID CO2e output rates) | Watershed, AI emissions by region |
+| Vercel Functions default region `iad1` (Washington, D.C.) for new projects (added 11 October 2026) | Confirmed; `vercel.json` sets no region; dashboard setting not visible from the repository | Vercel documentation |
 | 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
 
 ---
@@ -624,7 +641,7 @@ In priority order. None of these changes numbers until the data exists; each sho
 | Uncertainty | A distribution for each parameter, propagated by Monte Carlo | Oviedo et al.'s approach | Ranges instead of single figures |
 | Device power | Measured whole-device power during Susty-type sessions on phone, tablet and laptop | Lab measurement following Kirkeby & Lagermann | Validates the 1.35–10 W values |
 | Attended time | Distribution of reading and idle time per exchange | Aggregated, privacy-preserving interaction statistics | Validates the 75-second grace window |
-| Grid | One source with both bases, hourly for every region; serving-region intensity; marginal-emissions sensitivity | Electricity Maps (direct and life-cycle); provider region disclosure | Consistent basis; correct grid for the server share |
+| Grid | One source with both bases, hourly for every region; the actual serving region (replacing the US data-centre assumption, §6.9); marginal-emissions sensitivity | Electricity Maps (direct and life-cycle); provider region disclosure | Consistent basis; correct grid for the server share |
 | Service and network | Measured function energy and bytes per exchange | Hosting telemetry; network energy-per-GB literature | Sources the 0.003 Wh term |
 | Outside the boundary | Embodied emissions per request, and water, as separate lines | EcoLogits embodied model; Mistral Large 2 life-cycle analysis; Google 2025 (water) | A fuller picture without changing the operational figure |
 
@@ -649,6 +666,8 @@ In priority order. None of these changes numbers until the data exists; each sho
 - U.S. EIA, CO2 per MWh by fuel — https://www.eia.gov/todayinenergy/detail.php?id=48296
 - U.S. EPA eGRID2023 Rev 2 summary tables — https://www.epa.gov/egrid/summary-data
 - Ember yearly electricity data — https://ember-energy.org/data/yearly-electricity-data/
+- Watershed (2026), **AI emissions by region** — https://watershed.com/blog/ai-emissions-by-region
+- Vercel, **Configuring regions for Vercel Functions** — https://vercel.com/docs/functions/configuring-functions/region
 - Kirkeby & Lagermann (2026), **Power Assumptions Matter: Evaluating End-user Laptop Energy Models for Sustainability Reporting of Browser-Based Web Services**, SAC '26 — https://arxiv.org/abs/2510.12566
 - DIMPACT Methodology v1.0 (October 2022) — https://dimpact.org/downloadResourceFile?resource=2
 - Carbon Trust (2021), **Carbon impact of video streaming** — https://www.carbontrust.com/sites/default/files/documents/resource/public/Carbon-impact-of-video-streaming.pdf

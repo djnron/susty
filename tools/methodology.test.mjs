@@ -140,6 +140,12 @@ check('world, EU and US fallback match', () => {
   has(new RegExp(`world ${GRIDS.world.g}, EU ${GRIDS.EU.g}`));
   has(new RegExp(`Susty uses \\*\\*${GRIDS.US.g} g/kWh\\*\\*`));
 });
+check(`server grid ${MODEL.serverGridGPerKwh} g/kWh matches, with its source and basis caveat`, () => {
+  has(new RegExp(`servers' grid of \\*\\*${MODEL.serverGridGPerKwh} g CO2e/kWh\\*\\*`));
+  has(/basis not stated by source/);
+  has(/watershed\.com\/blog\/ai-emissions-by-region/);
+  assert.match(html, new RegExp(`about ${MODEL.serverGridGPerKwh} g CO₂e/kWh`), 'in-page methodology should quote the server grid');
+});
 check('no market-based renewable preset, and the document says so', () => {
   assert.ok(!('renew' in GRIDS), 'GRIDS still has a renewable preset');
   has(/### 6\.7 No renewable-tariff option/);

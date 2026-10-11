@@ -95,7 +95,7 @@ console.log('\nFunctional-unit arithmetic');
 console.log('\nProduction recordRequest');
 {
   const REQUEST_STATUS = Object.freeze({ COMPLETED: 'completed', INCOMPLETE: 'incomplete', FAILED: 'failed' });
-  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400 };
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400, serverGridGPerKwh: 307 };
   const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 }, 'claude-opus-4-8': { factor: 1.33 } };
   const state = { model: 'claude-sonnet-4-6', requests: [] };
   const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
@@ -112,17 +112,37 @@ console.log('\nProduction recordRequest');
     assert.equal(r.status, 'failed');
     assert.equal(r.chipWh, 0);
     near(r.hostingWh, 0.003);
-    near(r.grams, 0.003 * 400 / 1000);
+    // Hosting is server-side, so it is priced on the servers' grid, not the
+    // reader's 400.
+    near(r.grams, 0.003 * 307 / 1000);
   });
   check('record is priced with the responding model factor', () => {
     record(1000, 100, { status: 'completed', model: 'claude-opus-4-8-20260101', stopReason: 'end_turn' });
     near(state.requests.at(-1).factor, 1.33);
   });
-  check('records are frozen and keep their grid after a later change', () => {
+  check('request is priced on the servers\' grid, not the reader\'s', () => {
     const r = state.requests.at(-1);
-    MODEL.gridGPerKwh = 50;
+    assert.equal(r.serverGridGPerKwh, 307);
+    near(r.grams, r.wh * 307 / 1000);
+    assert.ok(!('gridGPerKwh' in r), 'record should not carry the reader grid');
+  });
+  check('records are frozen and keep their server grid after later changes', () => {
+    const r = state.requests.at(-1);
+    const before = r.grams;
+    MODEL.gridGPerKwh = 50;          // reader changes country
+    MODEL.serverGridGPerKwh = 999;   // and, hypothetically, the server assumption
     assert.ok(Object.isFrozen(r));
-    assert.equal(r.gridGPerKwh, 400);
+    assert.equal(r.serverGridGPerKwh, 307);
+    assert.equal(r.grams, before);
+  });
+  check('a reader-grid change alone does not move new request pricing', () => {
+    MODEL.serverGridGPerKwh = 307;
+    MODEL.gridGPerKwh = 50;
+    record(1000, 100, { status: 'completed', model: 'claude-sonnet-4-6', stopReason: 'end_turn' });
+    const a = state.requests.at(-1).grams;
+    MODEL.gridGPerKwh = 900;
+    record(1000, 100, { status: 'completed', model: 'claude-sonnet-4-6', stopReason: 'end_turn' });
+    near(state.requests.at(-1).grams, a);
   });
   check('missing or unknown status is rejected', () => {
     assert.throws(() => record(1, 1, {}), /valid status/);
@@ -144,6 +164,22 @@ for (const [label, marker] of [
     assert.match(firstStatement, /^clockSync\(\);/);
   });
 }
+
+console.log('\nTwo grids: servers for requests, reader for device time');
+check('recordRequest prices on MODEL.serverGridGPerKwh', () => {
+  const body = extractNamedFunction(html, 'recordRequest');
+  assert.match(body, /MODEL\.serverGridGPerKwh/);
+  assert.doesNotMatch(body, /MODEL\.gridGPerKwh/);
+});
+check('clockSync prices device time on the reader grid, MODEL.gridGPerKwh', () => {
+  const body = extractNamedFunction(html, 'clockSync');
+  assert.match(body, /state\.deviceG\s*\+=\s*wh \* MODEL\.gridGPerKwh/);
+  assert.doesNotMatch(body, /serverGridGPerKwh/);
+});
+check('ledger shows both grids, the server one with its basis caveat', () => {
+  assert.match(html, /id="rServerGrid"/);
+  assert.match(html, /MODEL\.serverGridGPerKwh \+ ' g\/kWh, basis not stated by source'/);
+});
 
 console.log('\nMeter and ledger contract');
 check('headline is the running total, which only goes up', () => {

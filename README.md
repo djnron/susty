@@ -146,8 +146,8 @@ They are estimates, and the page says so. Provider token counts are measured whe
 
 ```
 grams CO2e = ( (tokens × energy per token) × cooling
-             + handled requests × hosting
-             + device watts × hours attended ) × grid intensity
+             + handled requests × hosting ) × servers' grid intensity
+           + ( device watts × hours attended ) × your grid intensity
 
 g CO2e / completed exchange
 = session g CO2e / completed exchanges
@@ -158,8 +158,10 @@ output token) and PUE 1.12 are Susty modeling assumptions, not direct
 measurements from the cited literature. They are deliberately easy to change
 as better provider/model measurements become available. The world grid
 fallback is 471 g/kWh (Ember 2024).
-Grid intensity is user-selectable because it alone swings the answer more than
-tenfold.
+Your grid is user-selectable because it alone swings the device term more than
+tenfold. The servers' grid is a fixed, sourced assumption: US data centres,
+capacity-weighted, about 307 g CO2e/kWh (Watershed, September 2026), whose
+accounting basis the source does not state.
 
 The device term counts the whole end-user device, not just its screen, which is
 how every published framework counts it — and only for the time the reader was
@@ -176,8 +178,9 @@ Declared rather than fixed, and all in METHODOLOGY:
   finds brightness matters more than panel technology.
 - **Panel type cannot be detected**, so the picker's default is a prior —
   phones default to OLED, everything else to LCD.
-- **Grid intensity is applied to the reader's device and the data centre
-  alike.** The servers are almost certainly somewhere else.
+- **The servers' location is assumed, not known.** Inference and hosting are
+  priced on a US data-centre grid (307 g CO2e/kWh, Watershed); neither
+  provider discloses which facility answered (METHODOLOGY §6.9).
 - **Grid sources mix two accounting bases.** Ember's national figures are
   life-cycle; NESO, EIA and eGRID are operational. The ledger names which one
   applies; converting them to one basis would add error (METHODOLOGY §6.1).
