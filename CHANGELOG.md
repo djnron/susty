@@ -4,8 +4,8 @@ Versions follow [semantic versioning](https://semver.org/) loosely: a **major**
 version changes how the carbon figure is defined or what the meter shows; a
 **minor** version changes a number or a source; a **patch** fixes a bug or
 wording. The methodology carries the same version number as the product.
-Releases are meant to be tagged in git (`v2.1.0`) so any version can be
-redeployed; as of 11 October 2026 no tags have been pushed to GitHub.
+Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
+redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
 ## 2.1.0 — 11 October 2026
 
@@ -96,6 +96,6 @@ and what the ledger reports beside it.
 
 ## 1.0.0
 
-The version live before 23 September 2026 (tag `v1.0.0`, commit `b1df3e2`):
+The version live before 23 September 2026 (commit `b1df3e2`; not tagged):
 headline "g CO₂e, this chat's carbon", Gemini 3.8 Flash default priced at the
 Sonnet anchor, $100/tonne offset price.
