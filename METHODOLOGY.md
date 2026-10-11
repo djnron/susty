@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.1.0, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Version:** 2.1.1, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
 **Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-11-october-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 11 October 2026
 **Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026 (see [§14 Verification log](#14-verification-log))
@@ -157,6 +157,30 @@ average_gCO2e_per_completed_exchange
 Before the first completed exchange, the functional-unit value is undefined: it is not shown as zero, and the screen says it will appear after the first answer.
 
 Because attended device energy can continue to accrue after a response, the average per completed exchange can increase while a user reads. It can also decrease when a new completed exchange increases the denominator. The **session total never decreases**.
+
+### Worked example
+
+One question and answer, used in the methodology deck and the plain-language summary so that every figure they quote can be traced here. Inputs: Gemini 3.5 Flash-Lite (×0.85, §4.4), 1,000 input and 300 output tokens with thinking counted as output (§4.1), PUE 1.12 and 0.003 Wh hosting (§5), a laptop with an LCD panel in light mode, 10 W (§7.1), for 90 s of attended time (§7.3), a reader in the United Kingdom at Ember's 2024 yearly average of 217 g CO2e/kWh (§6.5), and the servers' grid of 307 g CO2e/kWh (§6.9).
+
+| Step | Arithmetic | Result |
+|---|---|---:|
+| Inference | (1,000 × 0.05 + 300 × 0.5) mWh × 0.85 × 1.12 | 0.190 Wh |
+| Hosting | fixed per request | 0.003 Wh |
+| Device | 10 W × 90 s | 0.250 Wh |
+| Electricity | sum | 0.443 Wh (2.3% of a 19 Wh phone charge, §9) |
+| Carbon, servers | (0.190 + 0.003) Wh × 307 g/kWh | 0.059 g |
+| Carbon, device | 0.250 Wh × 217 g/kWh | 0.054 g |
+| **Carbon, central** | sum | **0.114 g CO2e** |
+| Carbon, high end (§4.8) | central + (2.7 − 1) × 0.190 Wh × 307 g/kWh | 0.213 g CO2e |
+| Device on other grids | same exchange, reader's grid 30 g/kWh (Norway) to 718 g/kWh (South Africa) | 0.067–0.239 g CO2e |
+| Water, on-site (§16.2) | (0.190 ÷ 1.12 + 0.003) Wh × 1.15 L/kWh | 0.199 mL |
+| Water, power stations (§16.3) | 0.193 Wh × 1.082 L/kWh (US) + 0.250 Wh × 0.945 L/kWh (GB) | 0.446 mL |
+| Water, hydro reservoirs (§16.4) | 0.193 Wh × 0.918 L/kWh (US) + 0.250 Wh × 0.345 L/kWh (GB) | 0.264 mL |
+
+- **Data-quality label: derived.** Each row is arithmetic on inputs labeled in the sections cited; the example adds no assumption of its own. The token counts, model, device and reading time are illustrative choices, not measurements of a typical session.
+- **Likely direction of error: low**, as for any Susty figure, because energy per token sits at the low end of published estimates (§4.3); the high-end row shows by how much under one published scenario. The 90 s of reading is a choice: 30 s to 300 s moves the central figure from 0.077 g to 0.240 g. Great Britain readers get NESO's live intensity in the app rather than the yearly 217.
+- **Not the §4.3 or §16.5 exchange.** Those checks use a different illustrative exchange (two turns, 831 input and 571 output tokens, 0.186 Wh with hosting), which is why its on-site water is 0.192 mL and this one's 0.199 mL. Under 2.0.0, when the reader's grid also priced the servers, this example came to 0.096 g.
+- `tools/methodology.test.mjs` recomputes every row from the constants in `index.html` and fails if this table drifts from them.
 
 ### Why longer chats cost more per turn
 
@@ -341,7 +365,7 @@ comparison_Wh(m)
 comparison_gCO2e(m) = comparison_Wh(m) x server_grid_intensity / 1000
 ```
 
-Tokens and server grid come from the latest completed request record, frozen when it was recorded. The models are Haiku 4.5, Sonnet 4.6, Opus 4.8, Gemini 3.5 Flash-Lite and Gemini 3.8 Flash, with the §4.4 factors; the model that actually answered is marked.
+Tokens and server grid come from the latest completed request record, frozen when it was recorded. The models are Haiku 4.5, Sonnet 4.6, Opus 4.8, Gemini 3.5 Flash-Lite and Gemini 3.8 Flash, with the §4.4 factors; the model that actually answered is marked, and when its answer included thinking the mark says "excl. thinking", because that row is then below the inference energy the ledger's Energy block shows for the same answer.
 
 | Choice | Why | Direction it errs |
 |---|---|---|

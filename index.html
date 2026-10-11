@@ -1619,7 +1619,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.1.0';
+const METHODOLOGY_VERSION = '2.1.1';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -2173,7 +2173,9 @@ function paintLedger() {
   if (cmp) {
     $('compareRows').innerHTML = cmp.map(c =>
       '<tr' + (c.answered ? ' class="answered"' : '') + '><td>' + c.label +
-      (c.answered ? ' (answered)' : '') + ' \u00d7' + c.factor.toFixed(2) + '</td><td>' +
+      // The answered row leaves out thinking like every other row, so it can
+      // sit below the inference figure in the Energy block for the same answer.
+      (c.answered ? (latestCompleted.thinkTok > 0 ? ' (answered, excl. thinking)' : ' (answered)') : '') + ' \u00d7' + c.factor.toFixed(2) + '</td><td>' +
       fmt(c.wh, 3) + ' Wh, ' + fmt(c.grams, 3) + ' g</td></tr>').join('');
   }
 

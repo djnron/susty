@@ -7,6 +7,20 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.1.1 — 11 October 2026
+
+A patch: no figure the app computes changes.
+
+- **Worked example in the methodology.** The example the deck and the
+  plain-language summary quote (Gemini 3.5 Flash-Lite, 1,000 in / 300 out, a
+  laptop for 90 s in the UK: 0.114 g CO₂e, high end 0.213 g) is now in §3 with
+  its arithmetic, and `tools/methodology.test.mjs` recomputes every row from
+  the app's constants.
+- **Model comparison wording.** When the latest answer included thinking, its
+  row reads "(answered, excl. thinking)", because like every row it leaves
+  thinking out and so sits below that answer's inference energy in the
+  Energy block.
+
 ## 2.1.0 — 11 October 2026
 
 A minor version, not a major one: the system boundary and the functional unit

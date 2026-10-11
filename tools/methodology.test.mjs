@@ -222,13 +222,14 @@ check('says there is no idle-capacity term', () => has(/### Idle and reserved ca
 check('lists data next steps', () => has(/## 15\. Next steps: data and specificity/));
 
 console.log('\nVersion');
-check('package.json, README, CHANGELOG and METHODOLOGY carry the same version', () => {
+check('package.json, README, CHANGELOG, METHODOLOGY and the app carry the same version', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
   const changelog = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
   assert.match(readme, new RegExp(`\\*\\*Version ${pkg.replace(/\./g, '\\.')}\\*\\*`));
   assert.equal(changelog.match(/^## (\d+\.\d+\.\d+)/m)[1], pkg, 'newest CHANGELOG entry');
   has(new RegExp(`\\*\\*Version:\\*\\* ${pkg.replace(/\./g, '\\.')},`));
+  assert.equal(html.match(/const METHODOLOGY_VERSION = '([\d.]+)';/)[1], pkg, 'METHODOLOGY_VERSION in index.html');
 });
 
 console.log('\nLayout');
@@ -247,6 +248,53 @@ check('long text values and spanning notes may wrap on a narrow screen', () => {
 });
 check('hidden pickers stay hidden despite .pick display: flex', () =>
   assert.match(html, /\.pick\[hidden\] \{ display: none; \}/));
+
+console.log('\nWorked example (METHODOLOGY 3)');
+{
+  const WATER_GRIDS = objectLiteral(html, 'WATER_GRIDS');
+  const PHONE_CHARGE_WH = Number(html.match(/const PHONE_CHARGE_WH = (\d+);/)[1]);
+  const sect = doc.slice(doc.indexOf('### Worked example'), doc.indexOf('### Why longer chats'));
+  const row = (label, value) => assert.ok(sect.includes(value),
+    `worked example: ${label} should read ${value}`);
+  const f = (n, d = 3) => n.toFixed(d);
+  const factor = MODEL_ENERGY['gemini-3.5-flash-lite'].factor;
+  const laptopW = DEVICE_BASE.laptop + PANELS.lcdLaptop.light;
+  const inf = (1000 * MODEL.whPerInputToken + 300 * MODEL.whPerOutputToken) * factor * MODEL.pue;
+  const req = inf + MODEL.whPerExchange;
+  const dev = (sec) => laptopW * sec / 3600;
+  const sg = req * MODEL.serverGridGPerKwh / 1000;
+  const g = (gridG, sec = 90) => sg + dev(sec) * gridG / 1000;
+  const central = g(GRIDS.GB.g);
+  const us = WATER_GRIDS.US, gb = WATER_GRIDS.GB;
+  check('inputs are the ones the table names', () => {
+    assert.equal(factor, 0.85); assert.equal(laptopW, 10); assert.equal(GRIDS.GB.g, 217);
+    assert.equal(GRIDS.NO.g, 30); assert.equal(GRIDS.ZA.g, 718);
+    assert.equal(MODEL.serverGridGPerKwh, 307); assert.equal(MODEL.inferenceHighFactor, 2.7);
+  });
+  check('energy rows reproduce', () => {
+    row('inference', `| ${f(inf)} Wh |`);
+    row('device', `| ${f(dev(90))} Wh |`);
+    row('electricity', `${f(req + dev(90))} Wh (${(100 * (req + dev(90)) / PHONE_CHARGE_WH).toFixed(1)}% of a ${PHONE_CHARGE_WH} Wh`);
+  });
+  check('carbon rows reproduce', () => {
+    row('servers', `| ${f(sg)} g |`);
+    row('device', `| ${f(dev(90) * GRIDS.GB.g / 1000)} g |`);
+    row('central', `**${f(central)} g CO2e**`);
+    row('high end', `| ${f(central + (MODEL.inferenceHighFactor - 1) * inf * MODEL.serverGridGPerKwh / 1000)} g CO2e |`);
+    row('grid span', `| ${f(g(GRIDS.NO.g))}–${f(g(GRIDS.ZA.g))} g CO2e |`);
+    row('reading time', `from ${f(g(GRIDS.GB.g, 30))} g to ${f(g(GRIDS.GB.g, 300))} g`);
+  });
+  check('water rows reproduce', () => {
+    row('on-site', `| ${f(inf / MODEL.pue * MODEL.onsiteWueLPerKwh + MODEL.whPerExchange * MODEL.onsiteWueLPerKwh)} mL |`);
+    row('power stations', `| ${f(req * us.offsite + dev(90) * gb.offsite)} mL |`);
+    row('hydro', `| ${f(req * us.hydro + dev(90) * gb.hydro)} mL |`);
+    row('US and GB factors', `× ${us.offsite} L/kWh (US) + 0.250 Wh × ${gb.offsite} L/kWh (GB)`);
+  });
+}
+check('the answered comparison row says when it leaves out thinking', () => {
+  assert.match(html, /latestCompleted\.thinkTok > 0 \? ' \(answered, excl\. thinking\)' : ' \(answered\)'/);
+  has(/the mark says "excl\. thinking"/);
+});
 
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');
 process.exit(fails ? 1 : 0);
