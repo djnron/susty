@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.1.2, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Version:** 2.1.3, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
 **Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-11-october-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 11 October 2026
 **Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026 (see [§14 Verification log](#14-verification-log))
@@ -585,7 +585,7 @@ The ledger opens with:
 - the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session;
 - in a separate section, what the latest completed answer would have cost on each offered model (§4.9), labeled hypothetical;
-- water: on-site cooling, power stations excluding hydro, and hydro reservoir evaporation on its own row, each as a range (§16).
+- water: on-site cooling and power stations excluding hydro, then their total ("Water, this chat"), then hydro reservoir evaporation on its own row below the total and kept out of it, each as a range (§16).
 
 The "This conversation" section is laid out as three labeled blocks: **Carbon** (the total and its range, answers, the average, and the two grid intensities), **Energy** (tokens, the answering model, the electricity they and the device draw, the session's electricity and its share of a phone charge) and **Water**. Carbon and water are both computed from the electricity in the middle block.
 
@@ -866,6 +866,8 @@ Reservoir evaporation is real and large: JRC (Hidalgo González et al. 2020, JRC
 
 - **"At power stations, excluding hydro"** leaves reservoirs out, as Larsen & Drews' own validated estimates do (hydro freshwater share 0, their Table 2). It errs **low** for hydro-heavy grids.
 - **"Plus hydro reservoir evaporation, if all of it is charged to electricity"** applies 17,000 L/MWh (17 L/kWh) to the hydro share. That is the median of the four Appendix B entries (Gleick 1994: 17,000; Mielke et al. 2010: 17,034; Macknick et al. 2012: 17,000; Davies et al. 2013: 2,700). **The three values near 17,000 likely share one origin**: Larsen & Drews note that "many studies build upon each other by re-issuing the findings of older studies", and the figure goes back to Gleick (1994). It is gross evaporation allocated wholly to electricity, so this row errs **high**: multipurpose reservoirs and run-of-river plants that evaporate little are charged as if every litre evaporated served electricity.
+
+**The total leaves hydro out.** The ledger's "Water, this chat" adds on-site cooling and power stations excluding hydro; the hydro row sits below it, outside the total, so the headline water figure carries the low-erring choice for reservoirs and the high-erring one is shown beside it rather than folded in.
 
 The choice moves the answer by up to an order of magnitude: Norway's grid (88.8% hydro in Ember 2024) is 0.018 L/kWh without the hydro row and 15.1 with it.
 

@@ -211,8 +211,9 @@ check('WUE, hydro factor and labels match code and doc', () => {
   has(/ENTSO-E/);
 });
 check('the ledger shows hydro on its own row and says water is not in the carbon figure', () => {
-  assert.match(html, /Plus hydro reservoirs \(shown apart; overstates\)<\/td><td id="rWaterHydro">/);
-  assert.match(html, /Not counted in the carbon figure\./);
+  // "if all charged to power" is the overstatement, said in the label itself (§16.4).
+  assert.match(html, /Plus hydro reservoirs, if all charged to power<\/td><td id="rWaterHydro">/);
+  assert.match(html, /not counted in the carbon\./);
 });
 
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');

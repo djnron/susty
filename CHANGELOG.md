@@ -7,6 +7,19 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.1.3 — 11 October 2026
+
+A patch: no figure the app computes changes.
+
+- **Water total.** The ledger adds "Water, this chat": cooling at the data
+  centre plus power stations. Hydro reservoirs stay on their own row below
+  it, outside the total, because charging all reservoir evaporation to power
+  overstates (§16.4).
+- **Ledger layout.** Carbon, Energy and Water are gold chips again. In the
+  Energy block, inference, hosting and the device are one level, with the two
+  chip-energy rows under inference and thinking under tokens written; labels
+  are shorter ("Answered by", "Your laptop, 3s in use of 3s open").
+
 ## 2.1.2 — 11 October 2026
 
 A patch: no figure the app computes changes.

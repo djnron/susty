@@ -234,7 +234,7 @@ check('package.json, README, CHANGELOG, METHODOLOGY and the app carry the same v
 
 console.log('\nLayout');
 check('this conversation shows carbon, energy and water as labeled blocks, in that order', () => {
-  const sect = html.slice(html.indexOf('<h3>This conversation</h3>'), html.indexOf('<div class="pick">'));
+  const sect = html.slice(html.indexOf('>This conversation</h3>'), html.indexOf('<div class="pick">'));
   const blocks = [...sect.matchAll(/<h4 class="block">(\w+)<\/h4>/g)].map((m) => m[1]);
   assert.deepEqual(blocks, ['Carbon', 'Energy', 'Water']);
   assert.ok(sect.indexOf('id="rWh"') > sect.indexOf('>Energy<') && sect.indexOf('id="rWaterOnsite"') > sect.indexOf('>Water<'));
@@ -295,6 +295,13 @@ console.log('\nWorked example (METHODOLOGY 3)');
     row('US and RFCW factors', `× ${us.offsite} L/kWh (US) + 0.833 Wh × ${rfcw.offsite} L/kWh (RFCW)`);
   });
 }
+check('the water total adds on-site and power stations and leaves hydro out', () => {
+  assert.match(html, /\$\('rWaterTotal'\)\.textContent\s*= ml\(wt\.onsite \+ wt\.offsite, wt\.onsiteHigh \+ wt\.offsiteHigh\)/);
+  const water = html.slice(html.indexOf('>Water</h4>'), html.indexOf('id="noteWater"'));
+  assert.ok(water.indexOf('id="rWaterTotal"') > water.indexOf('id="rWaterOffsite"') &&
+            water.indexOf('id="rWaterHydro"') > water.indexOf('id="rWaterTotal"'), 'hydro sits below the total');
+  has(/"Water, this chat" adds on-site cooling and power stations excluding hydro/);
+});
 check('the answered comparison row says when it leaves out thinking', () => {
   assert.match(html, /latestCompleted\.thinkTok > 0 \? ' \(answered, excl\. thinking\)' : ' \(answered\)'/);
   has(/the mark says "excl\. thinking"/);

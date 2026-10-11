@@ -677,14 +677,28 @@ textarea, input { caret-color: var(--ink); }
   border: var(--bw-sm) solid var(--ink);
 }
 
-/* Sub-heads inside a section: Carbon, Energy, Water. Plainer than the gold
-   section chip, so the three read as parts of one conversation. */
+/* Sub-heads inside a section: Carbon, Energy, Water. The same gold chip as a
+   section head, so each block is found at a glance; the section head above
+   them is set plain instead, so the chips are not stacked two deep. */
+.sect h3.plain {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--t-sm);
+  margin: 0 0 var(--s4);
+}
 .sect h4.block {
+  display: inline-block;
   font-size: var(--t-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--track);
-  margin: var(--s6) 0 var(--s1);
+  margin: var(--s6) 0 var(--s2);
+  padding: var(--s1) var(--s3);
+  background: var(--gold);
+  color: var(--block-ink);
+  border: var(--bw-sm) solid var(--ink);
 }
 .sect h3 + h4.block { margin-top: 0; }
 .rows { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
@@ -996,7 +1010,7 @@ textarea, input { caret-color: var(--ink); }
   </div>
 
   <div class="sect">
-    <h3>This conversation</h3>
+    <h3 class="plain">This conversation</h3>
     <!-- One section, three blocks. Carbon and water are both worked out from
          the same electricity, shown in the middle block. -->
     <h4 class="block">Carbon</h4>
@@ -1015,15 +1029,15 @@ textarea, input { caret-color: var(--ink); }
     <h4 class="block">Energy</h4>
     <table class="rows">
       <tbody>
-        <tr class="muted"><td>Model for the latest answer</td><td id="rModel">—</td></tr>
+        <tr><td>Answered by</td><td id="rModel">—</td></tr>
         <tr><td>Tokens sent (context)</td><td id="rIn">0</td></tr>
         <tr><td>Tokens written back</td><td id="rOut">0</td></tr>
-        <tr class="muted"><td>Of which thinking (session)</td><td id="rThinking">0 tokens</td></tr>
-        <tr class="muted"><td>Chip energy, sent @ 0.05 mWh/token</td><td id="rEIn">0 Wh</td></tr>
-        <tr class="muted"><td>Chip energy, written @ 0.5 mWh/token</td><td id="rEOut">0 Wh</td></tr>
-        <tr class="muted"><td>Inference after PUE ×1.12</td><td id="rPue">0 Wh</td></tr>
-        <tr class="muted"><td>Hosting &amp; network @ 0.003 Wh/request</td><td id="rHosting">0 Wh</td></tr>
-        <tr class="muted"><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
+        <tr class="muted"><td>of which thinking</td><td id="rThinking">0 tokens</td></tr>
+        <tr><td>AI inference, after PUE ×1.12</td><td id="rPue">0 Wh</td></tr>
+        <tr class="muted"><td>chips reading, 0.05 mWh/token</td><td id="rEIn">0 Wh</td></tr>
+        <tr class="muted"><td>chips writing, 0.5 mWh/token</td><td id="rEOut">0 Wh</td></tr>
+        <tr><td>Hosting &amp; network</td><td id="rHosting">0 Wh</td></tr>
+        <tr><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
         <tr class="total"><td>Electricity, this chat</td><td id="rWh">0 Wh</td></tr>
         <tr><td>Share of a phone charge</td><td id="rPhone">0%</td></tr>
       </tbody>
@@ -1033,11 +1047,12 @@ textarea, input { caret-color: var(--ink); }
     <table class="rows">
       <tbody>
         <tr><td>Cooling at the data center</td><td id="rWaterOnsite">0.00 mL</td></tr>
-        <tr><td>At power stations, excluding hydro</td><td id="rWaterOffsite">0.00 mL</td></tr>
-        <tr class="muted"><td>Plus hydro reservoirs (shown apart; overstates)</td><td id="rWaterHydro">0.00 mL</td></tr>
+        <tr><td>At power stations</td><td id="rWaterOffsite">0.00 mL</td></tr>
+        <tr class="total"><td>Water, this chat</td><td id="rWaterTotal">0.00 mL</td></tr>
+        <tr><td>Plus hydro reservoirs, if all charged to power</td><td id="rWaterHydro">0.00 mL</td></tr>
       </tbody>
     </table>
-    <p class="note" id="noteWater">Water used up: evaporated, not returned. Data center: Google's measured cooling rate. Power stations: typical figures for each fuel, on your grid for your device and the US grid for the servers. Reservoirs are shown apart because they also supply farms and towns. Not counted in the carbon figure.</p>
+    <p class="note" id="noteWater">Water used up (evaporated), not counted in the carbon. Reservoirs are kept out of the total because they also supply farms and towns.</p>
 
     <div class="pick">
       <label for="grid">Your grid (for your device)</label>
@@ -1619,7 +1634,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.1.2';
+const METHODOLOGY_VERSION = '2.1.3';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -2155,7 +2170,7 @@ function paintLedger() {
   if (latestCompleted) {
     const f = modelEnergy(latestCompleted.model).factor;
     $('rModel').textContent = latestCompleted.model.replace(/^claude-/, '') +
-      (f === 1 ? '' : ' \u00d7' + f.toFixed(2));
+      (f === 1 ? '' : '\u00a0\u00d7' + f.toFixed(2));   // no-break: the factor stays with its model
   } else {
     $('rModel').textContent = '—';
   }
@@ -2165,6 +2180,8 @@ function paintLedger() {
   const ml = (a, b) => { const lo = fmt(a), hi = fmt(b); return (lo === hi ? lo : lo + '–' + hi) + ' mL'; };
   $('rWaterOnsite').textContent  = ml(wt.onsite, wt.onsiteHigh);
   $('rWaterOffsite').textContent = ml(wt.offsite, wt.offsiteHigh);
+  // The total leaves hydro out: reservoir evaporation is shown apart (METHODOLOGY 16.4).
+  $('rWaterTotal').textContent   = ml(wt.onsite + wt.offsite, wt.onsiteHigh + wt.offsiteHigh);
   $('rWaterHydro').textContent   = ml(wt.hydro, wt.hydroHigh);
 
   const cmp = latestCompleted ? modelComparison(latestCompleted) : null;
@@ -2283,8 +2300,8 @@ function paintScreen() {
   // Both durations, because the interesting question about this row is why the
   // charged figure is smaller than the time the page has been open.
   $('rDeviceLabel').textContent =
-    'Your device, ~' + fmtDuration(attendedSeconds()) + ' attended of ' +
-    fmtDuration(openSeconds()) + ' open, on ' + dev;
+    'Your ' + dev.replace(/^an? /, '') + ', ' + fmtDuration(attendedSeconds()) + ' in use of ' +
+    fmtDuration(openSeconds()) + ' open';
   $('rDeviceNow').textContent = fmt(deviceEnergy(), 3) + ' Wh';
 }
 
