@@ -186,6 +186,52 @@ for (const [label, marker] of [
   });
 }
 
+console.log('\nLong-chat notice');
+{
+  const REQUEST_STATUS = Object.freeze({ COMPLETED: 'completed', INCOMPLETE: 'incomplete', FAILED: 'failed' });
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005 };
+  const context = vm.createContext({ REQUEST_STATUS, MODEL, Math });
+  vm.runInContext(`${extractNamedFunction(html, 'freshChatNudge')}; this.nudge = freshChatNudge;`, context);
+  const nudge = context.nudge;
+  const rec = (inTok, outTok, status = 'completed') => ({ inTok, outTok, status });
+  const first = rec(300, 250);
+
+  check('fires at exactly input = 10 x output on a later completed answer', () => {
+    const r = nudge([first, rec(2500, 250)], false);
+    assert.deepEqual({ ...r }, { firstIn: 300, lastIn: 2500, ratio: 10 });
+  });
+  check('does not fire one token below the threshold', () => {
+    assert.equal(nudge([first, rec(2499, 250)], false), null);
+  });
+  check('thinking counts as output: a long reasoning reply pushes the threshold out', () => {
+    // 250 visible + 750 thinking = 1000 output tokens: 2500 input is not enough.
+    assert.equal(nudge([first, rec(2500, 1000)], false), null);
+    assert.ok(nudge([first, rec(10000, 1000)], false));
+  });
+  check('never on the first completed answer, even with a tiny reply', () => {
+    assert.equal(nudge([rec(300, 20)], false), null);
+    assert.equal(nudge([rec(300, 20, 'failed'), rec(300, 20)], false), null);
+  });
+  check('only straight after a completed answer, not after a cut-off one', () => {
+    assert.equal(nudge([first, rec(2500, 250), rec(2800, 100, 'incomplete')], false), null);
+  });
+  check('only once: the caller\'s flag suppresses it', () => {
+    assert.equal(nudge([first, rec(2500, 250)], true), null);
+  });
+  check('first figure comes from the first completed answer, not a failed attempt', () => {
+    const r = nudge([rec(0, 0, 'failed'), first, rec(3000, 200)], false);
+    assert.equal(r.firstIn, 300);
+  });
+  check('send() sets the once-per-session flag when it shows the notice', () => {
+    assert.match(html, /const nudge = freshChatNudge\(state\.requests, state\.freshChatNudged\);\s+if \(nudge\) \{\s+state\.freshChatNudged = true;/);
+  });
+  check('records carry raw token counts, thinking included in output', () => {
+    const body = extractNamedFunction(html, 'recordRequest');
+    assert.match(body, /inTok, outTok, thinkTok,/);
+    assert.equal((html.match(/thinkTok: thinkingTokens/g) || []).length, 2);
+  });
+}
+
 console.log('\nTwo grids: servers for requests, reader for device time');
 check('recordRequest prices on MODEL.serverGridGPerKwh', () => {
   const body = extractNamedFunction(html, 'recordRequest');

@@ -56,6 +56,11 @@ check(`high-bound factor ${MODEL.inferenceHighFactor} matches, in doc and in-pag
   has(/\*\*Not a statistical interval\.\*\*/);
   assert.match(html, new RegExp(`about ${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
 });
+check('long-chat threshold is the output/input coefficient ratio, as documented', () => {
+  const ratio = Math.round(MODEL.whPerOutputToken / MODEL.whPerInputToken);
+  has(new RegExp(`input_tokens\\(j\\) >= ${ratio} x output_tokens\\(j\\)`));
+  has(/\*\*Output includes thinking tokens\*\*/);
+});
 check(`PUE ${MODEL.pue} matches`, () => has(new RegExp(`PUE of ${MODEL.pue}\\*\\*`)));
 check(`hosting ${MODEL.whPerExchange} Wh matches`, () =>
   has(new RegExp(`${MODEL.whPerExchange} Wh per request handled by Susty`)));

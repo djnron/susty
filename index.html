@@ -1462,6 +1462,7 @@ const state = {
   model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
   tier: 'gemini-flash-lite',    // what we asked for; the server may override
   thinkTokens: 0,               // measured subset of outTokens
+  freshChatNudged: false,       // the long-chat notice shows once per session
   grid: 'world', gridGuessed: false, region: '', live: null,
   // One frozen record per accounted request attempt (see recordRequest),
   // including incomplete/failed attempts where we have enough information to
@@ -1567,7 +1568,8 @@ function recordRequest(inTok, outTok, {
   status,
   model = null,
   stopReason = null,
-  includeHosting = true
+  includeHosting = true,
+  thinkTok = 0
 } = {}) {
   if (!Object.values(REQUEST_STATUS).includes(status)) {
     throw new Error('recordRequest requires a valid status');
@@ -1585,10 +1587,31 @@ function recordRequest(inTok, outTok, {
   const grams      = wh * serverGridGPerKwh / 1000;
   const gramsHigh  = grams + (highFactor - 1) * chipWh * serverGridGPerKwh / 1000;
   state.requests.push(Object.freeze({
+    // Raw token counts, kept beside the energy they priced. Not used for
+    // pricing (eIn/eOut already are); the long-chat notice reads them.
+    inTok, outTok, thinkTok,
     model, factor, eIn, eOut, chipWh, hostingWh, wh,
     serverGridGPerKwh, grams, highFactor, gramsHigh,
     status, stopReason
   }));
+}
+
+// The long-chat notice. The whole history is re-sent with every question
+// (METHODOLOGY 3), so input tokens grow with every turn. Once sending the
+// context costs at least as much energy as writing the answer, a fresh chat
+// would be cheaper per answer. With input at 0.05 and output at 0.5 mWh per
+// token, that is input >= 10 x output, the model factor cancelling out.
+// Output includes thinking tokens, which are priced as output.
+// Fires only straight after a completed answer, never on the first one, and
+// once per session (the caller holds the flag). Pure, so it can be tested.
+function freshChatNudge(requests, alreadyShown) {
+  if (alreadyShown || !requests.length) return null;
+  const done = requests.filter(r => r.status === REQUEST_STATUS.COMPLETED);
+  const last = requests[requests.length - 1];
+  if (done.length < 2 || last !== done[done.length - 1]) return null;
+  const ratio = Math.round(MODEL.whPerOutputToken / MODEL.whPerInputToken);
+  if (!(last.outTok > 0 && last.inTok >= ratio * last.outTok)) return null;
+  return { firstIn: done[0].inTok, lastIn: last.inTok, ratio };
 }
 
 const completedExchangeCount = () =>
@@ -2347,7 +2370,8 @@ async function send(raw) {
       recordRequest(inputTokens, outputTokens, {
         status: REQUEST_STATUS.FAILED,
         model: responseModel,
-        stopReason
+        stopReason,
+        thinkTok: thinkingTokens
       });
       requestRecorded = true;
       repaintAccounting(false);
@@ -2377,13 +2401,25 @@ async function send(raw) {
     recordRequest(turnIn, turnOut, {
       status,
       model: responseModel,
-      stopReason
+      stopReason,
+      thinkTok: thinkingTokens
     });
     requestRecorded = true;
     responseRetained = true;
 
     if (status !== REQUEST_STATUS.COMPLETED) {
       addNotice('That reply was cut off or did not finish normally. Ask again to pick it up.', null);
+    }
+
+    const nudge = freshChatNudge(state.requests, state.freshChatNudged);
+    if (nudge) {
+      state.freshChatNudged = true;
+      addNotice(
+        'This chat is getting long. Every question re-sends the whole conversation, now about ' +
+          nudge.lastIn.toLocaleString() + ' tokens (your first question sent ' +
+          nudge.firstIn.toLocaleString() + '), so sending it now takes more energy than writing the answer.',
+        'Starting a fresh chat (reload the page) resets that. This note appears once per chat.'
+      );
     }
 
     repaintAccounting(status === REQUEST_STATUS.COMPLETED);

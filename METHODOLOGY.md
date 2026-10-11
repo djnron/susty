@@ -150,6 +150,17 @@ Because attended device energy can continue to accrue after a response, the aver
 
 The whole conversation history is re-sent on every request, so input tokens grow roughly linearly with conversation length and each successive answer costs more than the last. The ledger says so rather than letting the total look mysteriously superlinear.
 
+**The long-chat notice.** Once re-sending the context costs at least as much inference energy as writing the answer, Susty suggests a fresh chat, once per session, in the transcript:
+
+```text
+show the notice after completed answer j when
+  input_tokens(j) >= 10 x output_tokens(j)
+  and j is not the first completed answer
+  and the notice has not been shown in this session
+```
+
+The 10 is not a separate parameter: it is the ratio of the output to the input coefficient (0.5 / 0.05 mWh per token, §4.3), so the condition is "context energy ≥ answer energy" with the model factor cancelling out. If the coefficients change, the threshold follows them. **Output includes thinking tokens**, which are priced as output (§4.1), so a reply with heavy reasoning reaches the threshold later. The notice quotes the context re-sent for the latest answer against the first answer's, both from the frozen request records; it is a display rule and changes no figure. A fresh chat means reloading the page, which also starts a new session total.
+
 ---
 
 ## 4. AI inference
@@ -611,7 +622,7 @@ else:
     = session total / completed exchanges
 ```
 
-It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the long-chat notice fires exactly at input ≥ 10 × output (thinking counted as output), only after a completed answer that is not the first, and only once; that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
 
 ---
 
