@@ -232,6 +232,54 @@ console.log('\nLong-chat notice');
   });
 }
 
+console.log('\nThe latest answer on other models');
+{
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12 };
+  const MODEL_ENERGY = {
+    'claude-haiku-4-5': { factor: 0.52 }, 'claude-sonnet-4-6': { factor: 1.00 },
+    'claude-opus-4-8': { factor: 1.33 }, 'gemini-3.5-flash-lite': { factor: 0.85 },
+    'gemini-3.8-flash': { factor: 1.36 },
+  };
+  const constStart = html.indexOf('const COMPARE_MODELS = [');
+  const constEnd = html.indexOf('];', constStart) + 2;
+  const context = vm.createContext({ MODEL, MODEL_ENERGY, Math });
+  vm.runInContext(
+    html.slice(constStart, constEnd) + '\n' + extractNamedFunction(html, 'modelComparison') +
+    '\nthis.compare = modelComparison;', context);
+  const rec = Object.freeze({ inTok: 2000, outTok: 900, thinkTok: 400, model: 'gemini-3.5-flash-lite',
+    serverGridGPerKwh: 307, status: 'completed' });
+  // Copied into this realm: arrays built inside the vm context have a
+  // different Array prototype, which deepStrictEqual rejects.
+  const local = (v) => JSON.parse(JSON.stringify(v));
+  const rows = local(context.compare(rec));
+
+  check('every offered model has a row, each with its factor', () => {
+    assert.deepEqual(rows.map(r => r.id), Object.keys(MODEL_ENERGY));
+    for (const r of rows) assert.equal(r.factor, MODEL_ENERGY[r.id].factor);
+  });
+  check('rows reproduce from factor x frozen tokens, thinking left out, at the frozen server grid', () => {
+    for (const r of rows) {
+      const wh = (2000 * 0.05 + 500 * 0.5) / 1000 * r.factor * 1.12;
+      near(r.wh, wh, 1e-12);
+      near(r.grams, wh * 307 / 1000, 1e-12);
+    }
+  });
+  check('the model that answered is marked, by longest prefix of a dated id', () => {
+    assert.deepEqual(rows.filter(r => r.answered).map(r => r.id), ['gemini-3.5-flash-lite']);
+    const dated = local(context.compare({ ...rec, model: 'claude-haiku-4-5-20251001' }));
+    assert.deepEqual(dated.filter(r => r.answered).map(r => r.id), ['claude-haiku-4-5']);
+  });
+  check('hypothetical only: nothing is written to the request records', () => {
+    assert.doesNotMatch(extractNamedFunction(html, 'modelComparison'), /state\.|recordRequest/);
+  });
+  check('the ledger labels it hypothetical and states the caveats', () => {
+    assert.match(html, /id="compareNote" hidden>Hypothetical\./);
+    for (const re of [/Thinking tokens are left out/, /understate the gap between small and large/, /count tokens differently/, /Says nothing about which answer would have been better/]) {
+      assert.match(html, re);
+    }
+  });
+}
+
 console.log('\nTwo grids: servers for requests, reader for device time');
 check('recordRequest prices on MODEL.serverGridGPerKwh', () => {
   const body = extractNamedFunction(html, 'recordRequest');

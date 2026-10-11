@@ -56,6 +56,14 @@ check(`high-bound factor ${MODEL.inferenceHighFactor} matches, in doc and in-pag
   has(/\*\*Not a statistical interval\.\*\*/);
   assert.match(html, new RegExp(`about ${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
 });
+check('model comparison covers every model in MODEL_ENERGY except superseded Opus ids', () => {
+  const start = html.indexOf('const COMPARE_MODELS = [');
+  const ids = [...html.slice(start, html.indexOf('];', start)).matchAll(/\['([\w.-]+)'/g)].map(m => m[1]);
+  const offered = Object.keys(MODEL_ENERGY).filter(k => !/claude-opus-4-[67]/.test(k));
+  assert.deepEqual([...ids].sort(), [...offered].sort());
+  has(/### 4\.9 The latest answer on other models/);
+  has(/\*\*hypothetical\*\*/);
+});
 check('long-chat threshold is the output/input coefficient ratio, as documented', () => {
   const ratio = Math.round(MODEL.whPerOutputToken / MODEL.whPerInputToken);
   has(new RegExp(`input_tokens\\(j\\) >= ${ratio} x output_tokens\\(j\\)`));

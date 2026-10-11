@@ -685,6 +685,8 @@ textarea, input { caret-color: var(--ink); }
 /* A note spanning the table: one cell is both first and last child, so undo
    the right-aligned, unwrapped number styling it would otherwise inherit. */
 .rows td[colspan] { text-align: left; white-space: normal; }
+/* The model that actually answered, in the comparison table. */
+.rows tr.answered td { font-weight: 700; }
 .rows tr.total td {
   border-bottom: none;
   border-top: var(--bw) solid var(--ink);
@@ -1037,6 +1039,13 @@ textarea, input { caret-color: var(--ink); }
         <option value="oledMonitor">Monitor or TV, OLED</option>
       </select>
     </div>
+  </div>
+
+  <div class="sect">
+    <h3>The latest answer on other models</h3>
+    <p class="note" id="compareEmpty">Appears after the first answer.</p>
+    <table class="rows" id="compareTable" hidden><tbody id="compareRows"></tbody></table>
+    <p class="note" id="compareNote" hidden>Hypothetical. The same question and answer length, priced with each model's energy factor on the servers' grid; hosting and your device are the same whichever model answers, so they are left out. Thinking tokens are left out too, because each model thinks differently and the Gemini models always add some, so a thinking model's real cost would be higher. The factors likely understate the gap between small and large models. Claude and Gemini also count tokens differently. Says nothing about which answer would have been better.</p>
   </div>
 
   <div class="sect">
@@ -1614,6 +1623,33 @@ function freshChatNudge(requests, alreadyShown) {
   return { firstIn: done[0].inTok, lastIn: last.inTok, ratio };
 }
 
+// "What this answer would have cost on other models": hypothetical, so it is
+// computed for display and never written to state.requests. Same frozen
+// input tokens and visible output tokens (thinking left out: it varies by
+// model and Gemini always adds some), priced with each model's factor at the
+// record's frozen server grid. Hosting and device are identical whichever
+// model answers, so they are left out. Opus with extended thinking is not a
+// separate row: its cost is its thinking, which cannot be known in advance.
+const COMPARE_MODELS = [
+  ['claude-haiku-4-5',      'Haiku 4.5'],
+  ['claude-sonnet-4-6',     'Sonnet 4.6'],
+  ['claude-opus-4-8',       'Opus 4.8'],
+  ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'],
+  ['gemini-3.8-flash',      'Gemini 3.8 Flash']
+];
+function modelComparison(r) {
+  const visibleOut = Math.max(0, (r.outTok || 0) - (r.thinkTok || 0));
+  let answered = null;
+  for (const [id] of COMPARE_MODELS) {
+    if (r.model && r.model.startsWith(id) && (!answered || id.length > answered.length)) answered = id;
+  }
+  return COMPARE_MODELS.map(([id, label]) => {
+    const factor = MODEL_ENERGY[id].factor;
+    const wh = (r.inTok * MODEL.whPerInputToken + visibleOut * MODEL.whPerOutputToken) * factor * MODEL.pue;
+    return { id, label, factor, wh, grams: wh * r.serverGridGPerKwh / 1000, answered: id === answered };
+  });
+}
+
 const completedExchangeCount = () =>
   state.requests.reduce(
     (n, r) => n + (r.status === REQUEST_STATUS.COMPLETED ? 1 : 0),
@@ -1758,6 +1794,16 @@ function paintLedger() {
     $('rModel').textContent = '—';
   }
   $('rThinking').textContent = state.thinkTokens.toLocaleString() + ' tokens';
+
+  const cmp = latestCompleted ? modelComparison(latestCompleted) : null;
+  $('compareEmpty').hidden = !!cmp;
+  $('compareTable').hidden = $('compareNote').hidden = !cmp;
+  if (cmp) {
+    $('compareRows').innerHTML = cmp.map(c =>
+      '<tr' + (c.answered ? ' class="answered"' : '') + '><td>' + c.label +
+      (c.answered ? ' (answered)' : '') + ' \u00d7' + c.factor.toFixed(2) + '</td><td>' +
+      fmt(c.wh, 3) + ' Wh, ' + fmt(c.grams, 3) + ' g</td></tr>').join('');
+  }
 
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
   // "in United States" and "you're in World average" both read badly.

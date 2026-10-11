@@ -316,6 +316,30 @@ k = 0.60 Wh / 0.224 Wh = 2.68, rounded up to 2.7
 
 **Where it shows.** Only on the ledger's "This chat so far" row. The headline meter, the average per answer, the everyday comparisons, the offset cost and the "get a plan" prompt use the central figure, so the meter's contract (§8) is unchanged.
 
+### 4.9 The latest answer on other models
+
+The ledger shows what the latest completed answer would have cost on each model Susty offers. It is **hypothetical** and labeled so; it is computed for display and never enters the session total or the request records.
+
+```text
+comparison_Wh(m)
+= (input_tokens x 0.05 + (output_tokens - thinking_tokens) x 0.5) / 1000
+  x model_factor(m)
+  x PUE
+
+comparison_gCO2e(m) = comparison_Wh(m) x server_grid_intensity / 1000
+```
+
+Tokens and server grid come from the latest completed request record, frozen when it was recorded. The models are Haiku 4.5, Sonnet 4.6, Opus 4.8, Gemini 3.5 Flash-Lite and Gemini 3.8 Flash, with the §4.4 factors; the model that actually answered is marked.
+
+| Choice | Why | Direction it errs |
+|---|---|---|
+| Thinking tokens left out | Each model thinks differently, Gemini always adds some, and the extended-thinking tier's cost is its thinking, which cannot be known in advance; that tier has no row | Low for any model that thinks; the answered model's row is below what it actually cost when it thought |
+| Hosting and device left out | Identical whichever model answers | Neither; the comparison is of inference only |
+| Same token counts for every model | The only measured counts available | Unknown: Claude and Gemini tokenizers count the same text differently, and models write answers of different lengths |
+| §4.4 factors | Susty's existing model scaling | Compresses the real spread: likely understates large models and overstates small ones (§4.4) |
+
+It says nothing about answer quality. Data-quality label: **modeled** (measured tokens, modeled coefficients and factors).
+
 ---
 
 ## 5. PUE and service overhead
@@ -523,7 +547,8 @@ The ledger opens with:
 - average per answer;
 - cut-off or failed attempts, which are in the total but not counted as answers (only when there are any);
 - the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
-- thinking tokens for the session.
+- thinking tokens for the session;
+- in a separate section, what the latest completed answer would have cost on each offered model (§4.9), labeled hypothetical.
 
 Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
@@ -622,7 +647,7 @@ else:
     = session total / completed exchanges
 ```
 
-It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the long-chat notice fires exactly at input ≥ 10 × output (thinking counted as output), only after a completed answer that is not the first, and only once; that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the model comparison reproduces from each factor and the latest record's frozen tokens and server grid, leaves thinking out, and writes nothing to the request records; that the long-chat notice fires exactly at input ≥ 10 × output (thinking counted as output), only after a completed answer that is not the first, and only once; that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
 
 ---
 
