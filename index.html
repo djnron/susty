@@ -1882,10 +1882,14 @@ let historyOthers = [];          // every stored session but this one
 let historyAvailable = true;
 
 // Device time as segments, split whenever anything that prices it changes,
-// so the same close-out rule that freezes carbon also bounds each segment.
+// so the same close-out rule that freezes carbon also bounds each segment,
+// and at local midnight, so a tab left open overnight files the next
+// morning's reading under the next morning, not the day the segment began.
 function deviceSegment() {
   const w = MODEL.gridWater;
-  const key = [state.grid, state.region, MODEL.gridGPerKwh, w.offsite, w.hydro, state.screen, theme(), deviceWattsNow()].join('|');
+  const now = new Date();
+  const day = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+  const key = [day, state.grid, state.region, MODEL.gridGPerKwh, w.offsite, w.hydro, state.screen, theme(), deviceWattsNow()].join('|');
   let seg = state.deviceSegments[state.deviceSegments.length - 1];
   if (!seg || seg.key !== key) {
     seg = { key, v: METHODOLOGY_VERSION, start: Date.now(), end: Date.now(),

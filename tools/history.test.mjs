@@ -77,6 +77,20 @@ check('a change to grid, screen, theme, wattage or water starts a new segment', 
   assert.equal(c.state.deviceSegments.length, 5);
   for (const s of c.state.deviceSegments) assert.equal(s.v, '2.1.0');
 });
+check('a segment never spans midnight: the next local day starts a new one', () => {
+  let t = new Date(2026, 9, 11, 23, 59, 50).getTime();
+  class FakeDate extends Date {
+    constructor(...a) { super(...(a.length ? a : [t])); }
+    static now() { return t; }
+  }
+  const c = sandbox({ Date: FakeDate });
+  const a = c.deviceSegment();
+  t += 5000; assert.equal(c.deviceSegment(), a, 'same day, same segment');
+  t += 10000;                                   // now 00:00:05 on 12 October
+  const b = c.deviceSegment();
+  assert.notEqual(b, a);
+  assert.equal(new Date(b.start).getDate(), 12);
+});
 check('clockSync fills the segment with exactly what it adds to the totals', () => {
   // Drive the real clockSync with injectable time.
   const c = sandbox({ performance: { now: () => c.now }, now: 0, GRACE: 75000, lastSlice: 0, lastActivity: 0,
