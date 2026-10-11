@@ -54,7 +54,7 @@ check(`high-bound factor ${MODEL.inferenceHighFactor} matches, in doc and in-pag
   has(/\*\*0\.60 Wh\*\* \(IQR 0\.16–0\.60/);
   has(/### 4\.8 The high end of the range/);
   has(/\*\*Not a statistical interval\.\*\*/);
-  assert.match(html, new RegExp(`about ${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
+  assert.match(html, new RegExp(`${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
 });
 check('model comparison covers every model in MODEL_ENERGY except superseded Opus ids', () => {
   const start = html.indexOf('const COMPARE_MODELS = [');
@@ -232,6 +232,13 @@ check('package.json, README, CHANGELOG and METHODOLOGY carry the same version', 
 });
 
 console.log('\nLayout');
+check('this conversation shows carbon, energy and water as labeled blocks, in that order', () => {
+  const sect = html.slice(html.indexOf('<h3>This conversation</h3>'), html.indexOf('<div class="pick">'));
+  const blocks = [...sect.matchAll(/<h4 class="block">(\w+)<\/h4>/g)].map((m) => m[1]);
+  assert.deepEqual(blocks, ['Carbon', 'Energy', 'Water']);
+  assert.ok(sect.indexOf('id="rWh"') > sect.indexOf('>Energy<') && sect.indexOf('id="rWaterOnsite"') > sect.indexOf('>Water<'));
+  assert.doesNotMatch(html, /<h3>Water<\/h3>/, 'water is a block of this conversation, not its own section');
+});
 check('long text values and spanning notes may wrap on a narrow screen', () => {
   // "307 g/kWh, basis not stated by source" unwrapped pushed the ledger to
   // 429 px on a 360 px phone.

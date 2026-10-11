@@ -677,6 +677,16 @@ textarea, input { caret-color: var(--ink); }
   border: var(--bw-sm) solid var(--ink);
 }
 
+/* Sub-heads inside a section: Carbon, Energy, Water. Plainer than the gold
+   section chip, so the three read as parts of one conversation. */
+.sect h4.block {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--track);
+  margin: var(--s6) 0 var(--s1);
+}
+.sect h3 + h4.block { margin-top: 0; }
 .rows { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 .rows td { padding: var(--s2) 0; border-bottom: 1px solid var(--hairline); vertical-align: baseline; }
 .rows td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: var(--s4); }
@@ -987,27 +997,47 @@ textarea, input { caret-color: var(--ink); }
 
   <div class="sect">
     <h3>This conversation</h3>
+    <!-- One section, three blocks. Carbon and water are both worked out from
+         the same electricity, shown in the middle block. -->
+    <h4 class="block">Carbon</h4>
     <table class="rows">
       <tbody>
         <tr class="total"><td>This chat so far</td><td id="rTotal">0.00 g CO₂e</td></tr>
-        <tr class="muted"><td colspan="2" id="rRangeNote">Low end: our estimate. High end: if AI energy is at the upper quartile of published estimates (Oviedo et al. 2026), about 2.7 times ours. Your device and the grids are not ranged. A plausible spread, not a statistical margin of error.</td></tr>
+        <tr class="muted"><td colspan="2" id="rRangeNote">Low: our estimate. High: if AI uses as much energy as the upper end of published estimates (Oviedo et al. 2026), 2.7 times ours. A plausible spread, not a margin of error.</td></tr>
         <tr><td>Answers</td><td id="rCompleted">0</td></tr>
         <tr><td>Average per answer</td><td id="rPerExchange">—</td></tr>
         <tr id="rIncompleteRow" hidden><td>Cut off or failed (in the total, not counted as answers)</td><td id="rIncomplete">0</td></tr>
+        <tr><td>Your device's grid</td><td id="rGrid">471 g/kWh, life-cycle</td></tr>
+        <tr><td>Servers' grid (assumption: US data centres)</td><td id="rServerGrid">307 g/kWh, basis not stated by source</td></tr>
+      </tbody>
+    </table>
+
+    <h4 class="block">Energy</h4>
+    <table class="rows">
+      <tbody>
         <tr class="muted"><td>Model for the latest answer</td><td id="rModel">—</td></tr>
-        <tr class="muted"><td>Thinking tokens (session)</td><td id="rThinking">0 tokens</td></tr>
         <tr><td>Tokens sent (context)</td><td id="rIn">0</td></tr>
         <tr><td>Tokens written back</td><td id="rOut">0</td></tr>
+        <tr class="muted"><td>Of which thinking (session)</td><td id="rThinking">0 tokens</td></tr>
         <tr class="muted"><td>Chip energy, sent @ 0.05 mWh/token</td><td id="rEIn">0 Wh</td></tr>
         <tr class="muted"><td>Chip energy, written @ 0.5 mWh/token</td><td id="rEOut">0 Wh</td></tr>
         <tr class="muted"><td>Inference after PUE ×1.12</td><td id="rPue">0 Wh</td></tr>
         <tr class="muted"><td>Hosting &amp; network @ 0.003 Wh/request</td><td id="rHosting">0 Wh</td></tr>
         <tr class="muted"><td id="rDeviceLabel">Your device</td><td id="rDeviceNow">0 Wh</td></tr>
-        <tr><td>Electricity attributed to this session</td><td id="rWh">0 Wh</td></tr>
-        <tr><td>Your device's grid</td><td id="rGrid">471 g/kWh, life-cycle</td></tr>
-        <tr><td>Servers' grid (assumption: US data centres)</td><td id="rServerGrid">307 g/kWh, basis not stated by source</td></tr>
+        <tr class="total"><td>Electricity, this chat</td><td id="rWh">0 Wh</td></tr>
+        <tr><td>Share of a phone charge</td><td id="rPhone">0%</td></tr>
       </tbody>
     </table>
+
+    <h4 class="block">Water</h4>
+    <table class="rows">
+      <tbody>
+        <tr><td>Cooling at the data center</td><td id="rWaterOnsite">0.00 mL</td></tr>
+        <tr><td>At power stations, excluding hydro</td><td id="rWaterOffsite">0.00 mL</td></tr>
+        <tr class="muted"><td>Plus hydro reservoirs (shown apart; overstates)</td><td id="rWaterHydro">0.00 mL</td></tr>
+      </tbody>
+    </table>
+    <p class="note" id="noteWater">Water used up: evaporated, not returned. Data center: Google's measured cooling rate. Power stations: typical figures for each fuel, on your grid for your device and the US grid for the servers. Reservoirs are shown apart because they also supply farms and towns. Not counted in the carbon figure.</p>
 
     <div class="pick">
       <label for="grid">Your grid (for your device)</label>
@@ -1044,22 +1074,10 @@ textarea, input { caret-color: var(--ink); }
   </div>
 
   <div class="sect">
-    <h3>Water</h3>
-    <table class="rows">
-      <tbody>
-        <tr><td>Cooling at the data center</td><td id="rWaterOnsite">0.00 mL</td></tr>
-        <tr><td>At power stations, excluding hydro</td><td id="rWaterOffsite">0.00 mL</td></tr>
-        <tr class="muted"><td>Plus hydro reservoir evaporation, if all of it is charged to electricity</td><td id="rWaterHydro">0.00 mL</td></tr>
-      </tbody>
-    </table>
-    <p class="note" id="noteWater">Water consumed, not withdrawn: what evaporates or is otherwise not returned. Cooling uses Google's measured average for its data centers. Power stations use published median figures for each fuel, assuming cooling towers, weighted by your grid's mix for your device and a US mix for the servers. Reservoirs evaporate a great deal, but they also serve irrigation, flood control and drinking water, and there is no agreed way to split it, so that line is shown on its own and errs high. Ranges are as above. Water is not part of the carbon figure.</p>
-  </div>
-
-  <div class="sect">
     <h3>The latest answer on other models</h3>
     <p class="note" id="compareEmpty">Appears after the first answer.</p>
     <table class="rows" id="compareTable" hidden><tbody id="compareRows"></tbody></table>
-    <p class="note" id="compareNote" hidden>Hypothetical. The same question and answer length, priced with each model's energy factor on the servers' grid; hosting and your device are the same whichever model answers, so they are left out. Thinking tokens are left out too, because each model thinks differently and the Gemini models always add some, so a thinking model's real cost would be higher. The factors likely understate the gap between small and large models. Claude and Gemini also count tokens differently. Says nothing about which answer would have been better.</p>
+    <p class="note" id="compareNote" hidden>Hypothetical: this answer's tokens priced on each model. Leaves out thinking (Gemini always thinks, so its real cost is higher), hosting and your device. The real gap between small and large models is probably bigger. Says nothing about answer quality.</p>
   </div>
 
   <div class="sect">
@@ -1098,7 +1116,6 @@ textarea, input { caret-color: var(--ink); }
 
   <div class="sect">
     <h3>To put it in perspective</h3>
-    <p class="note" id="energyEquiv"></p>
     <ul class="scale" id="scale"></ul>
     <p class="note">The footprint of asking is small next to the footprint of what you do with the answer.</p>
   </div>
@@ -2213,14 +2230,12 @@ function paintLedger() {
   const lo = fmt(g), hi = fmt(gramsHigh());
   $('rTotal').textContent = (lo === hi ? lo : lo + '–' + hi) + ' g CO₂e';
 
-  // Electricity alongside the carbon comparisons, central figure, the whole
-  // session: inference, hosting and your device.
+  // The session's electricity (central figure: inference, hosting and your
+  // device) as a share of one smartphone charge, in the energy block.
   const charge = totalWh / PHONE_CHARGE_WH;
   const pct = charge * 100;
-  $('energyEquiv').textContent = 'This chat has used about ' + fmt(totalWh, 2) + ' Wh of electricity, ' +
-    (charge >= 1 ? 'about ' + fmt(charge, 1) + ' smartphone charges.'
-      : pct < 0.1 ? 'under 0.1% of a smartphone charge.'
-      : 'about ' + fmt(pct, pct < 10 ? 1 : 0) + '% of a smartphone charge.');
+  $('rPhone').textContent = charge >= 1 ? fmt(charge, 1) + ' charges'
+    : pct < 0.1 ? 'under 0.1%' : fmt(pct, pct < 10 ? 1 : 0) + '%';
 
   const comparisons = [
     ['Driving a gas car',             g / 170 * 1000, 'm'],

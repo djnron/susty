@@ -561,7 +561,9 @@ The ledger opens with:
 - the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session;
 - in a separate section, what the latest completed answer would have cost on each offered model (§4.9), labeled hypothetical;
-- in a water section, on-site cooling, power stations excluding hydro, and hydro reservoir evaporation on its own row, each as a range (§16).
+- water: on-site cooling, power stations excluding hydro, and hydro reservoir evaporation on its own row, each as a range (§16).
+
+The "This conversation" section is laid out as three labeled blocks: **Carbon** (the total and its range, answers, the average, and the two grid intensities), **Energy** (tokens, the answering model, the electricity they and the device draw, the session's electricity and its share of a phone charge) and **Water**. Carbon and water are both computed from the electricity in the middle block.
 
 Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
@@ -596,7 +598,7 @@ Everyday comparisons are based on the **session total**, not the average per exc
 | A quarter-pound beef burger | 3,800 | **Derived.** 113 g × 33.3 kg CO2e per kg, Poore & Nemecek (2018) global mean for beef from dairy herds, via Our World in Data. Beef from beef herds (99.48 kg/kg) gives about 11,200 g; the lower figure is used so the comparison errs toward making the conversation look *larger*, not smaller. Until 2.1.0 this row was 3,000 g, untraced. |
 | New York to Los Angeles, one economy seat | 250,000 | Consistent with published one-way estimates of ~250–310 kg CO2 |
 
-**Electricity equivalent.** Above the carbon comparisons the ledger states the session's electricity (inference, hosting and device, central figure) and its share of one smartphone charge:
+**Electricity equivalent.** The ledger's energy block states the session's electricity (inference, hosting and device, central figure) and its share of one smartphone charge:
 
 | Equivalent | Value | Evidence |
 |---|---:|---|

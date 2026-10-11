@@ -274,8 +274,8 @@ console.log('\nThe latest answer on other models');
     assert.doesNotMatch(extractNamedFunction(html, 'modelComparison'), /state\.|recordRequest/);
   });
   check('the ledger labels it hypothetical and states the caveats', () => {
-    assert.match(html, /id="compareNote" hidden>Hypothetical\./);
-    for (const re of [/Thinking tokens are left out/, /understate the gap between small and large/, /count tokens differently/, /Says nothing about which answer would have been better/]) {
+    assert.match(html, /id="compareNote" hidden>Hypothetical:/);
+    for (const re of [/Leaves out thinking/, /real gap between small and large models is probably bigger/, /Says nothing about answer quality/]) {
       assert.match(html, re);
     }
   });
@@ -315,7 +315,7 @@ check('the range is on the ledger total only; meter and average stay central', (
   assert.match(html, /\$\('rTotal'\)\.textContent = \(lo === hi \? lo : lo \+ '–' \+ hi\) \+ ' g CO₂e';/);
   assert.match(html, /return n > 0 \? grams\(\) \/ n : null/);
   assert.doesNotMatch(extractNamedFunction(html, 'paintMeter'), /gramsHigh/);
-  assert.match(html, /id="rRangeNote">[^<]*not a statistical margin of error/);
+  assert.match(html, /id="rRangeNote">[^<]*not a margin of error/);
 });
 check('units are never forced to capitals (g would read as G, giga)', () => {
   assert.match(html, /\.meter-unit \{ white-space: normal; text-transform: none; \}/);
