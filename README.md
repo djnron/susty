@@ -15,6 +15,7 @@ server.js             plain Node server, same logic, for local dev or a VPS
 og.png, favicon.png,
 apple-touch-icon.png  share card and icons, generated — see Tools
 tools/                dev-only: not uploaded to Vercel (.vercelignore)
+data/                 source data behind the water figures, with provenance (also not uploaded)
 ```
 
 - [METHODOLOGY.md](METHODOLOGY.md) — every constant, source, and acknowledged
@@ -109,6 +110,7 @@ The endpoint spends your money, so treat it accordingly.
 | The fallback a request degrades to if a tier is unrecognised, gated, or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
 | Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-4-6` |
 | Carbon coefficients | `MODEL` object near the top of the inline script in `index.html` |
+| Water tables | never by hand: edit `data/`, then `node tools/water-factors.mjs --write` |
 | Device power and panel types | `DEVICE_BASE` and `PANELS` in `index.html` |
 | How long attention is assumed to last | `GRACE` in `index.html` |
 | Comparisons and offset copy | `paintLedger()` in `index.html`, and the `.offset` block in the markup |
@@ -129,6 +131,8 @@ sh tools/test.sh               # everything below, in one go — run before push
 node tools/contrast.mjs        # every colour pair against its WCAG threshold
 node tools/clock.test.mjs      # attended-time clock, device table, model factors
 node tools/tiers.test.mjs      # model-tier mapping and its off switches
+node tools/water.test.mjs      # water: transcription, cross-check, tables, accrual
+node tools/water-factors.mjs --check   # water tables match data/ (--write to regenerate)
 sh tools/make-brand-assets.sh  # regenerate og.png, favicon.png, apple-touch-icon.png
 ```
 

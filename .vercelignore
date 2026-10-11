@@ -1,4 +1,5 @@
 tools/
+data/
 
 # Local dev server only. Production is the static index.html plus api/*.js,
 # and nothing under api/ imports from here.

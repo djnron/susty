@@ -1,0 +1,220 @@
+fuel,technology,source,consumption_L_per_MWh,journal_page,pdf_page,table_row
+Coal,OT,Davies et al. (2013) (2),1100,2056,13,1
+Coal,OT,Davies et al. (2013) (4),650,2056,13,1
+Coal,OT,Davies et al. (2013) (5),1100,2056,13,1
+Coal,OT,Gleick (1994),1200,2056,13,1
+Coal,OT,Macknick et al. 2012 (1),946,2056,13,1
+Coal,OT,Macknick et al. 2012 (2),428,2056,13,1
+Coal,OT,Macknick et al. 2012 (3),390,2056,13,1
+Coal,OT,Mielke et al. (2010),1136,2056,13,1
+Coal,OT,Byers et al. (2015),430,2057,14,1
+Coal,OT,Davies et al. (2013) (9),500,2057,14,1
+Coal,OT,Kohli and Frenken (2011),1000,2057,14,1
+Coal,OT,NETL (2010) (1),38,2057,14,1
+Coal,OT,NETL (2010) (2),8,2057,14,1
+Coal,OT,Sanders et al. (2014),1412,2057,14,1
+Coal,OT,Spang et al. (2014),947,2057,14,1
+Coal,OT,U.S. Dept. of Energy (2006),1136,2057,14,1
+Coal,OT,Zhang et al. (2016) (1),343,2057,14,1
+Coal,OT,Zhang et al. (2016) (2),280,2057,14,1
+Coal,OT,Zhang et al. (2016) (3),228,2057,14,1
+Coal,OT + CCS,Byers et al. (2015),810,2057,14,2
+Coal,Tower,Davies et al. (2013) (2),1800,2056,13,3
+Coal,Tower,Davies et al. (2013) (4),1330,2056,13,3
+Coal,Tower,Gleick (1994),2600,2056,13,3
+Coal,Tower,Macknick et al. 2012 (1),2601,2056,13,3
+Coal,Tower,Macknick et al. 2012 (2),1813,2056,13,3
+Coal,Tower,Macknick et al. 2012 (3),1866,2056,13,3
+Coal,Tower,Mielke et al. (2010),1514,2056,13,3
+Coal,Tower,Byers et al. (2015),1810,2057,14,3
+Coal,Tower,Kohli and Frenken (2011),2000,2057,14,3
+Coal,Tower,NETL (2010) (1),1507,2057,14,3
+Coal,Tower,NETL (2010) (2),1083,2057,14,3
+Coal,Tower,Sanders et al. (2014),2135,2057,14,3
+Coal,Tower,Spang et al. (2014),2599,2057,14,3
+Coal,Tower,Zhang et al. (2016) (1),1890,2057,14,3
+Coal,Tower,Zhang et al. (2016) (2),1650,2057,14,3
+Coal,Tower,Zhang et al. (2016) (3),1688,2057,14,3
+Coal,Tower + CCS,Byers et al. (2015),2710,2057,14,4
+Coal,Pond low,Davies et al. (2013) (2),1800,2056,13,5
+Coal,Pond low,Davies et al. (2013) (4),1330,2056,13,5
+Coal,Pond low,Davies et al. (2013) (5),1800,2056,13,5
+Coal,Pond low,Macknick et al. 2012 (1),2063,2056,13,5
+Coal,Pond low,Macknick et al. 2012 (2),2949,2056,13,5
+Coal,Pond low,Macknick et al. 2012 (3),159,2056,13,5
+Coal,Pond low,NETL (2010) (1),901,2057,14,5
+Coal,Pond low,Spang et al. (2014),2063,2057,14,5
+Coal,Pond low,U.S. Dept. of Energy (2006),1817,2057,14,5
+Coal,Dry,Spang et al. (2014),97,2057,14,8
+Coal,Dry,Zhang et al. (2016) (1),334,2057,14,8
+Coal,IGCC,Davies et al. (2013) (6),1400,2056,13,9
+Coal,IGCC,Macknick et al. 2012 (1),1438,2056,13,9
+Coal,IGCC,NETL (2010) (1),1253,2057,14,9
+Coal,IGCC,U.S. Dept. of Energy (2006),757,2057,14,9
+Gas,OT,Davies et al. (2013) (2),1100,2056,13,12
+Gas,OT,Davies et al. (2013) (4),650,2056,13,12
+Gas,OT,Davies et al. (2013) (5),1100,2056,13,12
+Gas,OT,Gleick (1994),1100,2056,13,12
+Gas,OT,Macknick et al. 2012 (1),908,2056,13,12
+Gas,OT,Mielke et al. (2010),1136,2056,13,12
+Gas,OT,Davies et al. (2013) (9),300,2057,14,12
+Gas,OT,Kohli and Frenken (2011),1000,2057,14,12
+Gas,OT,NETL (2010) (1),38,2057,14,12
+Gas,OT,Sanders et al. (2014),49,2057,14,12
+Gas,OT,Spang et al. (2014),1098,2057,14,12
+Gas,OT,U.S. Dept. of Energy (2006),1136,2057,14,12
+Gas,Tower,Davies et al. (2013) (2),1800,2056,13,13
+Gas,Tower,Davies et al. (2013) (4),1330,2056,13,13
+Gas,Tower,Gleick (1994),2600,2056,13,13
+Gas,Tower,Macknick et al. 2012 (1),3127,2056,13,13
+Gas,Tower,Mielke et al. (2010),1514,2056,13,13
+Gas,Tower,Davies et al. (2013) (9),600,2057,14,13
+Gas,Tower,Kohli and Frenken (2011),2000,2057,14,13
+Gas,Tower,NETL (2010) (1),360,2057,14,13
+Gas,Tower,Sanders et al. (2014),159,2057,14,13
+Gas,Tower,Spang et al. (2014),2765,2057,14,13
+Gas,Tower,Zhang et al. (2016) (1),276,2057,14,13
+Gas,Pond low,Davies et al. (2013) (2),1800,2056,13,14
+Gas,Pond low,Davies et al. (2013) (4),1330,2056,13,14
+Gas,Pond low,Davies et al. (2013) (5),1800,2056,13,14
+Gas,Pond low,Davies et al. (2013) (9),400,2057,14,14
+Gas,Pond low,NETL (2010) (1),360,2057,14,14
+Gas,Pond low,Spang et al. (2014),1022,2057,14,14
+Gas,Pond low,U.S. Dept. of Energy (2006),1817,2057,14,14
+Gas,Dry,Spang et al. (2014),97,2057,14,17
+Gas CCGT,OT,Davies et al. (2013) (2),400,2056,13,18
+Gas CCGT,OT,Davies et al. (2013) (4),650,2056,13,18
+Gas CCGT,OT,Davies et al. (2013) (5),400,2056,13,18
+Gas CCGT,OT,Macknick et al. 2012 (1),379,2056,13,18
+Gas CCGT,OT,Mielke et al. (2010),379,2056,13,18
+Gas CCGT,OT,Byers et al. (2015),380,2057,14,18
+Gas CCGT,OT,Davies et al. (2013) (9),80,2057,14,18
+Gas CCGT,OT,NETL (2010) (1),11,2057,14,18
+Gas CCGT,OT,Sanders et al. (2014),140,2057,14,18
+Gas CCGT,OT,Spang et al. (2014),378,2057,14,18
+Gas CCGT,OT,U.S. Dept. of Energy (2006),379,2057,14,18
+Gas CCGT,OT,Zhang et al. (2016) (1),379,2057,14,18
+Gas CCGT,OT + CCS,Byers et al. (2015),720,2057,14,19
+Gas CCGT,Tower,Davies et al. (2013) (2),700,2056,13,20
+Gas CCGT,Tower,Davies et al. (2013) (3),1900,2056,13,20
+Gas CCGT,Tower,Davies et al. (2013) (4),1330,2056,13,20
+Gas CCGT,Tower,Davies et al. (2013) (5),700,2056,13,20
+Gas CCGT,Tower,Davies et al. (2013) (6),1000,2056,13,20
+Gas CCGT,Tower,Davies et al. (2013) (7),700,2056,13,20
+Gas CCGT,Tower,Macknick et al. 2012 (1),776,2056,13,20
+Gas CCGT,Tower,Mielke et al. (2010),681,2056,13,20
+Gas CCGT,Tower,Byers et al. (2015),780,2057,14,20
+Gas CCGT,Tower,Davies et al. (2013) (9),500,2057,14,20
+Gas CCGT,Tower,NETL (2010) (1),503,2057,14,20
+Gas CCGT,Tower,Spang et al. (2014),796,2057,14,20
+Gas CCGT,Tower,U.S. Dept. of Energy (2006),681,2057,14,20
+Gas CCGT,Tower,Zhang et al. (2016) (1),795,2057,14,20
+Gas CCGT,Tower + CCS,Davies et al. (2013) (6),1900,2056,13,21
+Gas CCGT,Tower + CCS,Davies et al. (2013) (7),1300,2056,13,21
+Gas CCGT,Tower + CCS,Macknick et al. 2012 (1),1488,2056,13,21
+Gas CCGT,Tower + CCS,Byers et al. (2015),1490,2057,14,21
+Gas CCGT,Pond low,Davies et al. (2013) (2),700,2056,13,22
+Gas CCGT,Pond low,Davies et al. (2013) (4),1330,2056,13,22
+Gas CCGT,Pond low,Macknick et al. 2012 (1),908,2056,13,22
+Gas CCGT,Pond low,Davies et al. (2013) (9),900,2057,14,22
+Gas CCGT,Pond low,NETL (2010) (1),299,2057,14,22
+Gas CCGT,Pond low,Spang et al. (2014),907,2057,14,22
+Gas CCGT,DRY,Macknick et al. 2012 (1),8,2056,13,25
+Gas CCGT,DRY,NETL (2010) (1),15,2057,14,25
+Gas CCGT,DRY,Sanders et al. (2014),379,2057,14,25
+Gas CCGT,DRY,Spang et al. (2014),14,2057,14,25
+Oil,OT,Davies et al. (2013) (2),1100,2056,13,26
+Oil,OT,Davies et al. (2013) (4),650,2056,13,26
+Oil,OT,Davies et al. (2013) (5),1100,2056,13,26
+Oil,OT,Gleick (1994),1100,2056,13,26
+Oil,OT,Davies et al. (2013) (9),300,2057,14,26
+Oil,OT,Kohli and Frenken (2011),1000,2057,14,26
+Oil,OT,NETL (2010) (1),38,2057,14,26
+Oil,OT,Spang et al. (2014),1098,2057,14,26
+Oil,OT,U.S. Dept. of Energy (2006),1136,2057,14,26
+Oil,Tower,Davies et al. (2013) (2),1800,2056,13,27
+Oil,Tower,Davies et al. (2013) (4),1330,2056,13,27
+Oil,Tower,Gleick (1994),2600,2056,13,27
+Oil,Tower,Davies et al. (2013) (9),600,2057,14,27
+Oil,Tower,Kohli and Frenken (2011),2000,2057,14,27
+Oil,Tower,NETL (2010) (1),360,2057,14,27
+Oil,Tower,Spang et al. (2014),2765,2057,14,27
+Oil,Pond low,Davies et al. (2013) (2),1800,2056,13,28
+Oil,Pond low,Davies et al. (2013) (4),1330,2056,13,28
+Oil,Pond low,Davies et al. (2013) (5),1800,2056,13,28
+Oil,Pond low,Davies et al. (2013) (9),400,2057,14,28
+Oil,Pond low,NETL (2010) (1),360,2057,14,28
+Oil,Pond low,Spang et al. (2014),1022,2057,14,28
+Oil,Pond low,U.S. Dept. of Energy (2006),1817,2057,14,28
+Oil,Dry,Spang et al. (2014),97,2057,14,31
+Nuclear,OT,Davies et al. (2013) (2),1500,2056,13,32
+Nuclear,OT,Davies et al. (2013) (4),650,2056,13,32
+Nuclear,OT,Davies et al. (2013) (5),1500,2056,13,32
+Nuclear,OT,Macknick et al. 2012 (1),1018,2056,13,32
+Nuclear,OT,Mielke et al. (2010),1514,2056,13,32
+Nuclear,OT,Davies et al. (2013) (9),500,2057,14,32
+Nuclear,OT,Kohli and Frenken (2011),1500,2057,14,32
+Nuclear,OT,NETL (2010) (1),481,2057,14,32
+Nuclear,OT,Sanders et al. (2014),2211,2057,14,32
+Nuclear,OT,Spang et al. (2014),1516,2057,14,32
+Nuclear,OT,U.S. Dept. of Energy (2006),1514,2057,14,32
+Nuclear,Tower,Davies et al. (2013) (2),2700,2056,13,33
+Nuclear,Tower,Davies et al. (2013) (4),1330,2056,13,33
+Nuclear,Tower,Macknick et al. 2012 (1),2544,2056,13,33
+Nuclear,Tower,Mielke et al. (2010),2082,2056,13,33
+Nuclear,Tower,Davies et al. (2013) (9),2400,2057,14,33
+Nuclear,Tower,Kohli and Frenken (2011),3000,2057,14,33
+Nuclear,Tower,NETL (2010) (1),2188,2057,14,33
+Nuclear,Tower,Spang et al. (2014),2725,2057,14,33
+Nuclear,Pond low,Davies et al. (2013) (2),2700,2056,13,34
+Nuclear,Pond low,Davies et al. (2013) (4),1330,2056,13,34
+Nuclear,Pond low,Davies et al. (2013) (5),2700,2056,13,34
+Nuclear,Pond low,Spang et al. (2014),2308,2057,14,34
+Nuclear,Pond low,U.S. Dept. of Energy (2006),2725,2057,14,34
+Nuclear,Dry,Macknick et al. 2012 (1),2309,2056,13,36
+Biopower,OT,Macknick et al. 2012 (1),1136,2056,13,37
+Biopower,OT,Mielke et al. (2010),1136,2056,13,37
+Biopower,OT,Byers et al. (2015),950,2057,14,37
+Biopower,OT,Kohli and Frenken (2011),1000,2057,14,37
+Biopower,OT,NETL (2010) (1),38,2057,14,37
+Biopower,OT,Spang et al. (2014),2092,2057,14,37
+Biopower,OT,U.S. Dept. of Energy (2006),1136,2057,14,37
+Biopower,Tower,Macknick et al. 2012 (1),2093,2056,13,38
+Biopower,Tower,Mielke et al. (2010),1476,2056,13,38
+Biopower,Tower,Byers et al. (2015),2690,2057,14,38
+Biopower,Tower,Kohli and Frenken (2011),2000,2057,14,38
+Biopower,Tower,NETL (2010) (1),360,2057,14,38
+Biopower,Tower,Spang et al. (2014),1134,2057,14,38
+Biopower,Tower,Zhang et al. (2016) (1),3630,2057,14,38
+Biopower,Pond low,NETL (2010) (1),360,2057,14,39
+Biopower,Pond low,U.S. Dept. of Energy (2006),1817,2057,14,39
+Biopower,Dry,Macknick et al. 2012 (1),132,2056,13,42
+Biopower,Dry,Mielke et al. (2010),132,2056,13,42
+Biopower,Dry,Spang et al. (2014),97,2057,14,42
+CSP,Through,Davies et al. (2013) (8),2900,2056,13,43
+CSP,Through,Gleick (1994),4000,2056,13,43
+CSP,Through,Macknick et al. 2012 (1),3430,2056,13,43
+CSP,Through,Mielke et al. (2010),3028,2056,13,43
+CSP,Through,NREL (2015),3407,2057,14,43
+CSP,Through,Spang et al. (2014),3067,2057,14,43
+CSP,Power tower,Davies et al. (2013) (1),4000,2056,13,44
+CSP,Power tower,Davies et al. (2013) (8),2900,2056,13,44
+CSP,Power tower,Macknick et al. 2012 (1),2975,2056,13,44
+CSP,Power tower,U.S. Dept. of Energy (2006),2839,2057,14,44
+CSP,Dry,Spang et al. (2014),97,2057,14,46
+Solar PV,Solar PV,Macknick et al. 2012 (1),4,2056,13,47
+Solar PV,Solar PV,Spang et al. (2014),22,2057,14,47
+Geothermal,Steam,Gleick (1994),6800,2056,13,49
+Geothermal,Steam,Macknick et al. 2012 (1),6800,2056,13,49
+Geothermal,Steam,Mielke et al. (2010),2498,2056,13,49
+Geothermal,Steam,U.S. Dept. of Energy (2006),5300,2057,14,49
+Geothermal,Flash,Macknick et al. 2012 (1),0,2056,13,50
+Geothermal,Flash,Clark et al. (2015),155,2057,14,50
+Geothermal,Binary,Davies et al. (2013) (1),15000,2056,13,51
+Geothermal,Binary,Macknick et al. 2012 (1),14000,2056,13,51
+Geothermal,EGS,Macknick et al. 2012 (1),18000,2056,13,53
+Geothermal,EGS dry,Clark et al. (2010),1363,2057,14,54
+Hydro,Hydro,Davies et al. (2013) (1),2700,2056,13,55
+Hydro,Hydro,Gleick (1994),17000,2056,13,55
+Hydro,Hydro,Macknick et al. 2012 (1),17000,2056,13,55
+Hydro,Hydro,Mielke et al. (2010),17034,2056,13,55

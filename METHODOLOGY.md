@@ -85,6 +85,8 @@ This framing is informed by the Green Software Foundation's Software Carbon Inte
 - Manufacturing and end-of-life impacts.
 - Any inference energy that cannot be observed or estimated after an upstream failure.
 
+Water consumption (§16) is reported beside the carbon figure as a separate indicator, computed from the same electricity. It does not enter the carbon total or the functional unit.
+
 The result should therefore be described as **estimated operational CO2e**, not total life-cycle emissions — with the caveat in [§6.1](#61-accounting-basis) that some grid inputs are themselves life-cycle intensities.
 
 ---
@@ -548,7 +550,8 @@ The ledger opens with:
 - cut-off or failed attempts, which are in the total but not counted as answers (only when there are any);
 - the model for the latest answer (the model that actually produced the most recent completed exchange; an interrupted later attempt does not replace it);
 - thinking tokens for the session;
-- in a separate section, what the latest completed answer would have cost on each offered model (§4.9), labeled hypothetical.
+- in a separate section, what the latest completed answer would have cost on each offered model (§4.9), labeled hypothetical;
+- in a water section, on-site cooling, power stations excluding hydro, and hydro reservoir evaporation on its own row, each as a range (§16).
 
 Below that it keeps the underlying evidence: tokens sent and written back, chip energy for each, inference energy after PUE, hosting and network energy, device energy with attended and open time, total electricity attributed to the session, the current grid intensity with its accounting basis (operational or life-cycle) and its named source. The ledger's model row shows the responding model's factor (for example `gemini-3.5-flash-lite ×0.85`).
 
@@ -596,11 +599,11 @@ The note beneath it compares the session with three everyday actions. The claim 
 
 | Class | Examples |
 |---|---|
-| **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity |
-| **Derived** | the smartphone-charge equivalent (EPA) and the burger comparison (Poore & Nemecek) (§9), the high-bound factor k = 2.7 (§4.8), EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed) |
+| **Measured** | provider token counts (including thinking tokens), returned model identity, browser event timing, NESO national actual intensity, Google's fleet WUE (measured by Google) |
+| **Derived** | the smartphone-charge equivalent (EPA) and the burger comparison (Poore & Nemecek) (§9), the high-bound factor k = 2.7 (§4.8), EIA fuel-mix intensity, eGRID unit conversion, model factors from the EcoLogits function, cumulative session arithmetic, Watershed's capacity-weighted US data-centre grid intensity (derived by Watershed), off-site water intensities (literature medians × reported generation mix, §16.3) |
 | **Forecast** | NESO regional intensity for the current half hour |
 | **Inferred / declared** | device class, panel type, approximate region |
-| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, the assumption that requests are served on the US data-centre grid (§6.9) |
+| **Modeled** | token-energy coefficients, PUE, hosting/network energy, device wattage, the assumption that requests are served on the US data-centre grid (§6.9), Google's WUE applied to Anthropic tiers, the hydro row's allocation of all reservoir evaporation to electricity (§16.4) |
 
 A modeled number is never described as directly measured. The interface uses precision appropriate to the uncertainty of its inputs.
 
@@ -621,6 +624,7 @@ A modeled number is never described as directly measured. The interface uses pre
 11. **Incomplete requests.** Some upstream failures may consume inference energy that the client cannot observe.
 12. **Estimated turns are not flagged.** When provider usage is missing, the ledger does not mark the estimate.
 13. **Embodied emissions and training.** Both are outside the current boundary.
+14. **Water factors.** Per-fuel consumption factors are literature medians assuming cooling towers and all water (§16.3); Larsen & Drews could not validate consumption, only withdrawals. Geothermal entries in their table do not match the Macknick values they cite. Water intensities are annual except US hourly. The hydro row allocates all reservoir evaporation to electricity and errs high; whether Ember excludes pumped storage everywhere is unverified (§16.4). Water errs high while the energy it multiplies errs low (§16.6).
 
 The result should be interpreted as a transparent **operational estimate**, useful for scale and comparison within its stated assumptions rather than as a precise life-cycle footprint.
 
@@ -653,7 +657,7 @@ else:
     = session total / completed exchanges
 ```
 
-It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the model comparison reproduces from each factor and the latest record's frozen tokens and server grid, leaves thinking out, and writes nothing to the request records; that the long-chat notice fires exactly at input ≥ 10 × output (thinking counted as output), only after a completed answer that is not the first, and only once; that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
+It also verifies that failed or partial exchanges do not increase the denominator; that an HTTP failure records only the hosting term; that historical request records are frozen and not repriced after model/grid changes; that requests are priced on the servers' grid and device time on the reader's grid, so a reader-grid change never moves request pricing; that the device clock is closed out before a grid, device or theme change; that device energy can accrue without changing the completed-exchange count; that every model factor reproduces from the EcoLogits function; that the device table matches its published ranges; that the illustrative exchange stays inside Oviedo et al.'s IQR; and that the model comparison reproduces from each factor and the latest record's frozen tokens and server grid, leaves thinking out, and writes nothing to the request records; that the water tables in `index.html` and `api/grid.js` regenerate exactly from the committed data files, that each request record freezes its water and device water accrues at the reader's grid with the same close-out, that the Larsen & Drews transcription and its Macknick cross-check hold, and that the on-site water for the illustrative exchange stays inside Google's narrow-to-comprehensive span (an order-of-magnitude check, §16.5); that the long-chat notice fires exactly at input ≥ 10 × output (thinking counted as output), only after a completed answer that is not the first, and only once; that the high-bound factor reproduces from Oviedo et al.'s upper quartile and Susty's own coefficients, is frozen in each record, and never puts the high end below the central figure.
 
 ---
 
@@ -696,6 +700,14 @@ Re-checked on **23 September 2026** against primary sources where reachable.
 | Renewable tariff 30 g/kWh | No source found; **preset removed** | — |
 | Ember factors | Coal 820, gas 490, other fossil 700, wind 11 g/kWh, global | Ember methodology |
 | Electricity Maps default basis | Life-cycle (`emissionFactorType` default) | Electricity Maps API reference |
+| Google WUE 1.15 L/kWh, applied to IT energy; on-site only; 0.26 mL comprehensive, 0.24 Wh per median Gemini Apps prompt (added 11 October 2026) | Confirmed. Narrow figure inconsistent in source: 0.12 mL (Table 2) vs 0.15 mL (text) | Google 2025, arXiv 2508.15734 |
+| Microsoft WUE "0.1–1.65 L/kWh by region" (added 11 October 2026) | **Outdated**: FY25 global 0.27, Americas 0.34, APAC 0.25, EMEA 0.03 L/kWh. Not used | Microsoft datacenter efficiency page |
+| AWS North America average WUE 2025: 0.08 L/kWh (added 11 October 2026) | Confirmed | AWS sustainability fact sheet (Georgia) |
+| Larsen & Drews (2019) Appendix B, 219 values (added 11 October 2026) | Transcribed twice (PDF word coordinates; by eye from page images); 0 differences. Consumption not validated by the authors (withdrawals only) | `data/larsen-drews-2019-appendix-b.csv` |
+| Macknick et al. (2012) consumption medians vs Larsen & Drews' Macknick column (added 11 October 2026) | All tower, PV, CSP, wind and hydro rows match; nuclear pond value printed in the "Dry" row; geothermal values do not match. Read from the IOP article page; NREL's PDF was unreachable from the verification environment | `data/macknick-2012-crosscheck.csv` |
+| JRC121030 (Hidalgo González et al. 2020) per-technology factors (added 11 October 2026) | None published; report reproduces Larsen & Drews' charts; dataset holds volumes. Used as a cross-check only (hydro evaporation 32%–51% of EU+UK energy-sector freshwater consumption, 2015) | JRC report and Zenodo dataset 3899962 |
+| Ember 2024 generation mix by fuel; EU-27 aggregate; hydro excludes pumped storage "where possible" (added 11 October 2026) | Confirmed; pumped-storage exclusion **unverified** per country | Ember yearly data; Ember methodology v1.6 |
+| eGRID2023 Rev 2 subregion resource mix (added 11 October 2026) | 27 subregions, Table 2; percentages may not sum to 100 (EPA), normalised | EPA eGRID2023 summary tables Rev 2 |
 | Watershed US data-centre grid, capacity-weighted: about 307 g CO2e/kWh, 351 with planned projects (added 11 October 2026) | Confirmed; published 16 September 2026; the article does not state the source or accounting basis of the 307 figure (its state maps use location-based eGRID CO2e output rates) | Watershed, AI emissions by region |
 | Vercel Functions default region `iad1` (Washington, D.C.) for new projects (added 11 October 2026) | Confirmed; `vercel.json` sets no region; dashboard setting not visible from the repository | Vercel documentation |
 | 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
@@ -717,7 +729,107 @@ In priority order. None of these changes numbers until the data exists; each sho
 | Attended time | Distribution of reading and idle time per exchange | Aggregated, privacy-preserving interaction statistics | Validates the 75-second grace window |
 | Grid | One source with both bases, hourly for every region; the actual serving region (replacing the US data-centre assumption, §6.9); marginal-emissions sensitivity | Electricity Maps (direct and life-cycle); provider region disclosure | Consistent basis; correct grid for the server share |
 | Service and network | Measured function energy and bytes per exchange | Hosting telemetry; network energy-per-GB literature | Sources the 0.003 Wh term |
-| Outside the boundary | Embodied emissions per request, and water, as separate lines | EcoLogits embodied model; Mistral Large 2 life-cycle analysis; Google 2025 (water) | A fuller picture without changing the operational figure |
+| Outside the boundary | Embodied emissions per request, as a separate line | EcoLogits embodied model; Mistral Large 2 life-cycle analysis | A fuller picture without changing the operational figure |
+| Water, hourly (v2.2) | Hourly generation by fuel for European grids | ENTSO-E Transparency Platform | Hourly water (and carbon) for Europe in place of annual Ember mixes; not built in 2.1 |
+| Water factors | Consumption factors validated against reported data; provider WUE per serving region | Reported power-sector consumption; provider disclosures | Replaces literature medians and the Google WUE proxy |
+
+---
+
+## 16. Water
+
+Susty reports **operational water consumption** beside the carbon figure, as a separate indicator. It is not converted to carbon, does not enter the session total or the functional unit, and does not change the system boundary of §2: the same electricity is counted, and water is a second thing it is multiplied by.
+
+### 16.1 Formula
+
+Following Li et al. ("Making AI Less Thirsty"), operational water = energy × (on-site WUE + PUE × off-site water intensity). Susty's `inference_Wh` already includes PUE, so for request `j` and device slice `t`, in millilitres (L/kWh = mL/Wh):
+
+```text
+onsite_mL(j)   = inference_Wh(j) / PUE x WUE_onsite
+offsite_mL(j)  = (inference_Wh(j) + service_Wh(j)) x offsite_server
+hydro_mL(j)    = (inference_Wh(j) + service_Wh(j)) x hydro_server
+offsite_mL(t)  = device_Wh(t) x offsite_reader(t)
+hydro_mL(t)    = device_Wh(t) x hydro_reader(t)
+```
+
+Each request record freezes its WUE, the servers' two intensities and its water, exactly as it freezes carbon; device water accrues tick by tick at the reader's grid, closed out with carbon before any grid, device or theme change. The high end of the range (§4.8) scales the inference share of each term by the same k = 2.7.
+
+The ledger shows three rows: cooling at the data centre (on-site), power stations excluding hydro (off-site), and, on its own labeled row, hydro reservoir evaporation.
+
+### 16.2 On-site: data-centre cooling
+
+| | |
+|---|---|
+| Value | **1.15 L/kWh** of IT energy, every tier |
+| Source | Google (2025), *Measuring the environmental impact of delivering AI at Google scale* (arXiv 2508.15734): "For both 2023 and 2024, Google's WUE Category 2 value was 1.15 L/kWh", a fleet average weighted by AI-serving energy, applied as `(E_total − E_overhead) × WUE`, i.e. to IT energy |
+| Data-quality label | **Measured** (by Google, for Google's fleet); applied to Anthropic tiers as a **modeled** proxy |
+| Likely direction of error | **High** for any Claude traffic served from AWS, whose 2025 North America average WUE was 0.08 L/kWh (AWS fact sheet); Anthropic does not disclose where it serves. Hosting (Vercel) has no on-site term because none is published: errs low, by a small amount |
+
+Microsoft's figures are not used (no Susty tier runs on Azure). For the record, Microsoft's current WUE is 0.27 L/kWh globally in FY25, not the 0.1–1.65 regional range often quoted from older reports (§14).
+
+### 16.3 Off-site: power stations
+
+Off-site water intensity is the generation-weighted mean of per-fuel consumption factors:
+
+```text
+offsite = Σ over fuels except hydro (share(fuel) x factor(fuel))
+hydro   = share(hydro) x factor(hydro)
+```
+
+**Per-fuel factors.** Larsen & Drews (2019), *Water use in electricity generation for water-energy nexus analyses: The European case*, Science of the Total Environment 651, 2044–2058, Appendix B, median across the literature sources it lists, of the **cooling-tower** row (decision D1). All water, no freshwater share (D2). The full Appendix B is transcribed in `data/larsen-drews-2019-appendix-b.csv` (219 values, each with journal page, PDF page and table row). It was transcribed twice, once from the PDF's word coordinates and once by eye from page images, and the two agreed on every value. `tools/water-factors.mjs` computes everything below from that file.
+
+| Ember fuel | Larsen & Drews row | Factor (L/kWh) | Note |
+|---|---|---:|---|
+| Coal | Coal, Tower | 1.812 | median of 16 sources |
+| Gas | Gas CCGT, Tower | 0.738 | combined cycle, the dominant gas technology; errs low for steam-cycle gas, high for open-cycle peakers |
+| Other Fossil | Oil, Tower | 1.800 | |
+| Nuclear | Nuclear, Tower | 2.472 | |
+| Bioenergy | Biopower, Tower | 2.000 | |
+| Solar | Solar PV | 0.013 | concentrated solar power is not separated by Ember; its wet-cooled entries in Appendix B run 2,839–4,000 L/MWh (median 3,048), so this errs low where CSP runs |
+| Wind | — | 0.000 | Appendix B lists no wind values; Larsen & Drews treat wind as zero |
+| Other Renewables | every Geothermal row | 6.050 | no tower row exists, so the median of all ten geothermal entries: the conservative choice; errs high (see cross-check below) |
+| Hydro | Hydro | 17.000 | reported on its own row (§16.4) |
+
+Data-quality label: **derived** (literature medians weighted by reported generation). Larsen & Drews validated their estimates against Eurostat for **withdrawals only**; in their words, consumption "could not be validated against the reported levels, as data on reported consumption quantities could not be found". The consumption factors are therefore literature medians, not validated values.
+
+**Cross-check against Macknick et al. (2012).** `data/macknick-2012-crosscheck.csv` compares the Macknick consumption medians (Environ. Res. Lett. 7 045802, Tables 1–2) with the values Larsen & Drews attribute to "Macknick et al. 2012 (1)". Every tower row Susty uses (coal, gas combined cycle, nuclear, biopower), and PV, CSP, wind and hydro, match after converting gallons to litres. Two discrepancies, neither in a row Susty uses for a tower factor:
+- Macknick's nuclear **pond** median (610 gal/MWh = 2,309 L/MWh) appears in Larsen & Drews' nuclear **"Dry"** row; Macknick reports no dry-cooled nuclear.
+- The geothermal values attributed to Macknick (flash 0, binary 14,000, EGS 18,000 L/MWh) do not match Macknick's consumption medians (flash tower 57, binary dry 1,022, EGS dry 1,912 L/MWh). Because the geothermal factor uses every geothermal entry, it likely errs high.
+
+**Generation mix.** One release and one year, as for carbon (§6.5):
+
+| Grid | Mix | File |
+|---|---|---|
+| Countries, EU-27 aggregate, world, US national | Ember 2024 yearly generation by fuel (TWh) | `data/ember-2024-generation-mix.csv`, rebuilt by `tools/water-factors.mjs --ember` from the same Ember file `tools/ember-grids.mjs` reads |
+| US eGRID subregions (annual) | eGRID2023 Rev 2 Summary Tables, Table 2 resource mix, normalised (EPA notes the percentages may not sum to 100) | `data/egrid2023-rev2-subregion-mix.csv` |
+| US hourly (EIA-930) | the same hourly mix that prices carbon (§6.3), with the same per-fuel factors | `FUEL_WATER` in `api/grid.js` |
+| The servers | Ember 2024 United States | as above |
+
+The EU figure is Ember's EU-27 aggregate mix with the same factors, so it is generation-weighted and consistent with the EU carbon figure; the world figure is not used for the EU. GB uses Ember's United Kingdom mix (annual; NESO's live feed publishes no water). Electricity Maps zones use the annual country figure. Where Ember omits a fuel for a country (the UK has no geothermal row), that fuel counts as zero only if the fuels present sum to Ember's Total Generation.
+
+Mapping assumptions: EIA `OTH` and eGRID "other unknown/purchased fuel" are priced as **bioenergy** (mostly biomass, waste and miscellaneous thermal plant); eGRID "other fossil" as oil. Storage is excluded, as for carbon.
+
+**Pumped storage: UNVERIFIED per country.** Ember's methodology (v1.6) says "Where possible, Hydro generation excludes any contribution from pumped hydro generation." Whether it is excluded for every country Susty lists is not confirmed. Where it is included, the hydro row counts evaporation for electricity that was stored, not generated, and errs high.
+
+Example values (L/kWh, offsite / hydro): world 1.116 / 2.439; EU 1.058 / 2.266; US 1.082 / 0.918; UK 0.945 / 0.345; France 1.776 / 2.152; Norway 0.018 / 15.100.
+
+### 16.4 Hydro: its own labeled row
+
+Reservoir evaporation is real and large: JRC (Hidalgo González et al. 2020, JRC121030) estimates it at 32%–51% of the EU and UK energy sector's freshwater consumption in 2015. But reservoirs also serve irrigation, flood control, water supply and recreation, and there is no agreed method to estimate total evaporation or allocate it between uses (JRC121030 §4.4). So the choice is made explicit:
+
+- **"At power stations, excluding hydro"** leaves reservoirs out, as Larsen & Drews' own validated estimates do (hydro freshwater share 0, their Table 2). It errs **low** for hydro-heavy grids.
+- **"Plus hydro reservoir evaporation, if all of it is charged to electricity"** applies 17,000 L/MWh (17 L/kWh) to the hydro share. That is the median of the four Appendix B entries (Gleick 1994: 17,000; Mielke et al. 2010: 17,034; Macknick et al. 2012: 17,000; Davies et al. 2013: 2,700). **The three values near 17,000 likely share one origin**: Larsen & Drews note that "many studies build upon each other by re-issuing the findings of older studies", and the figure goes back to Gleick (1994). It is gross evaporation allocated wholly to electricity, so this row errs **high**: multipurpose reservoirs and run-of-river plants that evaporate little are charged as if every litre evaporated served electricity.
+
+The choice moves the answer by up to an order of magnitude: Norway's grid (88.8% hydro in Ember 2024) is 0.018 L/kWh without the hydro row and 15.1 with it.
+
+JRC121030 is used as a cross-check only; it publishes no per-technology factors (§14).
+
+### 16.5 Order-of-magnitude check
+
+An order-of-magnitude check, **not a validation**: `tools/clock.test.mjs` asserts that the on-site water for the illustrative exchange of §4.3 (0.183 Wh of inference including PUE, 0.164 Wh of IT energy) is **0.188 mL**, between Google's narrow (0.12 mL, its Table 2) and comprehensive (0.26 mL) figures for a median Gemini Apps prompt, and that the implied WUE equals Google's 1.15 L/kWh. The check cannot validate Susty's figure: it compares a modeled Susty exchange with Google's measured prompt, which used more energy (0.24 Wh), and Google's own narrow figure is inconsistent in its paper (0.12 mL in Table 2, 0.15 mL in the text). The off-site water for the same exchange (0.201 mL excluding hydro, 0.171 mL more for hydro, at the US mix) is reported separately; Google's figure has no off-site term.
+
+### 16.6 Net direction of error
+
+Water and energy err in **opposite directions**. Every water choice that is not neutral errs high: cooling towers for every thermal plant (D1), all water rather than freshwater (D2), the pooled geothermal factor, Google's WUE applied to Claude traffic that may run on AWS, and the separate hydro row allocating all evaporation to power. The energy those intensities multiply errs **low**: Susty's token coefficients sit at the low end of published estimates (§4.3), with no idle-capacity term (§5). The two partly offset; Susty does not claim they cancel, and the ledger's range (§4.8) shows the energy side's upper scenario for water as well as carbon.
 
 ---
 
@@ -742,6 +854,14 @@ In priority order. None of these changes numbers until the data exists; each sho
 - Ember yearly electricity data — https://ember-energy.org/data/yearly-electricity-data/
 - Watershed (2026), **AI emissions by region** — https://watershed.com/blog/ai-emissions-by-region
 - Vercel, **Configuring regions for Vercel Functions** — https://vercel.com/docs/functions/configuring-functions/region
+- Li et al., **Making AI Less "Thirsty"** — https://arxiv.org/abs/2304.03271
+- Larsen & Drews (2019), **Water use in electricity generation for water-energy nexus analyses: The European case**, Science of the Total Environment 651, 2044–2058 (CC BY) — https://zenodo.org/records/1468438
+- Macknick et al. (2012), **Operational water consumption and withdrawal factors for electricity generating technologies: a review of existing literature**, Environ. Res. Lett. 7 045802 — https://doi.org/10.1088/1748-9326/7/4/045802
+- Hidalgo González, Medarac & Magagna (2020), **Projected freshwater needs of the energy sector in the European Union and the UK**, JRC121030, EUR 30266 EN — https://publications.jrc.ec.europa.eu/repository/handle/JRC121030
+- Ember, **Electricity data methodology** (v1.6) — https://files.ember-energy.org/public-downloads/ember_electricity_data_methodology.pdf
+- U.S. EPA, **eGRID2023 summary tables, Rev 2** — https://www.epa.gov/egrid/summary-data
+- AWS, **Sustainability fact sheet: Georgia** — https://sustainability.aboutamazon.com/aws-sustainability-fact-sheets/aws-fact-sheet-georgia.pdf
+- Microsoft, **Measuring energy and water efficiency for Microsoft datacenters** — https://datacenters.microsoft.com/sustainability/efficiency/
 - Kirkeby & Lagermann (2026), **Power Assumptions Matter: Evaluating End-user Laptop Energy Models for Sustainability Reporting of Browser-Based Web Services**, SAC '26 — https://arxiv.org/abs/2510.12566
 - DIMPACT Methodology v1.0 (October 2022) — https://dimpact.org/downloadResourceFile?resource=2
 - Carbon Trust (2021), **Carbon impact of video streaming** — https://www.carbontrust.com/sites/default/files/documents/resource/public/Carbon-impact-of-video-streaming.pdf

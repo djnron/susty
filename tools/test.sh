@@ -15,6 +15,10 @@ node tools/clock.test.mjs
 echo "\n== completed-exchange functional unit ================================"
 node tools/completed-exchange.test.mjs
 
+echo "\n== water: data, generated tables, accrual ==========================="
+node tools/water-factors.mjs --check
+node tools/water.test.mjs
+
 echo "\n== methodology matches code =========================================="
 node tools/methodology.test.mjs
 

@@ -1,0 +1,22 @@
+macknick_technology,macknick_cooling,macknick_median_gal_per_MWh,macknick_as_L_per_MWh,ld_fuel,ld_technology,ld_macknick_2012_1_L_per_MWh,result
+"Coal, generic",Tower,687,2601,Coal,Tower,2601,match
+"Coal, generic",Once-through,250,946,Coal,OT,946,match
+"Coal, generic",Pond,545,2063,Coal,Pond low,2063,match
+"Natural gas, combined cycle",Tower,205,776,Gas CCGT,Tower,776,match
+"Natural gas, combined cycle",Once-through,100,379,Gas CCGT,OT,379,match
+"Natural gas, combined cycle",Pond,240,908,Gas CCGT,Pond low,908,match
+"Natural gas, combined cycle",Dry,2,8,Gas CCGT,DRY,8,match
+"Nuclear, generic",Tower,672,2544,Nuclear,Tower,2544,match
+"Nuclear, generic",Once-through,269,1018,Nuclear,OT,1018,match
+"Nuclear, generic",Pond,610,2309,Nuclear,Pond low,,"MISPLACED: Larsen & Drews print 2309 (this value) in the Nuclear ""Dry"" row; Macknick reports no dry-cooled nuclear"
+"Biopower, steam",Tower,553,2093,Biopower,Tower,2093,match
+"Biopower, steam",Once-through,300,1136,Biopower,OT,1136,match
+"Biopower, biogas",Dry,35,132,Biopower,Dry,132,match
+"CSP, trough",Wet recirculating,906,3430,CSP,Through,3430,match
+"CSP, power tower",Wet recirculating,786,2975,CSP,Power tower,2975,match
+PV (utility scale),N/A,1,4,Solar PV,Solar PV,4,match
+Wind turbine,N/A,0,0,Wind,Wind,,match (both zero or empty)
+"Geothermal, flash",Tower,15,57,Geothermal,Flash,0,MISMATCH
+"Geothermal, binary",Dry,270,1022,Geothermal,Binary,14000,MISMATCH
+"Geothermal, EGS",Dry,505,1912,Geothermal,EGS,18000,MISMATCH
+"Hydropower, in-stream and reservoir",N/A,4491,17000,Hydro,Hydro,17000,match

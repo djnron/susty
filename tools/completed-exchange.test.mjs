@@ -95,7 +95,8 @@ console.log('\nFunctional-unit arithmetic');
 console.log('\nProduction recordRequest');
 {
   const REQUEST_STATUS = Object.freeze({ COMPLETED: 'completed', INCOMPLETE: 'incomplete', FAILED: 'failed' });
-  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400, serverGridGPerKwh: 307, inferenceHighFactor: 2.7 };
+  const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12, whPerExchange: 0.003, gridGPerKwh: 400, serverGridGPerKwh: 307, inferenceHighFactor: 2.7,
+    onsiteWueLPerKwh: 1.15, serverWater: { offsite: 1.082, hydro: 0.918 }, gridWater: { offsite: 1, hydro: 1 } };
   const MODEL_ENERGY = { 'claude-sonnet-4-6': { factor: 1.00 }, 'claude-opus-4-8': { factor: 1.33 } };
   const state = { model: 'claude-sonnet-4-6', requests: [] };
   const context = vm.createContext({ REQUEST_STATUS, MODEL, MODEL_ENERGY, state, Object, Error });
