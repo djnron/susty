@@ -7,7 +7,9 @@ import {
   normalizeGoogleFinishReason,
   pipeGoogleAsAnthropicSSE,
 } from '../api/providers/google.js';
-import { TIERS } from '../api/chat.js';
+// The Gemini checks below describe the default deployment.
+delete process.env.SUSTY_TIERS;
+const { resolveTier } = await import('../api/chat.js');
 
 let fails = 0;
 function check(label, fn) {
@@ -278,9 +280,97 @@ console.log('\nThe latest answer on other models');
   });
   check('the ledger labels it hypothetical and states the caveats', () => {
     assert.match(html, /id="compareNote" hidden>Hypothetical:/);
-    for (const re of [/Leaves out thinking/, /real gap between small and large models is probably bigger/, /Says nothing about answer quality/]) {
+    for (const re of [/Thinking is left out because it varies by model and level/, /real gap between small and large models is probably bigger/, /Says nothing about answer quality/]) {
       assert.match(html, re);
     }
+    assert.match(html, /\$\('compareNote'\)\.textContent = compareNoteText\(latestCompleted\);/);
+  });
+
+  // The note states the answered model's own thinking, measured, priced from
+  // the frozen record alone.
+  const fmt = (n, d = 2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const noteCtx = vm.createContext({ COMPARE_MODELS: [], fmt, Math });
+  vm.runInContext(html.slice(constStart, constEnd) + '\n' +
+    ['thinkingGrams', 'modelLabel', 'compareNoteText'].map(n => extractNamedFunction(html, n)).join('\n') +
+    '\nthis.note = compareNoteText; this.grams = thinkingGrams;', noteCtx);
+  // 2,000 in, 900 out of which 400 thinking, on Opus 5.5 (x1.34) at PUE 1.12.
+  const eIn = 2000 * 0.00005 * 1.34, eOut = 900 * 0.0005 * 1.34;
+  const opusRec = Object.freeze({ inTok: 2000, outTok: 900, thinkTok: 400, level: 'medium', model: 'claude-opus-5-5',
+    factor: 1.34, eIn, eOut, chipWh: (eIn + eOut) * 1.12, serverGridGPerKwh: 307 });
+  check('thinking grams reproduce from the frozen record: tokens x output energy x PUE x server grid', () => {
+    near(noteCtx.grams(opusRec), 400 * 0.0005 * 1.34 * 1.12 * 307 / 1000, 1e-12);
+  });
+  check('the note names the tokens, grams, model and level', () => {
+    const want = (400 * 0.0005 * 1.34 * 1.12 * 307 / 1000).toFixed(3);
+    assert.match(noteCtx.note(opusRec), new RegExp(`on this answer it was 400 tokens \\(${want} g\\) on Opus 5\\.5 at medium thinking\\.`));
+  });
+  check('least reads "at the least thinking", and no thinking says so', () => {
+    assert.match(noteCtx.note({ ...opusRec, level: 'least' }), /on Opus 5\.5 at the least thinking\./);
+    assert.match(noteCtx.note({ ...opusRec, thinkTok: 0 }), /level; this answer had none\./);
+    assert.match(noteCtx.note({ ...opusRec, level: null }), /on Opus 5\.5\. Hosting/);
+  });
+  check('the note reads no current constants', () => {
+    for (const n of ['thinkingGrams', 'compareNoteText']) assert.doesNotMatch(extractNamedFunction(html, n), /MODEL\.|state\./, n);
+  });
+}
+
+console.log('\nThinking picker');
+{
+  const pickCtx = vm.createContext({});
+  const start = html.indexOf('const THINKING_LEVELS = [');
+  const end = html.indexOf("const THINKING_START = '");
+  vm.runInContext(html.slice(start, end) + extractNamedFunction(html, 'thinkingLabel') + '\nthis.label = thinkingLabel; this.T = TIER_THINKING; this.L = THINKING_LEVELS;', pickCtx);
+  check('the picker offers the levels the server accepts', () => {
+    assert.deepEqual([...pickCtx.L], ['least', 'low', 'medium', 'high']);
+    const opts = [...html.matchAll(/<option value="(\w+)"[^>]*>(?:Least|Low|Medium|High)<\/option>/g)].map(m => m[1]);
+    assert.deepEqual(opts, ['least', 'low', 'medium', 'high']);
+  });
+  check("labels mark each model's own default and what least means", () => {
+    assert.equal(pickCtx.label('opus', 'medium'), 'Medium (model default)');
+    assert.equal(pickCtx.label('opus', 'least'), "Least: low, can't be off");
+    assert.equal(pickCtx.label('sonnet', 'high'), 'High (model default)');
+    assert.equal(pickCtx.label('haiku', 'least'), 'Least: off');
+    assert.equal(pickCtx.label('gemini-flash-lite', 'least'), 'Least: minimal (model default)');
+    assert.equal(pickCtx.label('gemini-flash', 'high'), 'High (model default)');
+    assert.equal(pickCtx.label('gemini-flash', 'low'), 'Low');
+  });
+  check('every tier in the picker has a thinking entry', () => {
+    const tiers = [...html.slice(html.indexOf('<select id="tier">'), html.indexOf('</select>', html.indexOf('<select id="tier">')))
+      .matchAll(/<option value="([\w-]+)"/g)].map(m => m[1]);
+    assert.deepEqual(tiers.sort(), Object.keys(pickCtx.T).sort());
+  });
+  check('labels fit a phone (33 characters)', () => {
+    for (const t of Object.keys(pickCtx.T)) for (const l of pickCtx.L) assert.ok(pickCtx.label(t, l).length <= 33, pickCtx.label(t, l));
+  });
+  check('the picker starts at least, and a saved opus-thinking becomes opus at medium', () => {
+    assert.match(html, /const THINKING_START = 'least';/);
+    assert.match(html, /const migrate = savedTier === 'opus-thinking';\s+if \(migrate\) \{\s+savedTier = 'opus';\s+savedThinking = savedThinking \|\| 'medium';/);
+    // State is set before the migration is written back, so full storage cannot lose it.
+    const init = html.slice(html.indexOf("const migrate = savedTier === 'opus-thinking';"));
+    assert.ok(init.indexOf('state.tier = savedTier') < init.indexOf("localStorage.setItem('susty-tier', savedTier)"));
+  });
+  check('a tier fallback repaints the thinking labels for the tier that answered', () => {
+    assert.match(extractNamedFunction(html, 'syncTierToAnswer'), /paintThinkingOptions\(\);/);
+  });
+  check('send() asks for the level, reads which ran, and freezes it in the record', () => {
+    assert.match(html, /body: JSON\.stringify\(\{ messages: state\.history, tier: state\.tier, thinking: askedLevel \}\)/);
+    assert.match(html, /usedLevel = res\.headers\.get\('X-Susty-Thinking'\);/);
+    assert.equal((html.match(/level: usedLevel/g) || []).length, 2);
+    assert.match(extractNamedFunction(html, 'recordRequest'), /\n    level,\n/);
+  });
+  check('the picker follows a level the server lowered, unless the reader moved it meanwhile', () => {
+    const ctx = vm.createContext({ THINKING_LEVELS: ['least', 'low', 'medium', 'high'], state: { thinking: 'high' }, calls: [] });
+    vm.runInContext(extractNamedFunction(html, 'syncThinkingToAnswer') +
+      '\nfunction setThinking(l) { calls.push(l); state.thinking = l; }\nthis.sync = syncThinkingToAnswer;', ctx);
+    ctx.sync('high', 'least');
+    assert.deepEqual([...ctx.calls], ['least']);
+    ctx.state.thinking = 'medium';
+    ctx.sync('high', 'least');
+    assert.deepEqual([...ctx.calls], ['least'], 'a change made while streaming is kept');
+    ctx.state.thinking = 'low';
+    ctx.sync('low', null);
+    ctx.sync('low', 'low');
+    assert.deepEqual([...ctx.calls], ['least'], 'no header, or the same level: nothing to do');
   });
 }
 
@@ -435,20 +525,24 @@ await asyncCheck('Gemini terminal event is kept when final SSE line has no newli
 });
 
 console.log('\nGemini request');
+process.env.GOOGLE_GEMINI_API_KEY = 'test-key';
 for (const key of ['gemini-flash', 'gemini-flash-lite']) {
   await asyncCheck(`${key} sends its output cap and thinking level`, async () => {
+    const tier = resolveTier(key);
     const realFetch = globalThis.fetch;
     let sent;
     globalThis.fetch = async (url, init) => { sent = JSON.parse(init.body); return { ok: true }; };
     try {
-      await callGoogle([{ role: 'user', content: 'hi' }], TIERS[key], 'system');
+      await callGoogle([{ role: 'user', content: 'hi' }], tier, 'system');
     } finally {
       globalThis.fetch = realFetch;
     }
-    assert.equal(sent.generationConfig.maxOutputTokens, TIERS[key].maxTokens);
-    assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, TIERS[key].thinkingLevel);
+    assert.equal(tier.key, key);
+    assert.equal(sent.generationConfig.maxOutputTokens, tier.maxTokens);
+    assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, tier.thinkingLevel);
   });
 }
+delete process.env.GOOGLE_GEMINI_API_KEY;
 
 console.log(fails ? `\n${fails} failure(s)` : '\nAll good.');
 process.exit(fails ? 1 : 0);

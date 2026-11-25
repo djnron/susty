@@ -1,7 +1,8 @@
 # Susty model update, November 2026: research summary
 
-**Status:** final for Susty 2.2.0, 25 November 2026, on branch
-`update/2026-11-models` (not committed). Every number here is also in
+**Status:** the research behind Susty 2.2.0, 25 November 2026, on branch
+`update/2026-11-models`. Since 2.3.0 the separate extended-thinking tier
+below is a Thinking picker level (Opus at Medium); see METHODOLOGY §4.5. Every number here is also in
 [METHODOLOGY.md](METHODOLOGY.md), where the tests check it against the code;
 if the two ever disagree, METHODOLOGY wins. `sh tools/test.sh` passes. The
 app has not been tried against the live APIs: no keys were available.

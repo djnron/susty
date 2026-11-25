@@ -145,7 +145,7 @@ const server = createServer(async (req, res) => {
     const messages = clean(parsed?.messages);
     if (!messages) return json(res, 400, { error: "The conversation was malformed." });
 
-    const tier = resolveTier(parsed?.tier);
+    const tier = resolveTier(parsed?.tier, parsed?.thinking);
 
     try {
       if (tier.provider === "google") {
@@ -161,12 +161,13 @@ const server = createServer(async (req, res) => {
           "content-type": "text/event-stream",
           "cache-control": "no-cache",
           "x-accel-buffering": "no",
+          "x-susty-thinking": tier.level,
         });
         await pipeGoogleAsAnthropicSSE(upstream, res, tier);
         return res.end();
       }
 
-      const upstream = await callAnthropic(messages, tier.key);
+      const upstream = await callAnthropic(messages, tier);
       if (!upstream.ok) {
         const data = await upstream.json().catch(() => ({}));
         console.error("Anthropic error", upstream.status, data);
@@ -178,6 +179,7 @@ const server = createServer(async (req, res) => {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
         "x-accel-buffering": "no",
+        "x-susty-thinking": tier.level,
       });
       const reader = upstream.body.getReader();
       const decoder = new TextDecoder();

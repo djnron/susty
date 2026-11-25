@@ -7,7 +7,9 @@ import { readFileSync } from 'node:fs';
 // The document describes the default deployment, so an ANTHROPIC_MODEL
 // exported in the shell must not reach api/chat.js (it reads it at load).
 delete process.env.ANTHROPIC_MODEL;
-const { LIMITS, TIERS } = await import('../api/chat.js');
+delete process.env.SUSTY_TIERS;
+delete process.env.SUSTY_EXPENSIVE_TIERS;
+const { LIMITS, TIERS, resolveTier, THINKING_LEVELS, LEVEL_MAX_TOKENS } = await import('../api/chat.js');
 const { fullModel, registry } = await import('./model-factors.mjs');
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -89,25 +91,56 @@ check('history, length, rate limits match api/chat.js', () => {
   has(new RegExp(`\\*\\*${LIMITS.maxTokens.toLocaleString('en-US')} output tokens\\*\\*`));
   has(new RegExp(`\\*\\*${LIMITS.perWindow} requests per IP per ${LIMITS.windowMs / 60000} minutes\\.?\\*\\*`));
 });
-check('thinking-tier ceiling matches', () =>
-  has(new RegExp(`${TIERS['opus-thinking'].maxTokens.toLocaleString('en-US')}-token ceiling`)));
-check('Opus tier: cannot disable thinking, effort and ceiling match', () => {
-  const o = TIERS.opus;
-  assert.equal(o.thinking, undefined);
-  has(new RegExp(`\\| Opus 5\\.5 \\| \`${o.model}\` \\| cannot be disabled; effort \`${o.effort}\`, ${o.maxTokens.toLocaleString('en-US')}-token ceiling`));
-  has(new RegExp(`\\(${o.maxTokens.toLocaleString('en-US')} on the Opus tier, which cannot switch thinking off`));
-  has(new RegExp(`\\| Opus 5\\.5, extended thinking \\| \`${TIERS['opus-thinking'].model}\` \\| adaptive, effort \`${TIERS['opus-thinking'].effort}\``));
+const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+check('the tier table matches the models and factors', () => {
+  const rows = [['Haiku 5.5', 'haiku', ''], ['Sonnet 5.5', 'sonnet', ' (overridable via `ANTHROPIC_MODEL`)'], ['Opus 5.5', 'opus', ''],
+                ['**Gemini 3.5 Flash-Lite** (client default)', 'gemini-flash-lite', ''], ['Gemini 4 Hydrogen', 'gemini-flash', '']];
+  for (const [label, key, note] of rows) {
+    const m = TIERS[key].model;
+    has(new RegExp('^' + reEsc(`| ${label} | \`${m}\`${note} | ×${MODEL_ENERGY[m].factor.toFixed(2)} |`) + '$', 'm'), `tier row ${key}`);
+  }
 });
-check('Claude tier thinking settings match the doc', () => {
-  has(new RegExp(`\\| Haiku 5\\.5 \\| \`${TIERS.haiku.model}\` \\| off \\(\`${TIERS.haiku.thinking.type}\`\\), effort \`${TIERS.haiku.effort}\``));
-  has(new RegExp(`\\| Sonnet 5\\.5 \\| \`${TIERS.sonnet.model}\` \\(overridable via \`ANTHROPIC_MODEL\`\\) \\| off \\(\`${TIERS.sonnet.thinking.type}\`\\), effort \`${TIERS.sonnet.effort}\``));
+check('the thinking-level table is exactly what the server sends and the picker labels', () => {
+  const TIER_THINKING = objectLiteral(html, 'TIER_THINKING');
+  const cols = ['haiku', 'sonnet', 'opus', 'gemini-flash-lite', 'gemini-flash'];
+  const names = { least: '**Least** (where the picker starts)', low: 'Low', medium: 'Medium', high: 'High' };
+  process.env.GOOGLE_GEMINI_API_KEY = 'doc-check';
+  try {
+    const opusLeast = resolveTier('opus', 'least').maxTokens;
+    assert.equal(resolveTier('gemini-flash', 'least').maxTokens, opusLeast);
+    for (const lv of THINKING_LEVELS) {
+      const cells = cols.map((k) => {
+        const r = resolveTier(k, lv);
+        assert.equal(r.level, lv, `${k} at ${lv}`);
+        const cell = r.provider === 'google' ? '`' + r.thinkingLevel + '`'
+          : !r.thinking ? 'cannot be disabled; effort `' + r.effort + '`'
+          : r.thinking.type === 'adaptive' ? 'adaptive, effort `' + r.effort + '`'
+          : 'off (`' + r.thinking.type + '`), effort `' + r.effort + '`';
+        return cell + (TIER_THINKING[k].default === lv ? ' ★' : '');
+      });
+      const ceiling = lv === 'least'
+        ? `${LIMITS.maxTokens.toLocaleString('en-US')} tokens; ${opusLeast.toLocaleString('en-US')} for Opus and Gemini`
+        : `${LEVEL_MAX_TOKENS[lv].toLocaleString('en-US')} tokens`;
+      has(new RegExp('^' + reEsc(`| ${names[lv]} | ${cells.join(' | ')} | ${ceiling} |`) + '$', 'm'), `thinking row ${lv}`);
+    }
+  } finally {
+    delete process.env.GOOGLE_GEMINI_API_KEY;
+  }
 });
-check('Gemini output cap and thinking levels match', () => {
-  const cap = TIERS['gemini-flash'].maxTokens;
-  assert.equal(TIERS['gemini-flash-lite'].maxTokens, cap);
-  has(new RegExp(`\\*\\*${cap.toLocaleString('en-US')} output tokens\\*\\* per Gemini reply`));
-  has(new RegExp(`\\| \\*\\*Gemini 3\\.5 Flash-Lite\\*\\* \\(client default\\) \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash-lite'].thinkingLevel}\``));
-  has(new RegExp(`\\| Gemini 4 Hydrogen \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash'].thinkingLevel}\``));
+check('the picker offers the levels the server accepts, starting at least', () => {
+  assert.deepEqual(Function(`return ${html.match(/const THINKING_LEVELS = (\[[^\]]+\]);/)[1]}`)(), THINKING_LEVELS);
+  assert.match(html, /const THINKING_START = 'least';/);
+  has(/\*\*Where the picker starts: Least\.\*\*/);
+});
+check('ceilings and switches in 4.6 and 4.5 match api/chat.js', () => {
+  const [lo, md, hi] = ['low', 'medium', 'high'].map((l) => LEVEL_MAX_TOKENS[l].toLocaleString('en-US'));
+  has(new RegExp(reEsc(`maximum per Anthropic reply at Least (${resolveTier('opus', 'least').maxTokens.toLocaleString('en-US')} on Opus, which cannot switch thinking off), and ${lo}, ${md} and ${hi} at Low, Medium and High`)));
+  process.env.GOOGLE_GEMINI_API_KEY = 'doc-check';
+  const g = resolveTier('gemini-flash', 'least').maxTokens.toLocaleString('en-US');
+  delete process.env.GOOGLE_GEMINI_API_KEY;
+  has(new RegExp(reEsc(`**${g} output tokens** per Gemini reply at Least and Low, ${md} at Medium and ${hi} at High`)));
+  has(/\| `SUSTY_EXPENSIVE_TIERS=off` \| Medium and High run at Least; every tier and the other levels stay \|/);
+  has(/\| `SUSTY_TIERS=off` \| Collapses every request to the default tier at Least \|/);
 });
 check('the client expects each tier to answer with that tier\'s model', () => {
   const EXPECTED_MODEL = objectLiteral(html, 'EXPECTED_MODEL');

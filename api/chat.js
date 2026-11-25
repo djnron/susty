@@ -26,18 +26,19 @@ export const LIMITS = {
 };
 
 // Model tiers. The client sends an opaque key and *only* this map turns it into
-// a model, so a modified client cannot name an arbitrary model or switch
-// extended thinking on. Same posture as rebuilding the request from scratch.
+// a model, so a modified client cannot name an arbitrary model or ask for
+// more thinking than a level allows. Same posture as rebuilding the request
+// from scratch.
 //
-// maxTokens is per tier because thinking tokens count against it: a thinking
-// tier on the standard 1000 ceiling would spend its budget reasoning and get
-// the answer truncated.
+// maxTokens depends on the thinking level because thinking tokens count
+// against it: thinking on the standard 1000 ceiling would spend the budget
+// reasoning and get the answer truncated.
 //
 // Carbon, from METHODOLOGY §4.4 (factors against the Sonnet 4.6 anchor):
 // haiku ×0.52, sonnet ×0.79, opus ×1.34 per token. But thinking is the term
 // that matters — Oviedo et al. put a reasoning-length reply at ~13× a
-// standard one, so `opus-thinking` is roughly an order of magnitude, not a
-// half more.
+// standard one, so the thinking level can move a reply far more than the
+// choice of model.
 //
 // The 5.5 models do not share one thinking switch (checked against
 // Anthropic's model-migration notes, November 2026), so each tier sends what
@@ -56,8 +57,8 @@ export const LIMITS = {
 // index.html's MODEL_ENERGY table, derived from EcoLogits' architecture
 // estimates the same way as the Claude ones (flash ×0.66, flash-lite ×0.85).
 //
-// Neither Gemini tier can disable thinking. Each runs at the lowest level
-// its model accepts (aistudio.google.com/docs/thinking, checked 2026-11-25):
+// Neither Gemini tier can disable thinking. At `least` each runs at the
+// lowest level its model accepts (aistudio.google.com/docs/thinking, checked 2026-11-25):
 //   gemini-4-hydrogen      low/medium/high/xhigh, default high, and it
 //                          rejects "minimal" with an error, so "low". Google
 //                          names it the upgrade from gemini-3.8-flash.
@@ -99,64 +100,92 @@ export function minimalThinking(model) {
   return { thinks: false };
 }
 
-// A Claude tier that asks `model` for as little thinking as it allows, with
-// headroom in the ceiling when that still means some thinking.
-function minimalTier(model) {
-  const m = minimalThinking(model);
-  return {
-    provider: "anthropic",
-    model,
-    maxTokens: m.thinks ? ALWAYS_THINKS_MAX_TOKENS : LIMITS.maxTokens,
-    ...(m.thinking && { thinking: m.thinking }),
-    ...(m.effort && { effort: m.effort }),
-  };
+// Thinking levels. The reader picks one beside the model. Like the tier, the
+// client sends only an opaque name and only this file turns it into request
+// settings, so a modified client cannot ask for `max` or a bigger ceiling.
+//   least   as little thinking as the model allows (minimalThinking above)
+//   low     adaptive thinking at effort `low`  (Gemini: thinkingLevel "low")
+//   medium  effort `medium`                    (Gemini: "medium")
+//   high    effort `high`                      (Gemini: "high")
+// `xhigh` and `max` are left out: on replies asked to stay near 180 words
+// they mostly add cost, and they are the dearest on the deployment's key.
+export const THINKING_LEVELS = ["least", "low", "medium", "high"];
+export const DEFAULT_THINKING = "least";
+// Gated by SUSTY_EXPENSIVE_TIERS, which until 2.3.0 gated the separate
+// extended-thinking tier that `medium` on Opus replaces.
+export const EXPENSIVE_LEVELS = ["medium", "high"];
+// Thinking counts against the output ceiling, so the ceiling grows with the
+// level. Worst case: `high` on Opus 5.5, 8,000 tokens x $20 per million =
+// $0.16 a reply.
+export const LEVEL_MAX_TOKENS = { low: 2000, medium: 4000, high: 8000 };
+
+// Claude models that take adaptive thinking with an effort level (Anthropic's
+// thinking and effort docs). Haiku 4.5 takes only a token budget and rejects
+// `effort`, and an unknown model is not guessed at, so both run at `least`
+// whatever is asked for.
+const ADAPTIVE_EFFORT = /^claude-(haiku-5-5|sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable|mythos)/;
+
+// Each Gemini model's thinkingLevel for each Susty level
+// (aistudio.google.com/docs/thinking, checked 2026-11-25). Hydrogen rejects
+// "minimal", so its `least` is "low".
+const GEMINI_LEVELS = {
+  "gemini-3.5-flash-lite": { least: "minimal", low: "low", medium: "medium", high: "high" },
+  "gemini-4-hydrogen":     { least: "low",     low: "low", medium: "medium", high: "high" },
+};
+
+export function supportsLevel(provider, model, level) {
+  if (level === DEFAULT_THINKING) return true;
+  if (provider === "google") return Boolean(GEMINI_LEVELS[model]?.[level]);
+  return ADAPTIVE_EFFORT.test(model);
+}
+
+// What one model sends at one level. Callers check supportsLevel() first.
+export function levelSettings(provider, model, level) {
+  if (provider === "google") {
+    return {
+      level,
+      thinkingLevel: (GEMINI_LEVELS[model] || {})[level],
+      maxTokens: level === DEFAULT_THINKING ? ALWAYS_THINKS_MAX_TOKENS : LEVEL_MAX_TOKENS[level],
+    };
+  }
+  if (level === DEFAULT_THINKING) {
+    const m = minimalThinking(model);
+    return {
+      level,
+      maxTokens: m.thinks ? ALWAYS_THINKS_MAX_TOKENS : LIMITS.maxTokens,
+      ...(m.thinking && { thinking: m.thinking }),
+      ...(m.effort && { effort: m.effort }),
+    };
+  }
+  return { level, thinking: { type: "adaptive" }, effort: level, maxTokens: LEVEL_MAX_TOKENS[level] };
 }
 
 export const TIERS = {
-  haiku: minimalTier("claude-haiku-5-5"),
+  haiku: { provider: "anthropic", model: "claude-haiku-5-5" },
   // ANTHROPIC_MODEL still overrides the default tier, so existing deployments
   // keep working; it deliberately does not override the others. The thinking
   // settings follow whichever model that is.
-  sonnet: minimalTier(process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5"),
-  // Opus 5.5 cannot switch thinking off: omitting `thinking` runs adaptive,
-  // and `disabled` is a 400 at every effort. It runs at `low`, with a 2,000
-  // ceiling, and its thinking tokens are measured and priced as output, as
-  // Gemini's are. Not gated by SUSTY_EXPENSIVE_TIERS: at most 2,000 output
-  // tokens at Opus 5.5's $20 per million is 1.6x what the Opus 4.8 tier could
-  // spend (1,000 at $25), not the several-fold of the extended-thinking tier.
-  opus: minimalTier("claude-opus-5-5"),
-  "opus-thinking": {
-    provider: "anthropic",
-    model: "claude-opus-5-5",
-    maxTokens: 4000,
-    // Adaptive is the only on-mode from 4.7 onward — `budget_tokens` is
-    // removed and returns a 400. `medium` is Opus 5.5's own default effort;
-    // `low` is now what the plain Opus tier runs at.
-    thinking: { type: "adaptive" },
-    effort: "medium",
-    expensive: true,
-  },
-  "gemini-flash-lite": {
-    provider: "google",
-    model: "gemini-3.5-flash-lite",
-    thinkingLevel: "minimal",
-    maxTokens: ALWAYS_THINKS_MAX_TOKENS,
-  },
-  "gemini-flash": {
-    provider: "google",
-    model: "gemini-4-hydrogen",
-    thinkingLevel: "low",
-    maxTokens: ALWAYS_THINKS_MAX_TOKENS,
-  },
+  sonnet: { provider: "anthropic", model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5" },
+  // Opus 5.5 cannot switch thinking off: at `least` it runs at effort `low`
+  // with a 2,000 ceiling, and its thinking tokens are priced as output.
+  opus: { provider: "anthropic", model: "claude-opus-5-5" },
+  "gemini-flash-lite": { provider: "google", model: "gemini-3.5-flash-lite" },
+  "gemini-flash": { provider: "google", model: "gemini-4-hydrogen" },
 };
 export const DEFAULT_TIER = "sonnet";
+// Keys a page loaded before 2.3.0 may still send, or a visitor may have saved:
+// the extended-thinking tier is now Opus at `medium`. Gated, it runs as Opus
+// at `least` (before 2.3.0 it fell back to the default tier).
+export const TIER_ALIASES = { "opus-thinking": { tier: "opus", level: "medium" } };
 
 // Two off switches, both default-on so nothing has to be set to work:
 //   SUSTY_TIERS=off            collapses every request to the default tier
-//   SUSTY_EXPENSIVE_TIERS=off  keeps the thinking tier off the menu
+//                              at the least thinking
+//   SUSTY_EXPENSIVE_TIERS=off  drops the `medium` and `high` thinking levels
 // Either way the client is not trusted: an unknown, disabled or expensive-but-
-// disabled key silently resolves to the default rather than erroring, and the
-// ledger reports whichever model actually answered.
+// disabled choice silently resolves to the default rather than erroring, the
+// response says which level ran (X-Susty-Thinking), and the ledger reports
+// whichever model actually answered.
 export const TIERS_ENABLED = process.env.SUSTY_TIERS !== "off";
 export const EXPENSIVE_TIERS_ENABLED = process.env.SUSTY_EXPENSIVE_TIERS !== "off";
 
@@ -166,15 +195,24 @@ export const EXPENSIVE_TIERS_ENABLED = process.env.SUSTY_EXPENSIVE_TIERS !== "of
 // process that has not itself set ANTHROPIC_API_KEY (tools/tiers.test.mjs,
 // notably). Every other provider is optional, gated here instead: a tier
 // for one resolves to the default rather than erroring when its key isn't
-// set — the same graceful-fallback posture as the expensive-tier gate below.
+// set — the same graceful-fallback posture as the expensive-level gate below.
 function providerConfigured(provider) {
   if (provider === "anthropic") return true;
   if (provider === "google") return Boolean(process.env.GOOGLE_GEMINI_API_KEY);
   return false;
 }
 
-export function resolveTier(key) {
-  const fallback = { key: DEFAULT_TIER, ...TIERS[DEFAULT_TIER] };
+// The tier and thinking level a request actually gets. A tier that cannot be
+// used falls back to the default tier at the least thinking; a level that is
+// unknown, gated or unsupported by the model falls back to `least` on the
+// tier asked for.
+export function resolveTier(key, level) {
+  if (typeof key === "string" && Object.hasOwn(TIER_ALIASES, key)) {
+    if (level === undefined) level = TIER_ALIASES[key].level;
+    key = TIER_ALIASES[key].tier;
+  }
+  const build = (k, lv) => ({ key: k, ...TIERS[k], ...levelSettings(TIERS[k].provider, TIERS[k].model, lv) });
+  const fallback = build(DEFAULT_TIER, DEFAULT_THINKING);
   if (!TIERS_ENABLED) return fallback;
   // Object.hasOwn, not a bare lookup: TIERS["__proto__"] and
   // TIERS["constructor"] resolve to inherited Object.prototype members, which
@@ -182,9 +220,11 @@ export function resolveTier(key) {
   // request with model: undefined. Found by tools/tiers.test.mjs.
   if (typeof key !== "string" || !Object.hasOwn(TIERS, key)) return fallback;
   const tier = TIERS[key];
-  if (tier.expensive && !EXPENSIVE_TIERS_ENABLED) return fallback;
   if (!providerConfigured(tier.provider)) return fallback;
-  return { key, ...tier };
+  let lv = typeof level === "string" && THINKING_LEVELS.includes(level) ? level : DEFAULT_THINKING;
+  if (EXPENSIVE_LEVELS.includes(lv) && !EXPENSIVE_TIERS_ENABLED) lv = DEFAULT_THINKING;
+  if (!supportsLevel(tier.provider, tier.model, lv)) lv = DEFAULT_THINKING;
+  return build(key, lv);
 }
 
 const hits = new Map(); // in-memory, so it resets on cold start — see README
@@ -229,8 +269,8 @@ export function clean(messages) {
   return out;
 }
 
-export async function callAnthropic(messages, tierKey) {
-  const tier = resolveTier(tierKey);
+// `tier` is what resolveTier() returned, level settings included.
+export async function callAnthropic(messages, tier) {
   const body = {
     model: tier.model,
     max_tokens: tier.maxTokens,
@@ -279,7 +319,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "The conversation was malformed." });
   }
 
-  const tier = resolveTier(req.body?.tier);
+  const tier = resolveTier(req.body?.tier, req.body?.thinking);
 
   try {
     if (tier.provider === "google") {
@@ -296,13 +336,14 @@ export default async function handler(req, res) {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("X-Accel-Buffering", "no");
+      res.setHeader("X-Susty-Thinking", tier.level);
       res.flushHeaders();
 
       await pipeGoogleAsAnthropicSSE(upstream, res, tier);
       return res.end();
     }
 
-    const upstream = await callAnthropic(messages, tier.key);
+    const upstream = await callAnthropic(messages, tier);
 
     if (!upstream.ok) {
       const data = await upstream.json().catch(() => ({}));
@@ -315,6 +356,7 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("X-Susty-Thinking", tier.level);
     res.flushHeaders();
 
     const reader = upstream.body.getReader();

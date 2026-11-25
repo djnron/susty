@@ -1068,11 +1068,20 @@ textarea, input { caret-color: var(--ink); }
         <option value="haiku">Haiku 5.5, two-thirds the energy</option>
         <option value="sonnet">Sonnet 5.5</option>
         <option value="opus">Opus 5.5, 1.7×, always thinks</option>
-        <option value="opus-thinking">Opus 5.5, extended thinking: can cost several times more</option>
         <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite (default)</option>
         <option value="gemini-flash">Gemini 4 Hydrogen</option>
       </select>
     </div>
+    <div class="pick">
+      <label for="thinking">Thinking</label>
+      <select id="thinking">
+        <option value="least" selected>Least</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <p class="note" id="thinkingNote">More thinking can make an answer cost several times more: Low, Medium and High allow up to 2,000, 4,000 and 8,000 tokens. Every thinking token is counted in the total.</p>
     <div class="pick">
       <label for="screen">Reading this on</label>
       <select id="screen">
@@ -1092,7 +1101,7 @@ textarea, input { caret-color: var(--ink); }
     <h3>The latest answer on other models</h3>
     <p class="note" id="compareEmpty">Appears after the first answer.</p>
     <table class="rows" id="compareTable" hidden><tbody id="compareRows"></tbody></table>
-    <p class="note" id="compareNote" hidden>Hypothetical: this answer's tokens priced on each model. Leaves out thinking (Gemini and Opus always think, so their real cost is higher), hosting and your device. The real gap between small and large models is probably bigger. Says nothing about answer quality.</p>
+    <p class="note" id="compareNote" hidden>Hypothetical: this answer's visible tokens priced on each model. Thinking is left out because it varies by model and level. Hosting and your device are left out too. The real gap between small and large models is probably bigger. Says nothing about answer quality.</p>
   </div>
 
   <div class="sect">
@@ -1646,7 +1655,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.2.0';
+const METHODOLOGY_VERSION = '2.3.0';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1658,6 +1667,7 @@ const state = {
   screen: 'lcdLaptop',
   model: 'claude-sonnet-5-5',   // replaced by whatever message_start reports
   tier: 'gemini-flash-lite',    // what we asked for; the server may override
+  thinking: 'least',            // the thinking level asked for (THINKING_LEVELS)
   thinkTokens: 0,               // measured subset of outTokens
   freshChatNudged: false,       // the long-chat notice shows once per session
   grid: 'world', gridGuessed: false, region: '', live: null,
@@ -1780,7 +1790,8 @@ function recordRequest(inTok, outTok, {
   model = null,
   stopReason = null,
   includeHosting = true,
-  thinkTok = 0
+  thinkTok = 0,
+  level = null
 } = {}) {
   if (!Object.values(REQUEST_STATUS).includes(status)) {
     throw new Error('recordRequest requires a valid status');
@@ -1815,6 +1826,9 @@ function recordRequest(inTok, outTok, {
     // Raw token counts, kept beside the energy they priced. Not used for
     // pricing (eIn/eOut already are); the long-chat notice reads them.
     inTok, outTok, thinkTok,
+    // The thinking level that ran, as the server reported it (null when
+    // unknown: an HTTP failure, or a server older than 2.3.0).
+    level,
     model, factor, eIn, eOut, chipWh, hostingWh, wh,
     serverGridGPerKwh, grams, highFactor, gramsHigh,
     wueLPerKwh, serverWaterOffsite: serverWater.offsite, serverWaterHydro: serverWater.hydro,
@@ -1849,8 +1863,10 @@ function freshChatNudge(requests, alreadyShown) {
 // input tokens and visible output tokens (thinking left out: it varies by
 // model, and Gemini and Opus 5.5 always add some), priced with each model's factor at the
 // record's frozen server grid. Hosting and device are identical whichever
-// model answers, so they are left out. Opus with extended thinking is not a
-// separate row: its cost is its thinking, which cannot be known in advance.
+// model answers, so they are left out. Thinking is not priced on the other
+// rows because nobody can know how much a different model would have thought;
+// the note under the table states the answered model's own thinking instead,
+// from its frozen record (compareNoteText).
 const COMPARE_MODELS = [
   ['claude-haiku-5-5',      'Haiku 5.5'],
   ['claude-sonnet-5-5',     'Sonnet 5.5'],
@@ -1869,6 +1885,31 @@ function modelComparison(r) {
     const wh = (r.inTok * MODEL.whPerInputToken + visibleOut * MODEL.whPerOutputToken) * factor * MODEL.pue;
     return { id, label, factor, wh, grams: wh * r.serverGridGPerKwh / 1000, answered: id === answered };
   });
+}
+
+// The comparison leaves thinking out, so the note states what it left out for
+// the answer that was given: the answered model's own thinking, measured, and
+// priced from the frozen record alone (chip energy per output token x thinking
+// tokens, at the record's PUE and server grid), never from today's constants.
+function thinkingGrams(r) {
+  if (!(r.thinkTok > 0) || !(r.outTok > 0) || !(r.eIn + r.eOut > 0)) return 0;
+  const wh = r.eOut / r.outTok * r.thinkTok * (r.chipWh / (r.eIn + r.eOut));
+  return wh * r.serverGridGPerKwh / 1000;
+}
+function modelLabel(id = '') {
+  let best = null;
+  for (const [key, label] of COMPARE_MODELS) {
+    if (id.startsWith(key) && (!best || key.length > best[0].length)) best = [key, label];
+  }
+  return best ? best[1] : id.replace(/^claude-/, '');
+}
+function compareNoteText(r) {
+  const level = r.level === 'least' ? ' at the least thinking' : r.level ? ' at ' + r.level + ' thinking' : '';
+  const thinking = r.thinkTok > 0
+    ? 'on this answer it was ' + r.thinkTok.toLocaleString() + ' tokens (' + fmt(thinkingGrams(r), 3) + ' g) on ' + modelLabel(r.model) + level
+    : 'this answer had none';
+  return "Hypothetical: this answer's visible tokens priced on each model. Thinking is left out because it varies by model and level; " +
+    thinking + '. Hosting and your device are left out too. The real gap between small and large models is probably bigger. Says nothing about answer quality.';
 }
 
 const completedExchangeCount = () =>
@@ -2019,7 +2060,7 @@ function historyTotals(sessions, now) {
 // methodology version it was priced under. Values are copied from the
 // frozen entries, never recomputed.
 const CSV_COLUMNS = ['methodology_version', 'session_id', 'kind', 'time_utc', 'status', 'model',
-  'input_tokens', 'output_tokens', 'thinking_tokens', 'model_factor', 'energy_wh', 'grid_g_per_kwh',
+  'input_tokens', 'output_tokens', 'thinking_tokens', 'thinking_level', 'model_factor', 'energy_wh', 'grid_g_per_kwh',
   'g_co2e', 'g_co2e_high', 'water_onsite_ml', 'water_offsite_ml', 'water_hydro_ml',
   'reader_grid', 'screen', 'theme', 'attended_s'];
 function historyCsv(sessions) {
@@ -2032,12 +2073,12 @@ function historyCsv(sessions) {
   const rows = [CSV_COLUMNS.join(',')];
   for (const s of sessions) {
     for (const r of s.requests || []) rows.push([
-      r.v || s.v, s.id, 'request', iso(r.t), r.status, r.model, r.inTok, r.outTok, r.thinkTok, r.factor,
+      r.v || s.v, s.id, 'request', iso(r.t), r.status, r.model, r.inTok, r.outTok, r.thinkTok, r.level, r.factor,
       r.wh, r.serverGridGPerKwh, r.grams, r.gramsHigh, r.waterOnsiteMl, r.waterOffsiteMl, r.waterHydroMl,
       '', '', '', ''
     ].map(esc).join(','));
     for (const d of s.device || []) rows.push([
-      d.v || s.v, s.id, 'device', iso(d.start), '', '', '', '', '', '',
+      d.v || s.v, s.id, 'device', iso(d.start), '', '', '', '', '', '', '',
       d.wh, d.gridGPerKwh, d.g, d.g, 0, d.waterMl, d.hydroMl,
       d.grid + (d.region ? '/' + d.region : ''), d.screen, d.theme, d.attendedMs / 1000
     ].map(esc).join(','));
@@ -2182,7 +2223,8 @@ function paintLedger() {
   if (latestCompleted) {
     const f = modelEnergy(latestCompleted.model).factor;
     $('rModel').textContent = latestCompleted.model.replace(/^claude-/, '') +
-      (f === 1 ? '' : '\u00a0\u00d7' + f.toFixed(2));   // no-break: the factor stays with its model
+      (f === 1 ? '' : '\u00a0\u00d7' + f.toFixed(2)) +   // no-break: the factor stays with its model
+      (latestCompleted.level ? ', thinking ' + latestCompleted.level : '');
   } else {
     $('rModel').textContent = '—';
   }
@@ -2206,6 +2248,7 @@ function paintLedger() {
       // sit below the inference figure in the Energy block for the same answer.
       (c.answered ? (latestCompleted.thinkTok > 0 ? ' (answered, excl. thinking)' : ' (answered)') : '') + ' \u00d7' + c.factor.toFixed(2) + '</td><td>' +
       fmt(c.wh, 3) + ' Wh, ' + fmt(c.grams, 3) + ' g</td></tr>').join('');
+    $('compareNote').textContent = compareNoteText(latestCompleted);
   }
 
   const gridName = (GRIDS[state.grid] || GRIDS.world).name;
@@ -2589,8 +2632,55 @@ const deviceName = () => DEVICE_NAME[DEVICE_CLASS[state.screen] || 'laptop'];
 $('tier').addEventListener('change', e => {
   state.tier = e.target.value;
   try { localStorage.setItem('susty-tier', state.tier); } catch {}
+  if (THINKING_START === 'default') setThinking(TIER_THINKING[state.tier]?.default || 'least');
+  paintThinkingOptions();
   paintLedger();
 });
+
+// Thinking levels (METHODOLOGY 4.5). Mirrors THINKING_LEVELS in api/chat.js;
+// the server owns what each level sends, may lower a gated or unsupported one
+// to `least`, and says which level ran in the X-Susty-Thinking header. Per
+// tier: what `least` means for that model, and the provider's own default
+// level, so the picker can say both.
+const THINKING_LEVELS = ['least', 'low', 'medium', 'high'];
+const TIER_THINKING = {
+  haiku:               { least: 'off',               default: 'medium' },
+  sonnet:              { least: 'off',               default: 'high' },
+  opus:                { least: "low, can't be off", default: 'medium' },
+  'gemini-flash-lite': { least: 'minimal',           default: 'least' },
+  'gemini-flash':      { least: 'low',               default: 'high' }
+};
+// Where the picker starts for a visitor with no saved choice. 'least' keeps
+// the meter's argument: the picker lets a reader spend more carbon, and says
+// so, but does not start them there. 'default' starts each model on its
+// provider's default level and moves with the model when the model changes.
+const THINKING_START = 'least';
+
+function thinkingLabel(tier, level) {
+  const t = TIER_THINKING[tier] || {};
+  let label = level === 'least'
+    ? 'Least' + (t.least ? ': ' + t.least : '')
+    : level[0].toUpperCase() + level.slice(1);
+  if (t.default === level) label += ' (model default)';
+  return label;
+}
+function paintThinkingOptions() {
+  for (const o of $('thinking').options) o.textContent = thinkingLabel(state.tier, o.value);
+}
+function setThinking(level, persist = true) {
+  if (!THINKING_LEVELS.includes(level)) return;
+  state.thinking = level;
+  $('thinking').value = level;
+  if (persist) { try { localStorage.setItem('susty-thinking', level); } catch {} }
+}
+$('thinking').addEventListener('change', e => setThinking(e.target.value));
+
+// After an answer: if the server ran a different level from the one asked for
+// (gated, unsupported, or the tier fell back), show the level that ran. Left
+// alone if the reader changed the picker while the reply was streaming.
+function syncThinkingToAnswer(asked, used) {
+  if (used && used !== asked && state.thinking === asked && THINKING_LEVELS.includes(used)) setThinking(used);
+}
 
 // Mirrors DEFAULT_TIER in api/chat.js. The client has no way to import a
 // server module, so this is a second place that must be kept in step with
@@ -2600,16 +2690,14 @@ const DEFAULT_TIER = 'sonnet';
 
 // Longest-prefix, matching modelEnergy()'s reasoning: the API answers with
 // dated ids. Kept here rather than merged into MODEL_ENERGY because this
-// tracks tiers, not models — opus and opus-thinking share a model id, and
-// the ledger's "answered by" already disambiguates them by whichever tier
-// key was actually requested, so this map only needs to catch a fallback.
+// tracks tiers, not models, so this map only needs to catch a fallback.
 const EXPECTED_MODEL = {
   haiku: 'claude-haiku-5-5', sonnet: 'claude-sonnet-5-5',
-  opus: 'claude-opus-5-5', 'opus-thinking': 'claude-opus-5-5',
+  opus: 'claude-opus-5-5',
   'gemini-flash': 'gemini-4-hydrogen', 'gemini-flash-lite': 'gemini-3.5-flash-lite'
 };
 // resolveTier() only ever falls back to one place — the default tier — when
-// a tier is unrecognised, gated, or its provider isn't configured. So a
+// a tier is unrecognised or its provider isn't configured. So a
 // picker left on a stale/unavailable tier after a silent fallback only ever
 // needs correcting to the default, never to some other tier entirely.
 function syncTierToAnswer() {
@@ -2618,6 +2706,8 @@ function syncTierToAnswer() {
     state.tier = DEFAULT_TIER;
     $('tier').value = DEFAULT_TIER;
     try { localStorage.setItem('susty-tier', DEFAULT_TIER); } catch {}
+    if (THINKING_START === 'default') setThinking(TIER_THINKING[DEFAULT_TIER].default);
+    paintThinkingOptions();
   }
 }
 
@@ -2734,7 +2824,8 @@ async function send(raw) {
   let requestRecorded = false;
   let fullText = '', inputTokens = 0, outputTokens = 0, streamError = null;
   let thinkingTokens = 0, stopReason = null, sawMessageStop = false;
-  let responseModel = null;
+  let responseModel = null, usedLevel = null;
+  const askedLevel = state.thinking;
 
   // One render per frame. Re-parsing the whole message on every delta is
   // quadratic, and a fast stream lands several deltas inside a single frame.
@@ -2765,7 +2856,7 @@ async function send(raw) {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: state.history, tier: state.tier })
+      body: JSON.stringify({ messages: state.history, tier: state.tier, thinking: askedLevel })
     });
 
     if (!res.ok) {
@@ -2783,6 +2874,10 @@ async function send(raw) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || ('The server returned status ' + res.status + '.'));
     }
+
+    // Which level actually ran: the server may have lowered it.
+    usedLevel = res.headers.get('X-Susty-Thinking');
+    if (!THINKING_LEVELS.includes(usedLevel)) usedLevel = null;
 
     waiting.remove();
     turnEl = addTurn('assistant', '');
@@ -2862,7 +2957,8 @@ async function send(raw) {
         status: REQUEST_STATUS.FAILED,
         model: responseModel,
         stopReason,
-        thinkTok: thinkingTokens
+        thinkTok: thinkingTokens,
+        level: usedLevel
       });
       requestRecorded = true;
       repaintAccounting(false);
@@ -2886,6 +2982,7 @@ async function send(raw) {
     // pricing, so a silent fallback doesn't leave the dropdown pointing at
     // a tier the reply didn't come from.
     syncTierToAnswer();
+    syncThinkingToAnswer(askedLevel, usedLevel);
     // Priced now, with this attempt's own tokens against the model and grid in
     // effect this instant, then frozen. Incomplete attempts stay in the session
     // numerator but do not enter the completed-exchange denominator.
@@ -2893,7 +2990,8 @@ async function send(raw) {
       status,
       model: responseModel,
       stopReason,
-      thinkTok: thinkingTokens
+      thinkTok: thinkingTokens,
+      level: usedLevel
     });
     requestRecorded = true;
     responseRetained = true;
@@ -2994,10 +3092,28 @@ try {
 $('screen').value = state.screen;
 
 try {
-  const savedTier = localStorage.getItem('susty-tier');
+  let savedTier = localStorage.getItem('susty-tier');
+  let savedThinking = localStorage.getItem('susty-thinking');
+  // Until 2.3.0 extended thinking was its own tier; it is now Opus at Medium.
+  const migrate = savedTier === 'opus-thinking';
+  if (migrate) {
+    savedTier = 'opus';
+    savedThinking = savedThinking || 'medium';
+  }
   if (savedTier && $('tier').querySelector('[value="' + savedTier + '"]')) state.tier = savedTier;
+  if (THINKING_LEVELS.includes(savedThinking)) state.thinking = savedThinking;
+  else if (THINKING_START === 'default') state.thinking = TIER_THINKING[state.tier]?.default || 'least';
+  // Written after the state is set, so a full storage cannot lose the choice.
+  if (migrate) {
+    try {
+      localStorage.setItem('susty-tier', savedTier);
+      localStorage.setItem('susty-thinking', savedThinking);
+    } catch {}
+  }
 } catch {}
 $('tier').value = state.tier;
+$('thinking').value = state.thinking;
+paintThinkingOptions();
 
 // Grid: World average first, then the EU aggregate, countries A–Z.
 const gridSel = $('grid');

@@ -2,7 +2,7 @@
 
 A sustainability chatbot that estimates the operational carbon, and separately the water, of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
-**Version 2.2.0** (25 November 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
+**Version 2.3.0** (25 November 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
 
 No build step, no framework, no dependencies.
 
@@ -106,8 +106,9 @@ The endpoint spends your money, so treat it accordingly.
 |---|---|
 | The bot's personality and rules | `SYSTEM` at the top of `api/chat.js` |
 | Model tiers offered in the ledger | `TIERS` in `api/chat.js` |
+| Thinking levels and their ceilings | `THINKING_LEVELS`, `LEVEL_MAX_TOKENS` and `GEMINI_LEVELS` in `api/chat.js`; the picker's labels (`TIER_THINKING`) and where it starts (`THINKING_START`: `'least'` or `'default'`) in `index.html` |
 | What a fresh visitor's picker starts on | `tier:` in the `state` object in `index.html` |
-| The fallback a request degrades to if a tier is unrecognised, gated, or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
+| The fallback a request degrades to if a tier is unrecognised or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
 | Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-5-5`; the thinking settings follow the model (`minimalThinking()`) |
 | Carbon coefficients | `MODEL` object near the top of the inline script in `index.html` |
 | Model factors | never by hand: edit `data/ecologits-2026-11-19-models.csv` (or add a newer registry extract), update `MODEL_ENERGY` in `index.html`, and `node tools/model-factors.mjs --check` |
@@ -200,7 +201,8 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **Gemini and Opus always think.** Thinking cannot be switched off on
   Gemini 3.5 Flash-Lite, Gemini 4 Hydrogen or Claude Opus 5.5, so every reply
   from them carries some reasoning tokens. They are measured and priced; each
-  runs at the lowest level its provider offers (`minimal`, `low`, effort `low`).
+  runs at the lowest level its provider offers at Least (`minimal`, `low`,
+  effort `low`), and more at Low, Medium or High in the Thinking picker.
 - **Model sizes are estimates.** Neither provider discloses parameter counts;
   the factors use EcoLogits' estimates, and the one for Gemini 4 Hydrogen is
   the least certain (METHODOLOGY §4.4).
@@ -213,12 +215,13 @@ Declared rather than fixed, and all in METHODOLOGY:
   abuse; it is not a quota.
 - **`api/feedback.js` is not wired up.** The client opens a `mailto:` link
   instead, which fails silently where no mail client is configured.
-- **The extended-thinking tier costs real money on your key.** A visitor can
-  pick it and raise an exchange several times over, against a rate limit that
-  resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to drop it from the
-  menu, or `SUSTY_TIERS=off` to collapse every request to the default. The
-  plain Opus tier now thinks a little too (Opus 5.5 cannot switch it off),
-  within a 2,000-token ceiling; the first switch does not drop it, the second
-  does.
+- **More thinking costs real money on your key.** A visitor can pick Medium
+  or High in the Thinking picker and raise an exchange several times over
+  (High on Opus can spend up to 8,000 output tokens, about $0.16), against a
+  rate limit that resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to run
+  Medium and High at Least, or `SUSTY_TIERS=off` to collapse every request to
+  the default tier at Least. Opus thinks a little even at Least (Opus 5.5
+  cannot switch it off), within a 2,000-token ceiling; only the second switch
+  removes it.
 
 The ledger keeps both the normalized functional unit and the cumulative session total visible. Everyday comparisons continue to use the session total, not the per-exchange average.

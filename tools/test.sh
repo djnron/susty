@@ -7,8 +7,9 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 # The checks describe the default deployment. An ANTHROPIC_MODEL exported in
 # the shell (an existing override, say) would change TIERS.sonnet under them,
-# so it is cleared here and set only for the override runs below.
-unset ANTHROPIC_MODEL
+# so it is cleared here and set only for the override runs below. The two
+# switches are cleared for the same reason (an operator may source .env).
+unset ANTHROPIC_MODEL SUSTY_TIERS SUSTY_EXPENSIVE_TIERS
 
 echo "== contrast =========================================================="
 node tools/contrast.mjs

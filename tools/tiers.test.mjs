@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-// Tests the model-tier mapping in api/chat.js by importing the real module,
-// not a copy of its tables.
+// Tests the model-tier and thinking-level mapping in api/chat.js by importing
+// the real module, not a copy of its tables.
 //
-//   node tools/tiers.test.mjs                          # default: all tiers on
-//   SUSTY_EXPENSIVE_TIERS=off node tools/tiers.test.mjs # thinking tier gated
+//   node tools/tiers.test.mjs                          # default: all on
+//   SUSTY_EXPENSIVE_TIERS=off node tools/tiers.test.mjs # medium/high gated
 //   SUSTY_TIERS=off node tools/tiers.test.mjs           # everything collapsed
 //   ANTHROPIC_MODEL=claude-sonnet-4-6 node tools/tiers.test.mjs  # an existing override
 //
 // The flags are read at module load, so each mode needs its own process. All
-// four run from `sh tools/test.sh`.
+// of them run from `sh tools/test.sh`.
 
-import { TIERS, DEFAULT_TIER, TIERS_ENABLED, EXPENSIVE_TIERS_ENABLED, resolveTier, minimalThinking, callAnthropic, LIMITS }
+import { TIERS, DEFAULT_TIER, TIERS_ENABLED, EXPENSIVE_TIERS_ENABLED, resolveTier, minimalThinking, callAnthropic, LIMITS,
+         THINKING_LEVELS, DEFAULT_THINKING, LEVEL_MAX_TOKENS, supportsLevel }
   from "../api/chat.js";
+import { callGoogle } from "../api/providers/google.js";
 
 let fails = 0;
 const check = (label, cond) => {
@@ -85,54 +87,73 @@ if (!process.env.ANTHROPIC_MODEL) {
     ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-2"].every((id) => m(id).thinking?.type !== "disabled"));
 }
 
+check(`levels are least, low, medium, high, starting at ${DEFAULT_THINKING}`,
+  THINKING_LEVELS.join() === "least,low,medium,high" && DEFAULT_THINKING === "least");
+// Which models take a level above least, independent of the environment.
+check("Haiku 4.5 (budget only, rejects effort) and unknown models run only at least",
+  !supportsLevel("anthropic", "claude-haiku-4-5", "low") && !supportsLevel("anthropic", "claude-something-new", "medium"));
+check("every offered Claude model and the 4.6+ models take low/medium/high",
+  ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5", "claude-sonnet-4-6", "claude-opus-4-8", "claude-fable-5-2"]
+    .every((m) => ["low", "medium", "high"].every((lv) => supportsLevel("anthropic", m, lv))));
+
 if (!TIERS_ENABLED) {
-  // Everything collapses, including the cheap tiers.
-  for (const key of Object.keys(TIERS)) {
-    check(`${key} collapses to ${DEFAULT_TIER}`, resolveTier(key).key === DEFAULT_TIER);
+  // Everything collapses, including the cheap tiers and every level.
+  for (const key of [...Object.keys(TIERS), "opus-thinking"]) {
+    for (const lv of THINKING_LEVELS) {
+      const r = resolveTier(key, lv);
+      check(`${key} at ${lv} collapses to ${DEFAULT_TIER} at least`, r.key === DEFAULT_TIER && r.level === "least");
+    }
   }
 } else {
   const h = resolveTier("haiku");
   check("haiku maps to claude-haiku-5-5", h.model === "claude-haiku-5-5");
   // Omitting `thinking` means ON on Haiku 5.5; `disabled` is accepted at
   // effort high or below.
-  check("haiku disables thinking explicitly, at an effort that allows it",
-    h.thinking?.type === "disabled" && ["low", "medium", "high"].includes(h.effort));
+  check("haiku at least disables thinking explicitly, at an effort that allows it",
+    h.level === "least" && h.thinking?.type === "disabled" && ["low", "medium", "high"].includes(h.effort));
   const o = resolveTier("opus");
   check("opus maps to claude-opus-5-5", o.model === "claude-opus-5-5");
   // Opus 5.5 cannot switch thinking off: `disabled` is a 400 at every effort.
-  check("opus sends no thinking field (Opus 5.5 cannot disable it)", o.thinking === undefined);
-  check("opus runs at effort low, the floor", o.effort === "low");
-  check("opus leaves headroom for the thinking it cannot switch off", o.maxTokens > h.maxTokens);
+  check("opus at least sends no thinking field (Opus 5.5 cannot disable it)", o.thinking === undefined);
+  check("opus at least runs at effort low, the floor", o.effort === "low");
+  check("opus at least leaves headroom for the thinking it cannot switch off", o.maxTokens > h.maxTokens);
 
-  const t = resolveTier("opus-thinking");
-  if (EXPENSIVE_TIERS_ENABLED) {
-    check("opus-thinking is available", t.key === "opus-thinking");
-    check("opus-thinking uses adaptive thinking", t.thinking?.type === "adaptive");
-    check("opus-thinking thinks harder than the plain opus tier", t.effort !== "low");
-    // budget_tokens is removed from 4.7 onward and returns a 400.
-    check("opus-thinking sends no budget_tokens", t.thinking?.budget_tokens === undefined);
-    check("opus-thinking sets an effort level", typeof t.effort === "string");
-    // Thinking tokens count against max_tokens, so the standard ceiling would
-    // spend the budget reasoning and truncate the answer.
-    check("opus-thinking raises max_tokens above the default",
-      t.maxTokens > resolveTier(DEFAULT_TIER).maxTokens);
-  } else {
-    check("opus-thinking is gated to the default tier", t.key === DEFAULT_TIER);
-    check("...and carries no adaptive thinking or medium effort",
-      t.thinking?.type !== "adaptive" && t.effort !== "medium" && t.maxTokens < 4000);
+  // The client is never trusted with the level either.
+  for (const bad of ["max", "xhigh", "", null, 42, {}, "__proto__", "constructor", "LEAST"]) {
+    check(`junk level ${JSON.stringify(bad)} runs at least`, resolveTier("opus", bad).level === "least");
   }
+  check("no level asked for runs at least", resolveTier("opus").level === "least");
 
-  // Cheap tiers must stay available when only the expensive one is gated.
-  check("haiku unaffected by the expensive gate", resolveTier("haiku").key === "haiku");
+  // The expensive gate: medium and high cost real money on the deployment's
+  // key; gated, they run at least on the tier asked for.
+  for (const lv of ["medium", "high"]) {
+    const r = resolveTier("opus", lv);
+    if (EXPENSIVE_TIERS_ENABLED) check(`opus at ${lv} runs at ${lv}`, r.key === "opus" && r.level === lv);
+    else check(`opus at ${lv} is gated to opus at least`, r.key === "opus" && r.level === "least" && r.effort === "low");
+  }
+  for (const lv of ["least", "low"]) {
+    check(`haiku at ${lv} is unaffected by the expensive gate`, resolveTier("haiku", lv).level === lv);
+  }
+  // The retired extended-thinking tier is Opus at medium, gated as before.
+  const alias = resolveTier("opus-thinking");
+  if (EXPENSIVE_TIERS_ENABLED) {
+    check("opus-thinking (pre-2.3.0) resolves to opus at medium, adaptive, 4,000",
+      alias.key === "opus" && alias.level === "medium" && alias.thinking?.type === "adaptive" && alias.effort === "medium" && alias.maxTokens === 4000);
+  } else {
+    check("opus-thinking (pre-2.3.0) is gated to opus at least", alias.key === "opus" && alias.level === "least");
+  }
+  // Thinking counts against the ceiling, so it grows with the level.
+  check("ceilings grow with the level: 2,000 / 4,000 / 8,000",
+    LEVEL_MAX_TOKENS.low === 2000 && LEVEL_MAX_TOKENS.medium === 4000 && LEVEL_MAX_TOKENS.high === 8000);
 
   // Google is optional: a Gemini tier must fall back exactly like an
-  // unconfigured expensive tier does, never error, and never reach the
-  // network with no key to send.
+  // unconfigured tier does, never error, and never reach the network with no
+  // key to send.
   delete process.env.GOOGLE_GEMINI_API_KEY;
   check("gemini-flash falls back with no Google key configured",
     resolveTier("gemini-flash").key === DEFAULT_TIER);
   check("gemini-flash-lite falls back with no Google key configured",
-    resolveTier("gemini-flash-lite").key === DEFAULT_TIER);
+    resolveTier("gemini-flash-lite", "high").key === DEFAULT_TIER);
 
   process.env.GOOGLE_GEMINI_API_KEY = "test-key";
   const gf = resolveTier("gemini-flash");
@@ -142,13 +163,14 @@ if (!TIERS_ENABLED) {
   // aistudio.google.com/docs/thinking, checked 2026-11-25: Gemini 4 cannot
   // disable thinking, Hydrogen defaults to "high" and rejects "minimal" with
   // an error, so "low" is its floor.
-  check("gemini-flash sends Hydrogen's floor, low (minimal is an error)", gf.thinkingLevel === "low");
+  check("gemini-flash at least sends Hydrogen's floor, low (minimal is an error)", gf.thinkingLevel === "low");
   check("gemini-flash-lite maps to gemini-3.5-flash-lite",
     resolveTier("gemini-flash-lite").model === "gemini-3.5-flash-lite");
-  // Flash-Lite accepts "minimal", its own default and the lowest it offers
-  // (aistudio.google.com/docs/thinking, checked 2026-11-25).
-  check("gemini-flash-lite thinks at minimal, its floor",
+  // Flash-Lite accepts "minimal", its own default and the lowest it offers.
+  check("gemini-flash-lite at least thinks at minimal, its floor",
     resolveTier("gemini-flash-lite").thinkingLevel === "minimal");
+  check("no level ever sends minimal to Hydrogen",
+    THINKING_LEVELS.every((lv) => resolveTier("gemini-flash", lv).thinkingLevel !== "minimal"));
   // Gemini counts thinking against maxOutputTokens, so the cap leaves room
   // for it beyond the standard reply ceiling rather than being left off.
   for (const k of ["gemini-flash", "gemini-flash-lite"]) {
@@ -160,30 +182,57 @@ if (!TIERS_ENABLED) {
   // Anthropic tiers must be unaffected by Google's key either way.
   check("haiku still resolves with Google configured", resolveTier("haiku").key === "haiku");
   delete process.env.GOOGLE_GEMINI_API_KEY;
+
+  if (process.env.ANTHROPIC_MODEL) {
+    const m = process.env.ANTHROPIC_MODEL;
+    const r = resolveTier("sonnet", "low");
+    const want = { "claude-sonnet-4-6": "low", "claude-opus-5-5": "low", "claude-haiku-4-5": "least" }[m];
+    if (want) check(`ANTHROPIC_MODEL=${m}: low runs at ${want}`, r.level === want);
+  }
 }
 
-// The JSON callAnthropic actually sends, per tier, in the default deployment.
-// Literal expectations, not derived from minimalThinking(): a request the API
-// rejects would otherwise ship silently.
+// The JSON each tier actually sends at each level, in the default deployment.
+// Literal expectations, not derived from the code under test: a request the
+// API rejects would otherwise ship silently.
 if (TIERS_ENABLED && EXPENSIVE_TIERS_ENABLED && !process.env.ANTHROPIC_MODEL) {
-  const want = {
-    haiku:           { model: "claude-haiku-5-5",  max_tokens: 1000, thinking: { type: "disabled" },      effort: "low" },
-    sonnet:          { model: "claude-sonnet-5-5", max_tokens: 1000, thinking: { type: "between_tools" }, effort: "low" },
-    opus:            { model: "claude-opus-5-5",   max_tokens: 2000, thinking: undefined,                 effort: "low" },
-    "opus-thinking": { model: "claude-opus-5-5",   max_tokens: 4000, thinking: { type: "adaptive" },      effort: "medium" },
+  const adaptive = { type: "adaptive" };
+  const claude = {
+    haiku: { model: "claude-haiku-5-5", least: [1000, { type: "disabled" }, "low"] },
+    sonnet: { model: "claude-sonnet-5-5", least: [1000, { type: "between_tools" }, "low"] },
+    opus: { model: "claude-opus-5-5", least: [2000, undefined, "low"] },
   };
+  const above = { low: [2000, adaptive, "low"], medium: [4000, adaptive, "medium"], high: [8000, adaptive, "high"] };
   const realFetch = globalThis.fetch;
   try {
-    for (const [key, w] of Object.entries(want)) {
-      let body;
-      globalThis.fetch = async (url, init) => { body = JSON.parse(init.body); return { ok: true }; };
-      await callAnthropic([{ role: "user", content: "hi" }], key);
-      check(`${key} sends ${w.model}, max_tokens ${w.max_tokens}, thinking ${JSON.stringify(w.thinking) ?? "omitted"}, effort ${w.effort}`,
-        body.model === w.model && body.max_tokens === w.max_tokens &&
-        JSON.stringify(body.thinking) === JSON.stringify(w.thinking) &&
-        body.output_config?.effort === w.effort && Object.keys(body.output_config).length === 1 &&
-        !("temperature" in body) && body.thinking?.budget_tokens === undefined);
+    for (const [key, w] of Object.entries(claude)) {
+      for (const [lv, [max, thinking, effort]] of Object.entries({ least: w.least, ...above })) {
+        let body;
+        globalThis.fetch = async (url, init) => { body = JSON.parse(init.body); return { ok: true }; };
+        await callAnthropic([{ role: "user", content: "hi" }], resolveTier(key, lv));
+        check(`${key} at ${lv} sends ${w.model}, max_tokens ${max}, thinking ${JSON.stringify(thinking) ?? "omitted"}, effort ${effort}`,
+          body.model === w.model && body.max_tokens === max &&
+          JSON.stringify(body.thinking) === JSON.stringify(thinking) &&
+          body.output_config?.effort === effort && Object.keys(body.output_config).length === 1 &&
+          !("temperature" in body) && body.thinking?.budget_tokens === undefined);
+      }
     }
+    process.env.GOOGLE_GEMINI_API_KEY = "test-key";
+    const gemini = {
+      "gemini-flash-lite": { model: "gemini-3.5-flash-lite", least: [2000, "minimal"], low: [2000, "low"], medium: [4000, "medium"], high: [8000, "high"] },
+      "gemini-flash":      { model: "gemini-4-hydrogen",     least: [2000, "low"],     low: [2000, "low"], medium: [4000, "medium"], high: [8000, "high"] },
+    };
+    for (const [key, w] of Object.entries(gemini)) {
+      for (const lv of THINKING_LEVELS) {
+        let url, body;
+        globalThis.fetch = async (u, init) => { url = u; body = JSON.parse(init.body); return { ok: true }; };
+        await callGoogle([{ role: "user", content: "hi" }], resolveTier(key, lv), "system");
+        const [max, level] = w[lv];
+        check(`${key} at ${lv} sends ${w.model}, maxOutputTokens ${max}, thinkingLevel ${level}`,
+          url.includes(`/models/${w.model}:streamGenerateContent`) && body.generationConfig.maxOutputTokens === max &&
+          body.generationConfig.thinkingConfig.thinkingLevel === level);
+      }
+    }
+    delete process.env.GOOGLE_GEMINI_API_KEY;
   } finally {
     globalThis.fetch = realFetch;
   }

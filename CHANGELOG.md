@@ -7,6 +7,46 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.3.0 — 25 November 2026
+
+A minor version: a new choice for the reader. The boundary, the functional
+unit, the formula and every coefficient are unchanged.
+
+### What the ledger shows
+
+- **A Thinking picker** beside "Answer with": Least, Low, Medium, High. Least
+  is what every tier but the extended-thinking one sent in 2.2 (thinking off where the model allows it,
+  the lowest level where it doesn't). Low to High send adaptive thinking at
+  that effort on Claude, and that thinking level on Gemini. Each option says
+  which level is the model's own default (Opus 5.5 Medium, Sonnet 5.5 High,
+  Haiku 5.5 Medium, Gemini 4 Hydrogen High, Gemini 3.5 Flash-Lite Least).
+- **It starts at Least.** `THINKING_START` in `index.html` switches it to
+  start on each model's default instead, moving with the model.
+- **The level is recorded.** The server reports which level ran
+  (`X-Susty-Thinking`); the picker follows it if the server lowered it, each
+  request record freezes it, the ledger shows it with the model ("opus-5-5
+  ×1.34, thinking medium"), and the CSV export has a `thinking_level` column.
+- **The comparison note states the answer's own thinking,** measured, in
+  tokens and grams from its frozen record, instead of only saying thinking is
+  left out.
+
+### Costs on your key
+
+- Ceilings of 2,000, 4,000 and 8,000 output tokens at Low, Medium and High,
+  because thinking counts against them. The worst case on the default
+  models, High on Opus, is about $0.16 a reply in output alone, double 2.2's
+  $0.08, and every tier can now reach 8,000 tokens. Set
+  `SUSTY_EXPENSIVE_TIERS=off` before going public if that is too much.
+- `SUSTY_EXPENSIVE_TIERS=off` now runs Medium and High at Least. The separate
+  "Opus 5.5, extended thinking" option is gone: it is Opus at Medium, and a
+  saved choice of it becomes exactly that.
+
+### Methodology
+
+- §4.5 rewritten around the two pickers, with a table of what each level sends
+  to each model; §4.6 ceilings; §4.9 the comparison note; §8 and §8.1 the
+  recorded level; §14 the thinking controls checked for each model.
+
 ## 2.2.0 — 25 November 2026
 
 A minor version: models, factors and sources change; the system boundary,
