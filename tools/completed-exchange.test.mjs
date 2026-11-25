@@ -306,7 +306,7 @@ console.log('\nThe latest answer on other models');
   });
   check('least reads "at the least thinking", and no thinking says so', () => {
     assert.match(noteCtx.note({ ...opusRec, level: 'least' }), /on Opus 5\.5 at the least thinking\./);
-    assert.match(noteCtx.note({ ...opusRec, thinkTok: 0 }), /level; this answer had none\./);
+    assert.match(noteCtx.note({ ...opusRec, thinkTok: 0 }), /level; none was reported for this answer\./);
     assert.match(noteCtx.note({ ...opusRec, level: null }), /on Opus 5\.5\. Hosting/);
   });
   check('the note reads no current constants', () => {

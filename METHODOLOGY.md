@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.3.0, released 25 November 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Version:** 2.3.1, released 25 November 2026 (see [CHANGELOG.md](CHANGELOG.md))
 **Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-25-november-2026-230)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 25 November 2026
 **Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026; models and sources added in 2.2.0 and the thinking levels added in 2.3.0 checked on 25 November 2026 (see [§14 Verification log](#14-verification-log))
@@ -230,6 +230,7 @@ Thinking/reasoning tokens are **measured**, not inferred:
 
 - Anthropic reports `usage.output_tokens_details.thinking_tokens`, a subset of `output_tokens`, on the final `message_delta`. They are already billed at the output rate; the ledger shows them separately for transparency. On Opus 5.5 thinking cannot be switched off and its text is omitted from the response by default; the tokens are still reported and billed, so they are still priced.
 - Gemini's `candidatesTokenCount` **excludes** `thoughtsTokenCount` (Google documents the total as prompt + thoughts + candidates). The adapter sums the two before passing them on, so both providers reach the browser with the same inclusive relationship. Sending `candidatesTokenCount` alone had silently priced Gemini's reasoning at zero.
+- **Prompt caching.** Anthropic's `input_tokens` excludes cached tokens, which it reports as `cache_creation_input_tokens` and `cache_read_input_tokens`. Susty sends no `cache_control`, so both are zero, but the client adds them into the input count so that switching caching on would not silently drop the conversation history from the estimate. Cached tokens are priced as ordinary input, which errs high: a cache read skips most of the prefill work. Gemini's `promptTokenCount` already includes its implicitly cached tokens.
 
 ### 4.2 The estimate fallback
 
@@ -238,7 +239,13 @@ When usage is missing, tokens are estimated at **4 characters per token**, with 
 - The estimate runs **before** the reply is appended to history, so the model's own output is not counted as part of the request that produced it.
 - A constant **275 tokens** is added for the system prompt, which is billed as input on every turn but never appears in the client's history. (Measured against a live request on Sonnet 4.6: a 13-token question reported 278 input tokens.) Not re-measured for the 5.5 models: Haiku 5.5 and Sonnet 5.5 use a newer tokenizer that counts the same text as about 30% more tokens, so on them the allowance likely errs low.
 
-The fallback ignores the server's 40-message and 4,000-character truncation, so it over-counts on long conversations. It is a fallback; the measured path is the normal one. The ledger does not currently mark a turn whose tokens were estimated — a known gap.
+The fallback errs in both directions, and the low side has grown since 2.3.0:
+
+- **Thinking is not in it.** The output estimate counts only the visible reply, because thinking text is not shown or is omitted. If a stream breaks before its final usage event, the record misses all of that answer's thinking: up to the level's ceiling (§4.6), 8,000 tokens at High. Opus 5.5 and Gemini always think, so for them this is never zero. At Least on a model that can switch thinking off, it is.
+- **The 4 characters per token** was set for the older tokenizer. Haiku 5.5 and Sonnet 5.5 count about 30% more tokens for the same text (§4.3), so on them both estimates run low by about that much.
+- **It over-counts on long conversations,** because it ignores the server's 40-message and 4,000-character truncation.
+
+It is a fallback; the measured path is the normal one, and it is needed only when a stream breaks before the provider reports usage. Such a turn is already marked incomplete or failed, but the ledger does not say its tokens were estimated, a known gap.
 
 ### 4.3 Energy-per-token coefficients
 

@@ -1655,7 +1655,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.3.0';
+const METHODOLOGY_VERSION = '2.3.1';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1907,7 +1907,7 @@ function compareNoteText(r) {
   const level = r.level === 'least' ? ' at the least thinking' : r.level ? ' at ' + r.level + ' thinking' : '';
   const thinking = r.thinkTok > 0
     ? 'on this answer it was ' + r.thinkTok.toLocaleString() + ' tokens (' + fmt(thinkingGrams(r), 3) + ' g) on ' + modelLabel(r.model) + level
-    : 'this answer had none';
+    : 'none was reported for this answer';
   return "Hypothetical: this answer's visible tokens priced on each model. Thinking is left out because it varies by model and level; " +
     thinking + '. Hosting and your device are left out too. The real gap between small and large models is probably bigger. Says nothing about answer quality.';
 }
@@ -2898,7 +2898,15 @@ async function send(raw) {
           paintReply();
         } else if (evt.type === 'message_start' && evt.message) {
           if (evt.message.usage) {
-            inputTokens = evt.message.usage.input_tokens ?? inputTokens;
+            // input_tokens excludes any prompt-cache tokens. Susty sends no
+            // cache_control today, so these are zero, but if caching is ever
+            // switched on the history would silently drop out of the count.
+            // Cached tokens are priced as ordinary input, which errs high
+            // (a cache read skips most of the prefill work). METHODOLOGY 4.1.
+            const u = evt.message.usage;
+            if (u.input_tokens != null) {
+              inputTokens = u.input_tokens + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+            }
           }
           // Taken from the response, not assumed from config: ANTHROPIC_MODEL
           // can differ between environments and the client cannot see it.

@@ -7,6 +7,14 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.3.1 — 25 November 2026
+
+A patch: an accounting review of 2.3.0. No coefficient, factor or worked-example figure changed; every row was recomputed by hand and matches.
+
+- **Prompt-cache tokens are counted as input.** Anthropic's `input_tokens` leaves out cached tokens. Susty uses no caching, so nothing changes today, but turning caching on would have quietly dropped the conversation history from the estimate. They are priced as ordinary input, which errs high (METHODOLOGY §4.1).
+- **The comparison note no longer says "this answer had none"** when no thinking count arrived. It says none was reported, because a missing count is not proof of zero thinking.
+- **§4.2 states the fallback's limits.** When a stream breaks before usage arrives, the estimate leaves out thinking, up to 8,000 tokens at High, and its 4 characters per token runs about 30% low on the 5.5 tokenizer.
+
 ## 2.3.0 — 25 November 2026
 
 A minor version: a new choice for the reader. The boundary, the functional
