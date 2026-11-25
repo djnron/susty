@@ -1065,23 +1065,23 @@ textarea, input { caret-color: var(--ink); }
     <div class="pick">
       <label for="tier">Answer with</label>
       <select id="tier">
-        <option value="haiku">Haiku 5.5, two-thirds the energy</option>
-        <option value="sonnet">Sonnet 5.5</option>
-        <option value="opus">Opus 5.5, 1.7×, always thinks</option>
-        <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite (default)</option>
-        <option value="gemini-flash">Gemini 4 Hydrogen</option>
+        <option value="opus" selected>Claude Opus 5.5 (default)</option>
+        <option value="sonnet">Sonnet 5.5, 41% less than Opus</option>
+        <option value="haiku">Haiku 5.5, 61% less than Opus</option>
+        <option value="gemini-flash">Gemini Hydrogen, 51% less than Opus</option>
+        <option value="gemini-flash-lite">Gemini Flash-Lite, 37% less than Opus</option>
       </select>
     </div>
     <div class="pick">
       <label for="thinking">Thinking</label>
       <select id="thinking">
-        <option value="least" selected>Least</option>
+        <option value="least">Least</option>
         <option value="low">Low</option>
-        <option value="medium">Medium</option>
+        <option value="medium" selected>Medium</option>
         <option value="high">High</option>
       </select>
     </div>
-    <p class="note" id="thinkingNote">More thinking can make an answer cost several times more: Low, Medium and High allow up to 2,000, 4,000 and 8,000 tokens. Every thinking token is counted in the total.</p>
+    <p class="note" id="thinkingNote">The model comparisons are energy per token, before thinking. Each model starts on its own default thinking level. More thinking can make an answer cost several times more: Low, Medium and High allow up to 2,000, 4,000 and 8,000 tokens. Every thinking token is counted in the total.</p>
     <div class="pick">
       <label for="screen">Reading this on</label>
       <select id="screen">
@@ -1655,7 +1655,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.3.1';
+const METHODOLOGY_VERSION = '2.4.0';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1666,8 +1666,8 @@ const state = {
   inTokens: 0, outTokens: 0, history: [], busy: false,
   screen: 'lcdLaptop',
   model: 'claude-sonnet-5-5',   // replaced by whatever message_start reports
-  tier: 'gemini-flash-lite',    // what we asked for; the server may override
-  thinking: 'least',            // the thinking level asked for (THINKING_LEVELS)
+  tier: 'opus',                 // what we asked for; the server may override
+  thinking: 'medium',           // the thinking level asked for (THINKING_LEVELS)
   thinkTokens: 0,               // measured subset of outTokens
   freshChatNudged: false,       // the long-chat notice shows once per session
   grid: 'world', gridGuessed: false, region: '', live: null,
@@ -2650,11 +2650,12 @@ const TIER_THINKING = {
   'gemini-flash-lite': { least: 'minimal',           default: 'least' },
   'gemini-flash':      { least: 'low',               default: 'high' }
 };
-// Where the picker starts for a visitor with no saved choice. 'least' keeps
-// the meter's argument: the picker lets a reader spend more carbon, and says
-// so, but does not start them there. 'default' starts each model on its
-// provider's default level and moves with the model when the model changes.
-const THINKING_START = 'least';
+// Where the picker sits for a visitor with no saved level, and what happens
+// when the model changes. 'default' (since 2.4.0) starts each model on its
+// provider's default level and moves with the model: a new visitor gets Opus
+// 5.5 at Medium, its own default. 'least' starts every model at Least and
+// leaves the level alone when the model changes.
+const THINKING_START = 'default';
 
 function thinkingLabel(tier, level) {
   const t = TIER_THINKING[tier] || {};

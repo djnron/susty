@@ -93,8 +93,8 @@ check('history, length, rate limits match api/chat.js', () => {
 });
 const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 check('the tier table matches the models and factors', () => {
-  const rows = [['Haiku 5.5', 'haiku', ''], ['Sonnet 5.5', 'sonnet', ' (overridable via `ANTHROPIC_MODEL`)'], ['Opus 5.5', 'opus', ''],
-                ['**Gemini 3.5 Flash-Lite** (client default)', 'gemini-flash-lite', ''], ['Gemini 4 Hydrogen', 'gemini-flash', '']];
+  const rows = [['Haiku 5.5', 'haiku', ''], ['Sonnet 5.5', 'sonnet', ' (overridable via `ANTHROPIC_MODEL`)'], ['**Opus 5.5** (client default)', 'opus', ''],
+                ['Gemini 3.5 Flash-Lite', 'gemini-flash-lite', ''], ['Gemini 4 Hydrogen', 'gemini-flash', '']];
   for (const [label, key, note] of rows) {
     const m = TIERS[key].model;
     has(new RegExp('^' + reEsc(`| ${label} | \`${m}\`${note} | ×${MODEL_ENERGY[m].factor.toFixed(2)} |`) + '$', 'm'), `tier row ${key}`);
@@ -103,7 +103,7 @@ check('the tier table matches the models and factors', () => {
 check('the thinking-level table is exactly what the server sends and the picker labels', () => {
   const TIER_THINKING = objectLiteral(html, 'TIER_THINKING');
   const cols = ['haiku', 'sonnet', 'opus', 'gemini-flash-lite', 'gemini-flash'];
-  const names = { least: '**Least** (where the picker starts)', low: 'Low', medium: 'Medium', high: 'High' };
+  const names = { least: 'Least', low: 'Low', medium: 'Medium', high: 'High' };
   process.env.GOOGLE_GEMINI_API_KEY = 'doc-check';
   try {
     const opusLeast = resolveTier('opus', 'least').maxTokens;
@@ -127,10 +127,10 @@ check('the thinking-level table is exactly what the server sends and the picker 
     delete process.env.GOOGLE_GEMINI_API_KEY;
   }
 });
-check('the picker offers the levels the server accepts, starting at least', () => {
+check("the picker offers the levels the server accepts, starting on the model's default", () => {
   assert.deepEqual(Function(`return ${html.match(/const THINKING_LEVELS = (\[[^\]]+\]);/)[1]}`)(), THINKING_LEVELS);
-  assert.match(html, /const THINKING_START = 'least';/);
-  has(/\*\*Where the picker starts: Least\.\*\*/);
+  assert.match(html, /const THINKING_START = 'default';/);
+  has(/\*\*Where the picker starts: Opus 5\.5 at Medium\.\*\*/);
 });
 check('ceilings and switches in 4.6 and 4.5 match api/chat.js', () => {
   const [lo, md, hi] = ['low', 'medium', 'high'].map((l) => LEVEL_MAX_TOKENS[l].toLocaleString('en-US'));
@@ -140,26 +140,38 @@ check('ceilings and switches in 4.6 and 4.5 match api/chat.js', () => {
   delete process.env.GOOGLE_GEMINI_API_KEY;
   has(new RegExp(reEsc(`**${g} output tokens** per Gemini reply at Least and Low, ${md} at Medium and ${hi} at High`)));
   has(/\| `SUSTY_EXPENSIVE_TIERS=off` \| Medium and High run at Least; every tier and the other levels stay \|/);
-  has(/\| `SUSTY_TIERS=off` \| Collapses every request to the default tier at Least \|/);
+  has(/\| `SUSTY_TIERS=off` \| Collapses every request to the server's fallback tier \(Sonnet 5\.5\) at Least \|/);
 });
 check('the client expects each tier to answer with that tier\'s model', () => {
   const EXPECTED_MODEL = objectLiteral(html, 'EXPECTED_MODEL');
   for (const [key, tier] of Object.entries(TIERS)) assert.equal(EXPECTED_MODEL[key], tier.model, key);
 });
-check('picker labels quote the factor ratios against the Sonnet tier', () => {
-  const sonnet = MODEL_ENERGY[TIERS.sonnet.model].factor;
-  const haiku = MODEL_ENERGY[TIERS.haiku.model].factor / sonnet;
-  const opus = MODEL_ENERGY[TIERS.opus.model].factor / sonnet;
-  assert.match(html, /<option value="haiku">Haiku 5\.5, two-thirds the energy<\/option>/);
-  assert.ok(haiku > 0.62 && haiku < 0.71, `Haiku/Sonnet is ${haiku.toFixed(3)}, not about two-thirds`);
-  assert.match(html, /<option value="opus">Opus 5\.5, 1\.7×, always thinks<\/option>/);
-  assert.equal(opus.toFixed(1), '1.7');
-  has(new RegExp(`Haiku 5\\.5 is about two-thirds of it \\(${MODEL_ENERGY[TIERS.haiku.model].factor} / ${sonnet}\\), Opus 5\\.5 about 1\\.7 times \\(${MODEL_ENERGY[TIERS.opus.model].factor} / ${sonnet}\\)`));
+check('picker lists Opus first and labels every other tier against it', () => {
+  const opus = MODEL_ENERGY[TIERS.opus.model].factor;
+  const sel = html.slice(html.indexOf('<select id="tier">'), html.indexOf('</select>', html.indexOf('<select id="tier">')));
+  const opts = [...sel.matchAll(/<option value="([\w-]+)"( selected)?>([^<]+)<\/option>/g)];
+  assert.deepEqual(opts.map((m) => m[1]), ['opus', 'sonnet', 'haiku', 'gemini-flash', 'gemini-flash-lite']);
+  assert.equal(opts[0][2], ' selected');
+  assert.equal(opts[0][3], 'Claude Opus 5.5 (default)');
+  // Picker label, then the name the methodology uses. The Gemini labels drop
+  // the version so the selected option fits a phone (about 35 characters).
+  const names = { sonnet: ['Sonnet 5.5', 'Sonnet 5.5'], haiku: ['Haiku 5.5', 'Haiku 5.5'],
+    'gemini-flash': ['Gemini Hydrogen', 'Gemini 4 Hydrogen'], 'gemini-flash-lite': ['Gemini Flash-Lite', 'Gemini 3.5 Flash-Lite'] };
+  for (const m of opts.slice(1)) {
+    const f = MODEL_ENERGY[TIERS[m[1]].model].factor;
+    const pct = Math.round((1 - f / opus) * 100);
+    assert.equal(m[3], `${names[m[1]][0]}, ${pct}% less than Opus`, m[1]);
+    assert.ok(m[3].length <= 37, `${m[3]} is too long for a phone`);
+    has(new RegExp(reEsc(`${names[m[1]][1]} ${pct}% less (${f} / ${opus})`)), `methodology ratio for ${m[1]}`);
+  }
 });
 check('client default tier is documented', () => {
   const tier = html.match(/tier: '([\w-]+)',\s+\/\/ what we asked for/)[1];
-  assert.equal(tier, 'gemini-flash-lite');
-  assert.match(html, /<option value="gemini-flash-lite" selected>Gemini 3\.5 Flash-Lite \(default\)<\/option>/);
+  assert.equal(tier, 'opus');
+  const thinking = html.match(/thinking: '(\w+)',\s+\/\/ the thinking level asked for/)[1];
+  assert.equal(thinking, 'medium');
+  assert.match(html, /<option value="medium" selected>Medium<\/option>/);
+  assert.equal(objectLiteral(html, 'TIER_THINKING').opus.default, thinking, "Medium is Opus 5.5's own default");
 });
 
 console.log('\nModel factors');

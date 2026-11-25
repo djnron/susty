@@ -342,8 +342,8 @@ console.log('\nThinking picker');
   check('labels fit a phone (33 characters)', () => {
     for (const t of Object.keys(pickCtx.T)) for (const l of pickCtx.L) assert.ok(pickCtx.label(t, l).length <= 33, pickCtx.label(t, l));
   });
-  check('the picker starts at least, and a saved opus-thinking becomes opus at medium', () => {
-    assert.match(html, /const THINKING_START = 'least';/);
+  check("the picker starts on the model's default, and a saved opus-thinking becomes opus at medium", () => {
+    assert.match(html, /const THINKING_START = 'default';/);
     assert.match(html, /const migrate = savedTier === 'opus-thinking';\s+if \(migrate\) \{\s+savedTier = 'opus';\s+savedThinking = savedThinking \|\| 'medium';/);
     // State is set before the migration is written back, so full storage cannot lose it.
     const init = html.slice(html.indexOf("const migrate = savedTier === 'opus-thinking';"));

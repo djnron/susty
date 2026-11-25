@@ -2,7 +2,8 @@
 
 **Status:** the research behind Susty 2.2.0, 25 November 2026, on branch
 `update/2026-11-models`. Since 2.3.0 the separate extended-thinking tier
-below is a Thinking picker level (Opus at Medium); see METHODOLOGY §4.5. Every number here is also in
+below is a Thinking picker level (Opus at Medium); see METHODOLOGY §4.5. Since 2.4.0 Opus 5.5 at Medium is also the default, and the picker
+labels every other model by how much less energy per token it uses than Opus. Every number here is also in
 [METHODOLOGY.md](METHODOLOGY.md), where the tests check it against the code;
 if the two ever disagree, METHODOLOGY wins. `sh tools/test.sh` passes. The
 app has not been tried against the live APIs: no keys were available.
@@ -17,7 +18,7 @@ app has not been tried against the live APIs: no keys were available.
 | `sonnet` (server fallback) | `claude-sonnet-4-6` | [`claude-sonnet-5-5`](https://platform.claude.com/docs/en/models/sonnet-5-5/overview) | 1.00 → **0.79** | `between_tools`, effort `low` |
 | `opus` | `claude-opus-4-8` | [`claude-opus-5-5`](https://platform.claude.com/docs/en/models/opus-5-5/overview) | 1.33 → **1.34** | none sent (cannot be disabled), effort `low`, 2,000-token ceiling |
 | `opus-thinking` | `claude-opus-4-8`, effort `low` | `claude-opus-5-5` | 1.33 → **1.34** | adaptive, effort `medium`, 4,000-token ceiling |
-| `gemini-flash-lite` (client default) | `gemini-3.5-flash-lite` | **unchanged** | 0.85 | level `minimal` |
+| `gemini-flash-lite` (client default until 2.4.0, now Opus 5.5 at Medium) | `gemini-3.5-flash-lite` | **unchanged** | 0.85 | level `minimal` |
 | `gemini-flash` | `gemini-3.8-flash` | [`gemini-4-hydrogen`](https://deepmind.google/models/model-cards/gemini-4-hydrogen/) | 1.36 → **0.66** | level `low` (it rejects `minimal`) |
 
 Factors are against the **Sonnet 4.6 anchor**, which stays the reference for
@@ -65,8 +66,9 @@ names Gemini 4 Hydrogen (GA 12 November 2026) as the upgrade from
 but has no model id. Neither tier can switch thinking off
 ([thinking docs](https://aistudio.google.com/docs/thinking)).
 
-**Why Flash-Lite stays the default** even though Hydrogen's per-token factor
-is lower:
+**Why Flash-Lite stayed the default until 2.4.0** even though Hydrogen's
+per-token factor is lower. Since 2.4.0 the default is Claude Opus 5.5 at
+Medium, the owner's choice; see METHODOLOGY §4.5. The reasons it held until then:
 
 - It is the only Gemini tier that can think at `minimal`.
 - EcoLogits' full model, which counts the GPUs needed to hold the weights,

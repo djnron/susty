@@ -7,6 +7,27 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.4.0 — 25 November 2026
+
+A minor version: a new default. The formula and every coefficient are unchanged.
+
+- **New visitors start on Claude Opus 5.5 at Medium,** Opus 5.5's own
+  default level. Until now they started on Gemini 3.5 Flash-Lite at Least.
+  This is the most energy-intensive starting point the pickers offer. The
+  ledger prices it like any other choice (METHODOLOGY §4.5).
+- **The Thinking picker follows the model** (`THINKING_START = 'default'`).
+  Switching model moves it to that model's default; a level you pick is saved.
+- **The model picker is ordered and labelled against Opus:** Claude Opus 5.5
+  (default), then Sonnet 5.5, Haiku 5.5, Gemini Hydrogen and Gemini Flash-Lite,
+  each with how much less energy per token it uses than Opus (41%, 61%, 51%,
+  37% less). A note under the pickers says these are per token, before
+  thinking: a model's default level can outweigh the difference (Hydrogen
+  starts at High).
+- **Unchanged:** the server's fallback (Sonnet at Least), the
+  `SUSTY_EXPENSIVE_TIERS` gate (with it off, the default runs Opus at Least),
+  and saved choices. Location is recorded as before: each block of device time
+  keeps the reader's grid zone, region and g/kWh.
+
 ## 2.3.1 — 25 November 2026
 
 A patch: an accounting review of 2.3.0. No coefficient, factor or worked-example figure changed; every row was recomputed by hand and matches.

@@ -1,7 +1,7 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.3.1, released 25 November 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Version:** 2.4.0, released 25 November 2026 (see [CHANGELOG.md](CHANGELOG.md))
 **Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-25-november-2026-230)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
 **Date:** 25 November 2026
 **Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026; models and sources added in 2.2.0 and the thinking levels added in 2.3.0 checked on 25 November 2026 (see [§14 Verification log](#14-verification-log))
@@ -11,6 +11,15 @@ Susty estimates the **operational carbon footprint of an AI conversation**. It c
 This is an **operational estimate, not a full life-cycle assessment**. Training and embodied hardware emissions are excluded. Every material input is identified as measured, derived, inferred/declared, or modeled. Where a number is a guess, this document says so and, where known, which direction it errs. The product's argument depends on the arithmetic being checkable, so the uncomfortable parts are written down rather than rounded away.
 
 ---
+
+## Decisions taken on 25 November 2026 (2.4.0)
+
+For 2.4.0. The boundary, the functional unit, the formula and every coefficient are unchanged; what changes is where a new visitor starts.
+
+1. **The client default is Claude Opus 5.5 at Medium**, Opus 5.5's own default level, replacing Gemini 3.5 Flash-Lite at Least (§4.5). This was the owner's choice. It is the most energy-intensive starting point the pickers offer: ×1.34, against ×0.85 for Flash-Lite, plus up to 4,000 output tokens of thinking. The ledger prices it the same way as any other choice.
+2. **The Thinking picker follows each model's default** (`THINKING_START = 'default'`). Switching model moves it to that model's default: Haiku 5.5 Medium, Sonnet 5.5 High, Flash-Lite Least, Hydrogen High. A level the reader saves is kept.
+3. **Unchanged:** the server's fallback tier (Sonnet at Least, for an unknown or unconfigured tier) and the `SUSTY_EXPENSIVE_TIERS` gate. With the gate off, the default runs Opus at Least, and the picker shows that.
+4. **Unchanged: what is recorded about location.** Device time is still kept as segments that record the reader's grid zone, region and g/kWh (§8.1). Requests still record the servers' grid (§6.9).
 
 ## Decisions taken on 25 November 2026 (2.3.0)
 
@@ -345,15 +354,15 @@ The ledger has two pickers: the model ("Answer with", five tiers across two prov
 |---|---|---|
 | Haiku 5.5 | `claude-haiku-5-5` | ×0.52 |
 | Sonnet 5.5 | `claude-sonnet-5-5` (overridable via `ANTHROPIC_MODEL`) | ×0.79 |
-| Opus 5.5 | `claude-opus-5-5` | ×1.34 |
-| **Gemini 3.5 Flash-Lite** (client default) | `gemini-3.5-flash-lite` | ×0.85 |
+| **Opus 5.5** (client default) | `claude-opus-5-5` | ×1.34 |
+| Gemini 3.5 Flash-Lite | `gemini-3.5-flash-lite` | ×0.85 |
 | Gemini 4 Hydrogen | `gemini-4-hydrogen` | ×0.66 |
 
 What each thinking level sends. ★ marks each model's own default, which the picker labels "model default":
 
 | Level | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 | Gemini 3.5 Flash-Lite | Gemini 4 Hydrogen | Output ceiling |
 |---|---|---|---|---|---|---|
-| **Least** (where the picker starts) | off (`disabled`), effort `low` | off (`between_tools`), effort `low` | cannot be disabled; effort `low` | `minimal` ★ | `low` | 1,000 tokens; 2,000 for Opus and Gemini |
+| Least | off (`disabled`), effort `low` | off (`between_tools`), effort `low` | cannot be disabled; effort `low` | `minimal` ★ | `low` | 1,000 tokens; 2,000 for Opus and Gemini |
 | Low | adaptive, effort `low` | adaptive, effort `low` | adaptive, effort `low` | `low` | `low` | 2,000 tokens |
 | Medium | adaptive, effort `medium` ★ | adaptive, effort `medium` | adaptive, effort `medium` ★ | `medium` | `medium` | 4,000 tokens |
 | High | adaptive, effort `high` | adaptive, effort `high` ★ | adaptive, effort `high` | `high` | `high` ★ | 8,000 tokens |
@@ -364,19 +373,19 @@ What each thinking level sends. ★ marks each model's own default, which the pi
 - Sonnet 5.5 rejects `disabled` with a 400; its off-mode is `{type: "between_tools"}`, at effort `high` or below, and no other model accepts it.
 - Opus 5.5 cannot switch thinking off at any effort: `disabled` and `budget_tokens` are both a 400. Effort is the only control, and `low` is the floor, so Opus thinks a little even at Least, and its ceiling there is twice the standard one so that thinking cannot crowd out the answer.
 
-The Least setting is chosen from the model id (`minimalThinking()` in `api/chat.js`), not the tier, because `ANTHROPIC_MODEL` can point the default tier at any model and one model's off-switch is a 400 on another; a deployment that still sets `claude-sonnet-4-6`, as `.env.example` once suggested, sends neither field, which on 4.x means no thinking. Least also sends effort `low`, which Anthropic suggests for chat and which spends fewer tokens. Gemini cannot switch thinking off either: Least is each model's lowest level, `minimal` for Flash-Lite (also Google's default for it) and `low` for Hydrogen, which defaults to `high` and rejects `minimal` with an error.
+The Least setting is chosen from the model id (`minimalThinking()` in `api/chat.js`), not the tier, because `ANTHROPIC_MODEL` can point the Sonnet tier (the server's fallback) at any model and one model's off-switch is a 400 on another; a deployment that still sets `claude-sonnet-4-6`, as `.env.example` once suggested, sends neither field, which on 4.x means no thinking. Least also sends effort `low`, which Anthropic suggests for chat and which spends fewer tokens. Gemini cannot switch thinking off either: Least is each model's lowest level, `minimal` for Flash-Lite (also Google's default for it) and `low` for Hydrogen, which defaults to `high` and rejects `minimal` with an error.
 
 **Low, Medium and High** send adaptive thinking at that effort on Claude, and that `thinkingLevel` on Gemini. Each model's top levels (`xhigh`, `max`) are left out: on replies the system prompt keeps near 180 words they mostly add cost, and they are the dearest on the deployment's key. The ceiling grows with the level because thinking counts against it.
 
-**Where the picker starts: Least.** The meter's argument is that the reader can choose to spend more and is told so, not that they start there; the model picker already works that way. Each model's own default is in the list, labelled. `THINKING_START` in `index.html` switches the picker to start on each model's default instead, and to move with the model.
+**Where the picker starts: Opus 5.5 at Medium.** Since 2.4.0 a new visitor starts on Opus 5.5 at its own default level. The Thinking picker moves to each model's default (★ above) when the model changes, and a level the reader picks is saved and kept. Until 2.4.0 the picker started at Least and stayed there when the model changed. The reasoning then was that the reader can choose to spend more and is told so, but does not start there. `THINKING_START = 'least'` in `index.html` restores that behaviour.
 
 **Fallbacks.** A level that is unknown, gated (below) or not supported by the model runs at Least on the tier asked for: Haiku 4.5 takes only a token budget and rejects `effort`, so an `ANTHROPIC_MODEL` override to it, or to a model the server does not know, runs only at Least. The response says which level ran (`X-Susty-Thinking`), the picker follows it, and the request record freezes it (§8.1).
 
 **Carbon.** Nothing in the formula changes. Thinking tokens are measured (§4.1) and priced as output at the model's factor whatever the level; the level decides how many there are. How many is not known in advance: Oviedo et al. find a reasoning-length reply about 13× a standard one (§4.3), but no published measurement covers these models at these levels, so the picker states ceilings, not multiples, and the ledger shows what each answer actually used.
 
-**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Until 2.2.0 Flash-Lite was the default because it had the lowest modeled per-token energy of the Gemini tiers. With Gemini 4 Hydrogen it no longer does (×0.85 against ×0.66), and it stays the default for three other reasons: it is the only Gemini tier that can think at `minimal`, "near-off" in Google's words, while Hydrogen's floor is `low`, and on a short answer the extra thinking tokens can outweigh a per-token difference of that size; EcoLogits' full model, which counts the GPUs needed to hold the whole model, puts Flash-Lite lowest of the two (§4.4); and the Hydrogen size estimate is the least certain in the table (§4.4). It is also Google's "lowest-cost" model, about a third of Hydrogen's output price. All of this is modeled, not measured, and it says nothing about answer quality; the picker labels it simply "Gemini 3.5 Flash-Lite (default)" rather than calling it efficient; its factor is shown in the ledger's model row. Until 23 September 2026 Flash-Lite ran at `low`, above its floor.
+**The client default is Claude Opus 5.5 at Medium** (since 2.4.0, the owner's choice). It is the most energy-intensive starting point the pickers offer: ×1.34 per token, and up to 4,000 output tokens of thinking per reply. A thinking-length reply on it costs several times a Least reply on Flash-Lite, and the ledger shows that. It also puts every default request on the Anthropic key: at most about $0.08 of output per reply at Medium. With `SUSTY_EXPENSIVE_TIERS=off` it runs at Least, still on Opus. From 2.2.0 until 2.4.0 the default was Gemini 3.5 Flash-Lite at Least. That was the lowest-thinking choice: it was chosen to spread load off the Anthropic key, it can think at `minimal`, and EcoLogits' full model puts it lowest of the Gemini tiers (§4.4).
 
-The picker's labels compare each Claude tier's per-token factor with the Sonnet tier's: Haiku 5.5 is about two-thirds of it (0.52 / 0.79), Opus 5.5 about 1.7 times (1.34 / 0.79), before thinking.
+The model picker lists Opus 5.5, the default, first, and labels every other tier by how much less energy per token it uses than Opus (1 − factor / 1.34, rounded): Sonnet 5.5 41% less (0.79 / 1.34), Haiku 5.5 61% less (0.52 / 1.34), Gemini 4 Hydrogen 51% less (0.66 / 1.34), Gemini 3.5 Flash-Lite 37% less (0.85 / 1.34). The figures are per token, before thinking, and a note under the pickers says so. A model's default thinking level can outweigh the per-token difference: Hydrogen starts at High, with up to 8,000 output tokens, where Opus starts at Medium with up to 4,000. The Gemini percentages rest on EcoLogits' size estimates, and the Hydrogen estimate is the least certain (§4.4). The labels are fixed text: a deployment that points the Sonnet tier at another model with `ANTHROPIC_MODEL` keeps the "41% less" label, while the ledger prices the model that actually answered.
 
 **Server fallback is a separate concept.** `DEFAULT_TIER` in `api/chat.js` stays `sonnet`: it is what a request degrades to, at Least, if a tier is unrecognised or its provider is not configured, and it must be a provider that is always present. The tier is a request, not a setting — the ledger reports the model that actually answered (from the response's `message.model`), not the one asked for.
 
@@ -385,9 +394,9 @@ Two server switches, both default-on:
 | Variable | Effect |
 |---|---|
 | `SUSTY_EXPENSIVE_TIERS=off` | Medium and High run at Least; every tier and the other levels stay |
-| `SUSTY_TIERS=off` | Collapses every request to the default tier at Least |
+| `SUSTY_TIERS=off` | Collapses every request to the server's fallback tier (Sonnet 5.5) at Least |
 
-A visitor at Medium or High can raise the cost of an exchange several times over, on the deployment's own key, against a rate limit that resets on cold start: on the default models the worst case is High on Opus, 8,000 output tokens at $20 per million, $0.16 a reply in output alone (a long history adds input on top, and an `ANTHROPIC_MODEL` override to a dearer model costs more). That doubles 2.2's worst case (the extended-thinking tier, 4,000 tokens, $0.08), and every tier can now reach 8,000 tokens where in 2.2 only that one went past 2,000. `SUSTY_EXPENSIVE_TIERS=off` is the lever; its name is kept from 2.2, when it gated the extended-thinking tier that Medium on Opus replaces. It does not touch Least on Opus, which thinks a little within 2,000 tokens, at most 1.6× what the Opus 4.8 tier could spend (1,000 tokens at $25); `SUSTY_TIERS=off` removes it with every other tier.
+A visitor at Medium or High can raise the cost of an exchange several times over, on the deployment's own key, against a rate limit that resets on cold start: on the default models the worst case is High on Opus, 8,000 output tokens at $20 per million, $0.16 a reply in output alone (a long history adds input on top, and an `ANTHROPIC_MODEL` override to a dearer model costs more). That doubles 2.2's worst case (the extended-thinking tier, 4,000 tokens, $0.08), and every tier can now reach 8,000 tokens where in 2.2 only that one went past 2,000. Since 2.4.0 the client default is itself Opus at Medium, so a visitor who changes nothing can spend up to 4,000 output tokens, $0.08 a reply. `SUSTY_EXPENSIVE_TIERS=off` is the lever; with it off the default runs Opus at Least. Its name is kept from 2.2, when it gated the extended-thinking tier that Medium on Opus replaces. It does not touch Least on Opus, which thinks a little within 2,000 tokens, at most 1.6× what the Opus 4.8 tier could spend (1,000 tokens at $25); `SUSTY_TIERS=off` removes it with every other tier.
 
 ### 4.6 Guardrails
 

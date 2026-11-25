@@ -172,6 +172,8 @@ export const TIERS = {
   "gemini-flash-lite": { provider: "google", model: "gemini-3.5-flash-lite" },
   "gemini-flash": { provider: "google", model: "gemini-4-hydrogen" },
 };
+// The server's fallback for an unknown or unconfigured tier, not the client's
+// starting choice (Opus 5.5 at Medium since 2.4.0, set in index.html).
 export const DEFAULT_TIER = "sonnet";
 // Keys a page loaded before 2.3.0 may still send, or a visitor may have saved:
 // the extended-thinking tier is now Opus at `medium`. Gated, it runs as Opus
@@ -179,7 +181,7 @@ export const DEFAULT_TIER = "sonnet";
 export const TIER_ALIASES = { "opus-thinking": { tier: "opus", level: "medium" } };
 
 // Two off switches, both default-on so nothing has to be set to work:
-//   SUSTY_TIERS=off            collapses every request to the default tier
+//   SUSTY_TIERS=off            collapses every request to the fallback tier (DEFAULT_TIER)
 //                              at the least thinking
 //   SUSTY_EXPENSIVE_TIERS=off  drops the `medium` and `high` thinking levels
 // Either way the client is not trusted: an unknown, disabled or expensive-but-

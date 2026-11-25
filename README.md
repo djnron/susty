@@ -2,7 +2,7 @@
 
 A sustainability chatbot that estimates the operational carbon, and separately the water, of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
-**Version 2.3.1** (25 November 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
+**Version 2.4.0** (25 November 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
 
 No build step, no framework, no dependencies.
 
@@ -106,10 +106,11 @@ The endpoint spends your money, so treat it accordingly.
 |---|---|
 | The bot's personality and rules | `SYSTEM` at the top of `api/chat.js` |
 | Model tiers offered in the ledger | `TIERS` in `api/chat.js` |
-| Thinking levels and their ceilings | `THINKING_LEVELS`, `LEVEL_MAX_TOKENS` and `GEMINI_LEVELS` in `api/chat.js`; the picker's labels (`TIER_THINKING`) and where it starts (`THINKING_START`: `'least'` or `'default'`) in `index.html` |
-| What a fresh visitor's picker starts on | `tier:` in the `state` object in `index.html` |
+| Thinking levels and their ceilings | `THINKING_LEVELS`, `LEVEL_MAX_TOKENS` and `GEMINI_LEVELS` in `api/chat.js`; the picker's labels (`TIER_THINKING`) and where it starts (`THINKING_START`: `'default'`, each model's own level, or `'least'`); the starting model is the `selected` option and `state.tier` in `index.html` |
+| What a fresh visitor starts on (Opus 5.5 at Medium) | `tier:` and `thinking:` in the `state` object in `index.html`, and the matching `selected` options |
+| The model picker's order and labels ("41% less than Opus") | The `<select id="tier">` options in `index.html`; `tools/methodology.test.mjs` recomputes the percentages from the factors and fails if they drift |
 | The fallback a request degrades to if a tier is unrecognised or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
-| Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-5-5`; the thinking settings follow the model (`minimalThinking()`) |
+| The Sonnet tier's model (also the server's fallback) | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-5-5`; the thinking settings follow the model (`minimalThinking()`) |
 | Carbon coefficients | `MODEL` object near the top of the inline script in `index.html` |
 | Model factors | never by hand: edit `data/ecologits-2026-11-19-models.csv` (or add a newer registry extract), update `MODEL_ENERGY` in `index.html`, and `node tools/model-factors.mjs --check` |
 | Water tables | never by hand: edit `data/`, then `node tools/water-factors.mjs --write` |
@@ -215,12 +216,16 @@ Declared rather than fixed, and all in METHODOLOGY:
   abuse; it is not a quota.
 - **`api/feedback.js` is not wired up.** The client opens a `mailto:` link
   instead, which fails silently where no mail client is configured.
+- **The default is Opus 5.5 at Medium,** the most energy-intensive starting
+  point the pickers offer (×1.34, up to 4,000 output tokens per reply, about
+  $0.08 at most). Every default request uses the Anthropic key.
 - **More thinking costs real money on your key.** A visitor can pick Medium
   or High in the Thinking picker and raise an exchange several times over
   (High on Opus can spend up to 8,000 output tokens, about $0.16), against a
   rate limit that resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to run
-  Medium and High at Least, or `SUSTY_TIERS=off` to collapse every request to
-  the default tier at Least. Opus thinks a little even at Least (Opus 5.5
+  Medium and High at Least (the default then runs Opus at Least), or
+  `SUSTY_TIERS=off` to collapse every request to the server's fallback tier,
+  Sonnet 5.5, at Least. Opus thinks a little even at Least (Opus 5.5
   cannot switch it off), within a 2,000-token ceiling; only the second switch
   removes it.
 
