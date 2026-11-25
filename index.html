@@ -3100,9 +3100,23 @@ try {
 } catch {}
 $('screen').value = state.screen;
 
+// Model and thinking choices saved before the current default (Opus 5.5 at
+// Medium, 2.4.0) are dropped once, so a returning visitor sees the new
+// default rather than whatever they last picked under the old one. Choices
+// made from here on are kept. Bump this when the default changes again.
+const PICKER_DEFAULTS = '2.4.0';
 try {
   let savedTier = localStorage.getItem('susty-tier');
   let savedThinking = localStorage.getItem('susty-thinking');
+  if (localStorage.getItem('susty-picker') !== PICKER_DEFAULTS) {
+    savedTier = null;
+    savedThinking = null;
+    try {
+      localStorage.removeItem('susty-tier');
+      localStorage.removeItem('susty-thinking');
+      localStorage.setItem('susty-picker', PICKER_DEFAULTS);
+    } catch {}
+  }
   // Until 2.3.0 extended thinking was its own tier; it is now Opus at Medium.
   const migrate = savedTier === 'opus-thinking';
   if (migrate) {

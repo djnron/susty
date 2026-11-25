@@ -349,6 +349,37 @@ console.log('\nThinking picker');
     const init = html.slice(html.indexOf("const migrate = savedTier === 'opus-thinking';"));
     assert.ok(init.indexOf('state.tier = savedTier') < init.indexOf("localStorage.setItem('susty-tier', savedTier)"));
   });
+  // Runs the real start-up block against a fake storage.
+  const startUp = (stored) => {
+    const from = html.indexOf('const PICKER_DEFAULTS');
+    const to = html.indexOf('paintThinkingOptions();', from) + 'paintThinkingOptions();'.length;
+    const store = new Map(Object.entries(stored));
+    const els = { tier: { value: '', querySelector: (q) => (/value="(haiku|sonnet|opus|gemini-flash|gemini-flash-lite)"/.test(q) ? {} : null) }, thinking: { value: '' } };
+    const ctx = vm.createContext({
+      state: { tier: 'opus', thinking: 'medium' }, $: (id) => els[id],
+      THINKING_LEVELS: pickCtx.L, TIER_THINKING: pickCtx.T, THINKING_START: 'default',
+      paintThinkingOptions: () => {},
+      localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) },
+    });
+    vm.runInContext(html.slice(from, to), ctx);
+    return { tier: els.tier.value, thinking: els.thinking.value, store };
+  };
+  check('a new visitor starts on Opus at Medium', () => {
+    const r = startUp({});
+    assert.deepEqual([r.tier, r.thinking], ['opus', 'medium']);
+    assert.equal(r.store.get('susty-picker'), '2.4.0');
+  });
+  check('a choice saved before 2.4.0 is dropped once, so the new default shows', () => {
+    const r = startUp({ 'susty-tier': 'haiku', 'susty-thinking': 'least' });
+    assert.deepEqual([r.tier, r.thinking], ['opus', 'medium']);
+    assert.equal(r.store.has('susty-tier'), false);
+  });
+  check('a choice saved under 2.4.0 is kept', () => {
+    const r = startUp({ 'susty-picker': '2.4.0', 'susty-tier': 'haiku', 'susty-thinking': 'low' });
+    assert.deepEqual([r.tier, r.thinking], ['haiku', 'low']);
+    const s = startUp({ 'susty-picker': '2.4.0', 'susty-tier': 'gemini-flash' });
+    assert.deepEqual([s.tier, s.thinking], ['gemini-flash', 'high'], "a saved model with no saved level starts on that model's default");
+  });
   check('a tier fallback repaints the thinking labels for the tier that answered', () => {
     assert.match(extractNamedFunction(html, 'syncTierToAnswer'), /paintThinkingOptions\(\);/);
   });

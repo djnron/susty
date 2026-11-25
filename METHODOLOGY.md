@@ -18,8 +18,9 @@ For 2.4.0. The boundary, the functional unit, the formula and every coefficient 
 
 1. **The client default is Claude Opus 5.5 at Medium**, Opus 5.5's own default level, replacing Gemini 3.5 Flash-Lite at Least (§4.5). This was the owner's choice. It is the most energy-intensive starting point the pickers offer: ×1.34, against ×0.85 for Flash-Lite, plus up to 4,000 output tokens of thinking. The ledger prices it the same way as any other choice.
 2. **The Thinking picker follows each model's default** (`THINKING_START = 'default'`). Switching model moves it to that model's default: Haiku 5.5 Medium, Sonnet 5.5 High, Flash-Lite Least, Hydrogen High. A level the reader saves is kept.
-3. **Unchanged:** the server's fallback tier (Sonnet at Least, for an unknown or unconfigured tier) and the `SUSTY_EXPENSIVE_TIERS` gate. With the gate off, the default runs Opus at Least, and the picker shows that.
-4. **Unchanged: what is recorded about location.** Device time is still kept as segments that record the reader's grid zone, region and g/kWh (§8.1). Requests still record the servers' grid (§6.9).
+3. **Choices saved before 2.4.0 are dropped once** (`PICKER_DEFAULTS` in `index.html`), so a returning visitor sees the new default rather than the model they last picked under the old one. Choices made from then on are kept.
+4. **Unchanged:** the server's fallback tier (Sonnet at Least, for an unknown or unconfigured tier) and the `SUSTY_EXPENSIVE_TIERS` gate. With the gate off, the default runs Opus at Least, and the picker shows that.
+5. **Unchanged: what is recorded about location.** Device time is still kept as segments that record the reader's grid zone, region and g/kWh (§8.1). Requests still record the servers' grid (§6.9).
 
 ## Decisions taken on 25 November 2026 (2.3.0)
 
@@ -377,7 +378,7 @@ The Least setting is chosen from the model id (`minimalThinking()` in `api/chat.
 
 **Low, Medium and High** send adaptive thinking at that effort on Claude, and that `thinkingLevel` on Gemini. Each model's top levels (`xhigh`, `max`) are left out: on replies the system prompt keeps near 180 words they mostly add cost, and they are the dearest on the deployment's key. The ceiling grows with the level because thinking counts against it.
 
-**Where the picker starts: Opus 5.5 at Medium.** Since 2.4.0 a new visitor starts on Opus 5.5 at its own default level. The Thinking picker moves to each model's default (★ above) when the model changes, and a level the reader picks is saved and kept. Until 2.4.0 the picker started at Least and stayed there when the model changed. The reasoning then was that the reader can choose to spend more and is told so, but does not start there. `THINKING_START = 'least'` in `index.html` restores that behaviour.
+**Where the picker starts: Opus 5.5 at Medium.** Since 2.4.0 a new visitor starts on Opus 5.5 at its own default level. The Thinking picker moves to each model's default (★ above) when the model changes, and a model or level the reader picks is saved and kept. Choices saved before 2.4.0 were dropped once, when the default changed (`PICKER_DEFAULTS`). Until 2.4.0 the picker started at Least and stayed there when the model changed. The reasoning then was that the reader can choose to spend more and is told so, but does not start there. `THINKING_START = 'least'` in `index.html` restores that behaviour.
 
 **Fallbacks.** A level that is unknown, gated (below) or not supported by the model runs at Least on the tier asked for: Haiku 4.5 takes only a token budget and rejects `effort`, so an `ANTHROPIC_MODEL` override to it, or to a model the server does not know, runs only at Least. The response says which level ran (`X-Susty-Thinking`), the picker follows it, and the request record freezes it (§8.1).
 

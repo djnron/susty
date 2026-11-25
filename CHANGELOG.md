@@ -23,9 +23,11 @@ A minor version: a new default. The formula and every coefficient are unchanged.
   37% less). A note under the pickers says these are per token, before
   thinking: a model's default level can outweigh the difference (Hydrogen
   starts at High).
-- **Unchanged:** the server's fallback (Sonnet at Least), the
-  `SUSTY_EXPENSIVE_TIERS` gate (with it off, the default runs Opus at Least),
-  and saved choices. Location is recorded as before: each block of device time
+- **Choices saved before 2.4.0 are dropped once,** so a returning visitor
+  sees Opus 5.5 at Medium instead of whatever they last picked. Choices made
+  from then on are kept (`PICKER_DEFAULTS` in `index.html`).
+- **Unchanged:** the server's fallback (Sonnet at Least) and the
+  `SUSTY_EXPENSIVE_TIERS` gate (with it off, the default runs Opus at Least). Location is recorded as before: each block of device time
   keeps the reader's grid zone, region and g/kWh.
 
 ## 2.3.1 — 25 November 2026

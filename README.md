@@ -107,7 +107,7 @@ The endpoint spends your money, so treat it accordingly.
 | The bot's personality and rules | `SYSTEM` at the top of `api/chat.js` |
 | Model tiers offered in the ledger | `TIERS` in `api/chat.js` |
 | Thinking levels and their ceilings | `THINKING_LEVELS`, `LEVEL_MAX_TOKENS` and `GEMINI_LEVELS` in `api/chat.js`; the picker's labels (`TIER_THINKING`) and where it starts (`THINKING_START`: `'default'`, each model's own level, or `'least'`); the starting model is the `selected` option and `state.tier` in `index.html` |
-| What a fresh visitor starts on (Opus 5.5 at Medium) | `tier:` and `thinking:` in the `state` object in `index.html`, and the matching `selected` options |
+| What a fresh visitor starts on (Opus 5.5 at Medium) | `tier:` and `thinking:` in the `state` object in `index.html`, and the matching `selected` options; bump `PICKER_DEFAULTS` when you change them, so returning visitors' old choices are dropped once |
 | The model picker's order and labels ("41% less than Opus") | The `<select id="tier">` options in `index.html`; `tools/methodology.test.mjs` recomputes the percentages from the factors and fails if they drift |
 | The fallback a request degrades to if a tier is unrecognised or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
 | The Sonnet tier's model (also the server's fallback) | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-5-5`; the thinking settings follow the model (`minimalThinking()`) |
