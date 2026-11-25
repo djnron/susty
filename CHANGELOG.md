@@ -7,6 +7,71 @@ wording. The methodology carries the same version number as the product.
 Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be
 redeployed. 1.0.0 predates tagging and is identified by its commit below.
 
+## 2.2.0 — 25 November 2026
+
+A minor version: models, factors and sources change; the system boundary,
+the functional unit and the absolute token coefficients do not.
+
+### Models
+
+- **Claude tiers move to the 5.5 models.** Haiku 4.5 → Haiku 5.5 (×0.52,
+  unchanged), Sonnet 4.6 → Sonnet 5.5 (×0.79, was ×1.00), Opus 4.8 →
+  Opus 5.5 (×1.34, was ×1.33). Per token, the default Anthropic tier now
+  prices 21% lower, because EcoLogits sizes Sonnet 5.5 smaller. Per answer
+  that mostly cancels: Haiku 5.5 and Sonnet 5.5 count about 30% more tokens
+  for the same text, so the same answer costs about the same on Sonnet 5.5
+  and about 1.3× more on Haiku 5.5. An independent estimate (CLEER) also puts
+  Sonnet 5 above Sonnet 4.6, not below (METHODOLOGY §4.4).
+- **The Gemini Flash tier moves to Gemini 4 Hydrogen** (×0.66, was ×1.36 on
+  3.8 Flash), Google's named upgrade from 3.8 Flash, at thinking level `low`
+  (it rejects `minimal`). Its size estimate is the least certain in the table.
+- **Gemini 3.5 Flash-Lite stays the client default.** It is still Google's
+  lowest-cost model, with no shutdown date and no Gemini 4 successor, and it
+  is the only Gemini tier that can think at `minimal`.
+- **Opus now always thinks a little.** Opus 5.5 cannot switch thinking off,
+  so the plain Opus tier runs at effort `low` with a 2,000-token ceiling, and
+  its thinking tokens are measured and priced as Gemini's are. The thinking
+  tier runs at effort `medium`.
+- **Thinking settings follow the model, not the tier.** The Claude models do
+  not share one off-switch (`between_tools` exists only on Sonnet 5.5,
+  `disabled` is rejected by Sonnet 5.5 and Opus 5.5, Haiku 4.5 rejects
+  `effort`), so `ANTHROPIC_MODEL` (including the `claude-sonnet-4-6` that
+  `.env.example` used to suggest) still works.
+- **`SUSTY_EXPENSIVE_TIERS=off` still drops only the extended-thinking tier.**
+  The plain Opus tier now thinks a little, within its 2,000-token ceiling: at
+  most 1.6× what the Opus 4.8 tier could spend. `SUSTY_TIERS=off` removes it.
+- Tier keys are unchanged, so a returning visitor's picker choice carries over.
+
+### Numbers and sources
+
+- **Factors come from committed data.** EcoLogits' registry of 19 November
+  2026 is extracted to `data/ecologits-2026-11-19-models.csv`, and
+  `tools/model-factors.mjs --check` fails if `MODEL_ENERGY` disagrees with it.
+  The anchor stays Sonnet 4.6.
+- **Absolute coefficients re-checked and kept.** No provider has published a
+  per-query or per-token figure since mid-2025. Measured 2026 hardware data
+  (ML.ENERGY v3, SemiAnalysis InferenceX), CLEER and a meta-analysis
+  (TokWatt) sit around Susty's level, and measured prefill and decode energy
+  is consistent with the 10:1 split at moderate load. What they question is
+  the spread between models: measured energy shows active parameters alone
+  missing the cost of holding a large model's weights, and CLEER spreads
+  Haiku to Opus 23× against Susty's 2.6×.
+- **Corrected:** Google's 0.10 Wh is a narrower method, not the accelerator
+  share of its 0.24 Wh median (that is 0.14 Wh). The power-draw cross-check no
+  longer says Susty's coefficients are low; at current throughputs it lands
+  inside or above its reference range. "No Susty tier runs on Azure" is
+  withdrawn: Anthropic had already agreed to buy Azure capacity. The old
+  "2–4.5× higher" comparison set whole-query figures against Susty's output
+  coefficient alone; on one basis it is 1.4–3.3×.
+- The §3 worked example uses Opus 5.5: 1.522 g CO₂e central, 3.520 g high end.
+
+### Methodology
+
+- §4.3 re-check with the 2026 evidence; §4.4 factor table, the limits of each
+  new size estimate, and measured evidence on scaling; §4.5 tiers, thinking
+  settings and the client-default rationale; §14 rows for everything checked
+  for 2.2.0; §15 and the source list updated.
+
 ## 2.1.3 — 11 October 2026
 
 A patch: no figure the app computes changes.

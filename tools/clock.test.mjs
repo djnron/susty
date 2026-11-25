@@ -142,38 +142,24 @@ for (const panel of ['oledPhone', 'oledTablet', 'oledLaptop', 'oledMonitor']) {
 
 console.log('\nModel-relative energy factors');
 {
-  // Keep in step with MODEL_ENERGY in index.html. Derived from EcoLogits'
-  // f(P_active, B) fitted to ML.ENERGY, at batch 32, midpoint active params.
-  const MODEL_ENERGY = {
-    'claude-haiku-4-5':  { factor: 0.52, thinks: false },
-    'claude-sonnet-4-6': { factor: 1.00, thinks: false },
-    'claude-opus-4-6':   { factor: 1.33, thinks: true  },
-    'claude-opus-4-7':   { factor: 1.33, thinks: true  },
-    'claude-opus-4-8':   { factor: 1.33, thinks: true  },
-    'gemini-3.8-flash':      { factor: 1.36, thinks: true  },
-    'gemini-3.5-flash-lite': { factor: 0.85, thinks: true  }
-  };
-  const A = 1.17e-6, B = -1.12e-2, G = 4.05e-5;
-  const f = (p, b) => A * Math.exp(B * b) * p + G;
-  const active = { 'claude-haiku-4-5': 22.5, 'claude-sonnet-4-6': 88,
-                   'claude-opus-4-6': 133.5, 'claude-opus-4-7': 133.5,
-                   'claude-opus-4-8': 133.5,
-                   // EcoLogits models.json: MoE 75-200B active; dense 30-105B.
-                   'gemini-3.8-flash': 137.5, 'gemini-3.5-flash-lite': 67.5 };
-  const anchor = f(active['claude-sonnet-4-6'], 32);
+  // Read from index.html and data/, not a copy: tools/model-factors.mjs
+  // derives each factor from EcoLogits' f(P_active, B) fitted to ML.ENERGY,
+  // at batch 32, midpoint active params, against the Sonnet 4.6 anchor.
+  const { factors, modelEnergyFromHtml, ANCHOR } = await import('./model-factors.mjs');
+  const MODEL_ENERGY = modelEnergyFromHtml();
+  const derived = factors(Object.keys(MODEL_ENERGY));
 
   // Every published factor must reproduce from the source function.
   for (const [name, { factor }] of Object.entries(MODEL_ENERGY)) {
-    const derived = f(active[name], 32) / anchor;
-    const ok = Math.abs(derived - factor) < 0.01;
+    const ok = Math.abs(derived[name] - factor) < 0.01;
     if (!ok) fails++;
-    console.log(`${ok ? 'pass' : 'FAIL'}  ${name} factor ${factor} reproduces from EcoLogits (${derived.toFixed(3)})`);
+    console.log(`${ok ? 'pass' : 'FAIL'}  ${name} factor ${factor} reproduces from EcoLogits (${derived[name].toFixed(3)})`);
   }
   // The anchor must be exactly 1: it is Susty's reference model for the
   // relative-factor table, regardless of which provider/tier is selected.
-  const anchored = MODEL_ENERGY['claude-sonnet-4-6'].factor === 1.00;
+  const anchored = MODEL_ENERGY[ANCHOR].factor === 1.00;
   if (!anchored) fails++;
-  console.log(`${anchored ? 'pass' : 'FAIL'}  claude-sonnet-4-6 is the 1.00x anchor`);
+  console.log(`${anchored ? 'pass' : 'FAIL'}  ${ANCHOR} is the 1.00x anchor`);
 
   // Order-of-magnitude plausibility check: this illustrative exchange should
   // stay inside Oviedo et al's measured IQR for a frontier-model query,

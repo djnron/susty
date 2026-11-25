@@ -1,16 +1,27 @@
 # Susty Methodology
 
 **Integrated methodology — completed-exchange functional unit**
-**Version:** 2.1.3, released 11 October 2026 (see [CHANGELOG.md](CHANGELOG.md))
-**Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-11-october-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
-**Date:** 11 October 2026
-**Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026 (see [§14 Verification log](#14-verification-log))
+**Version:** 2.2.0, released 25 November 2026 (see [CHANGELOG.md](CHANGELOG.md))
+**Status:** No open methodology decisions (see [Decisions taken](#decisions-taken-on-25-november-2026)); calibration work is listed in [§15](#15-next-steps-data-and-specificity)
+**Date:** 25 November 2026
+**Verified:** sources and code re-checked on 23 September 2026; sources added in 2.1.0 checked on 11 October 2026; models and sources added in 2.2.0 checked on 25 November 2026 (see [§14 Verification log](#14-verification-log))
 
 Susty estimates the **operational carbon footprint of an AI conversation**. It combines modeled AI inference energy, modeled service/hosting energy, and estimated end-user device energy during attended use, then applies grid carbon intensity. Beside the carbon figure it reports, as a separate indicator, the operational water consumption of the same electricity (§16).
 
 This is an **operational estimate, not a full life-cycle assessment**. Training and embodied hardware emissions are excluded. Every material input is identified as measured, derived, inferred/declared, or modeled. Where a number is a guess, this document says so and, where known, which direction it errs. The product's argument depends on the arithmetic being checkable, so the uncomfortable parts are written down rather than rounded away.
 
 ---
+
+## Decisions taken on 25 November 2026
+
+For 2.2.0. The boundary and the functional unit are unchanged.
+
+1. **Models.** The Claude tiers move to Haiku 5.5, Sonnet 5.5 and Opus 5.5. The Gemini Flash tier moves to Gemini 4 Hydrogen, which Google names as the upgrade from Gemini 3.8 Flash. Gemini 3.5 Flash-Lite stays: it is still Google's lowest-cost model, it has no shutdown date, and there is no Gemini 4 Flash-Lite (§4.5).
+2. **Factors** come from EcoLogits' registry of 19 November 2026, committed as `data/ecologits-2026-11-19-models.csv` and checked by `tools/model-factors.mjs`; the method of §4.4 is unchanged. The anchor stays Claude Sonnet 4.6, though it is no longer offered, because the absolute coefficients and the high end k are calibrated on it (§4.4, §4.8).
+3. **Thinking.** Each tier asks for the least thinking its model allows, keyed on the model so that an `ANTHROPIC_MODEL` override stays valid. Opus 5.5 cannot switch thinking off, so the plain Opus tier now thinks a little, at effort `low`, with a 2,000-token ceiling (§4.5–4.6).
+4. **Client default** stays Gemini 3.5 Flash-Lite, on a revised rationale: its per-token factor is no longer the lowest Gemini factor, but it is the only Gemini tier that can think at `minimal`, and EcoLogits' full model puts it lowest (§4.5).
+5. **Absolute coefficients unchanged:** 0.05 / 0.5 mWh per input / output token, PUE 1.12, high end k = 2.7. No provider has published a per-query or per-token figure since mid-2025, and Anthropic has never published one, so the condition for recalibrating (§15) is unmet. The 2026 evidence brackets Susty rather than displacing it: measured GPU energy for large open models on current hardware, an independent per-model estimate and a meta-analysis all sit around Susty's level, and measured prefill and decode energy is consistent with the 10:1 split at moderate load (§4.3). What the new evidence questions is the spread between models, which is the known limit of the factors (§4.4); fixing it is a method change, listed in §15.
+6. **Not done:** a Claude Fable 5.2 tier (it would be the most energy-intensive option, on the deployment's own key); moving the Gemini adapter to Google's Interactions API (`generateContent` is now labelled legacy, with no shutdown date).
 
 ## Decisions taken on 11 October 2026
 
@@ -160,25 +171,25 @@ Because attended device energy can continue to accrue after a response, the aver
 
 ### Worked example
 
-One heavy question and answer, used in the methodology deck and the plain-language summary so that every figure they quote can be traced here. It shows the case where the AI's computing, not the reader's device, dominates. Inputs: Claude Opus 4.8 (×1.33, §4.4), 1,000 input and 5,000 output tokens with thinking counted as output (§4.1), PUE 1.12 and 0.003 Wh hosting (§5), a laptop with an LCD panel in light mode, 10 W (§7.1), for 5 minutes of attended time (§7.3), a reader in Chicago on eGRID2023's RFCW subregion, 416 g CO2e/kWh (§6.4), and the servers' grid of 307 g CO2e/kWh (§6.9).
+One heavy question and answer, used in the methodology deck and the plain-language summary so that every figure they quote can be traced here. It shows the case where the AI's computing, not the reader's device, dominates. Inputs: Claude Opus 5.5 (×1.34, §4.4), 1,000 input and 5,000 output tokens with thinking counted as output (§4.1), PUE 1.12 and 0.003 Wh hosting (§5), a laptop with an LCD panel in light mode, 10 W (§7.1), for 5 minutes of attended time (§7.3), a reader in Chicago on eGRID2023's RFCW subregion, 416 g CO2e/kWh (§6.4), and the servers' grid of 307 g CO2e/kWh (§6.9).
 
 | Step | Arithmetic | Result |
 |---|---|---:|
-| Inference | (1,000 × 0.05 + 5,000 × 0.5) mWh × 1.33 × 1.12 | 3.798 Wh |
+| Inference | (1,000 × 0.05 + 5,000 × 0.5) mWh × 1.34 × 1.12 | 3.827 Wh |
 | Hosting | fixed per request | 0.003 Wh |
 | Device | 10 W × 300 s | 0.833 Wh |
-| Electricity | sum; inference is 82% of it | 4.635 Wh (24.4% of a 19 Wh phone charge, §9) |
-| Carbon, servers | (3.798 + 0.003) Wh × 307 g/kWh | 1.167 g |
+| Electricity | sum; inference is 82% of it | 4.663 Wh (24.5% of a 19 Wh phone charge, §9) |
+| Carbon, servers | (3.827 + 0.003) Wh × 307 g/kWh | 1.176 g |
 | Carbon, device | 0.833 Wh × 416 g/kWh | 0.347 g |
-| **Carbon, central** | sum | **1.514 g CO2e** |
-| Carbon, high end (§4.8) | central + (2.7 − 1) × 3.798 Wh × 307 g/kWh | 3.496 g CO2e |
-| Device on other grids | same exchange, reader's grid 30 g/kWh (Norway) to 718 g/kWh (South Africa) | 1.192–1.765 g CO2e |
-| Water, on-site (§16.2) | (3.798 ÷ 1.12 + 0.003) Wh × 1.15 L/kWh | 3.904 mL |
-| Water, power stations (§16.3) | 3.801 Wh × 1.082 L/kWh (US) + 0.833 Wh × 1.461 L/kWh (RFCW) | 5.331 mL |
-| Water, hydro reservoirs (§16.4) | 3.801 Wh × 0.918 L/kWh (US) + 0.833 Wh × 0.170 L/kWh (RFCW) | 3.631 mL |
+| **Carbon, central** | sum | **1.522 g CO2e** |
+| Carbon, high end (§4.8) | central + (2.7 − 1) × 3.827 Wh × 307 g/kWh | 3.520 g CO2e |
+| Device on other grids | same exchange, reader's grid 30 g/kWh (Norway) to 718 g/kWh (South Africa) | 1.201–1.774 g CO2e |
+| Water, on-site (§16.2) | (3.827 ÷ 1.12 + 0.003) Wh × 1.15 L/kWh | 3.933 mL |
+| Water, power stations (§16.3) | 3.830 Wh × 1.082 L/kWh (US) + 0.833 Wh × 1.461 L/kWh (RFCW) | 5.362 mL |
+| Water, hydro reservoirs (§16.4) | 3.830 Wh × 0.918 L/kWh (US) + 0.833 Wh × 0.170 L/kWh (RFCW) | 3.658 mL |
 
 - **Data-quality label: derived.** Each row is arithmetic on inputs labeled in the sections cited; the example adds no assumption of its own. 5,000 output tokens is the median output of Oviedo et al.'s reasoning-length query (§4.3); the model, device, reading time and city are illustrative choices, not measurements of a typical session. A short everyday answer is far smaller, and on a laptop or desktop its device time can outweigh its inference.
-- **Likely direction of error: low**, as for any Susty figure, because energy per token sits at the low end of published estimates (§4.3); the high-end row shows by how much under one published scenario. For an Opus-class model EcoLogits' full model runs higher still (§4.4), so even the high end may be low. The 5 minutes of reading is a choice: 1 to 10 minutes moves the central figure from 1.236 g to 1.860 g. In the app, Chicago readers get EIA's hourly figure for the region (§6.3) rather than the yearly eGRID value.
+- **Likely direction of error: low**, as for any Susty figure, because energy per token sits at the low end of published estimates (§4.3); the high-end row shows by how much under one published scenario. For an Opus-class model EcoLogits' full model runs higher still (§4.4), so even the high end may be low. The 5 minutes of reading is a choice: 1 to 10 minutes moves the central figure from 1.245 g to 1.869 g. In the app, Chicago readers get EIA's hourly figure for the region (§6.3) rather than the yearly eGRID value.
 - **Not the §4.3 or §16.5 exchange.** Those checks use a different illustrative exchange (two turns, 831 input and 571 output tokens, 0.186 Wh with hosting, 0.192 mL on-site water).
 - `tools/methodology.test.mjs` recomputes every row from the constants in `index.html` and fails if this table drifts from them.
 
@@ -207,7 +218,7 @@ Susty uses token counts reported by the model provider where available: Anthropi
 
 Thinking/reasoning tokens are **measured**, not inferred:
 
-- Anthropic reports `usage.output_tokens_details.thinking_tokens`, a subset of `output_tokens`, on the final `message_delta`. They are already billed at the output rate; the ledger shows them separately for transparency.
+- Anthropic reports `usage.output_tokens_details.thinking_tokens`, a subset of `output_tokens`, on the final `message_delta`. They are already billed at the output rate; the ledger shows them separately for transparency. On Opus 5.5 thinking cannot be switched off and its text is omitted from the response by default; the tokens are still reported and billed, so they are still priced.
 - Gemini's `candidatesTokenCount` **excludes** `thoughtsTokenCount` (Google documents the total as prompt + thoughts + candidates). The adapter sums the two before passing them on, so both providers reach the browser with the same inclusive relationship. Sending `candidatesTokenCount` alone had silently priced Gemini's reasoning at zero.
 
 ### 4.2 The estimate fallback
@@ -215,7 +226,7 @@ Thinking/reasoning tokens are **measured**, not inferred:
 When usage is missing, tokens are estimated at **4 characters per token**, with two corrections:
 
 - The estimate runs **before** the reply is appended to history, so the model's own output is not counted as part of the request that produced it.
-- A constant **275 tokens** is added for the system prompt, which is billed as input on every turn but never appears in the client's history. (Measured against a live request: a 13-token question reported 278 input tokens.)
+- A constant **275 tokens** is added for the system prompt, which is billed as input on every turn but never appears in the client's history. (Measured against a live request on Sonnet 4.6: a 13-token question reported 278 input tokens.) Not re-measured for the 5.5 models: Haiku 5.5 and Sonnet 5.5 use a newer tokenizer that counts the same text as about 30% more tokens, so on them the allowance likely errs low.
 
 The fallback ignores the server's 40-message and 4,000-character truncation, so it over-counts on long conversations. It is a fallback; the measured path is the normal one. The ledger does not currently mark a turn whose tokens were estimated — a known gap.
 
@@ -234,19 +245,34 @@ These values must **not** be attributed to Luccioni et al. That study measures e
 
 | Source | Scope | Wh per query | Implied per output token |
 |---|---|---:|---:|
-| Google (2025), median Gemini Apps text prompt | Measured in production; accelerators, host, idle capacity, PUE | 0.24 (0.10 accelerators only) | not disclosed |
+| Google (2025), median Gemini Apps text prompt | Measured in production; accelerators, host, idle capacity, PUE | 0.24 (0.14 of it active accelerators; 0.10 on Google's narrower method) | not disclosed |
 | OpenAI (2025), average ChatGPT query, as cited by Oviedo et al. | Disclosed; method unpublished | 0.34 | not disclosed |
 | Oviedo et al. (2026), >200B parameters on H100, 300 median output tokens | Bottom-up model, PUE 1.05–1.40 | 0.31 (IQR 0.16–0.60) | ≈ 1.0 mWh, all-in |
-| EcoLogits 0.11 full model, Sonnet 4.6, 300 output tokens | GPU count, server, PUE, batch 64 | 0.46–0.75 | 1.5–2.5 mWh |
-| **Susty**, Sonnet 4.6, 1,000 input / 300 output tokens | Coefficient model, PUE 1.12 | **0.22** | **0.56 mWh** |
+| EcoLogits 0.11.3 full model, Sonnet 4.6, 300 output tokens | GPU count, server, PUE, batch 64 | 0.44–0.73 | 1.45–2.43 mWh |
+| EcoLogits 0.11.3 full model, Sonnet 5.5, 300 output tokens | as above | 0.35–0.55 | 1.16–1.82 mWh |
+| **Susty**, Sonnet 4.6 (the anchor), 1,000 input / 300 output tokens | Coefficient model, PUE 1.12 | **0.22** | **0.75 mWh** all-in (0.56 for the output coefficient alone) |
+| **Susty**, Sonnet 5.5, 1,000 input / 300 output tokens | as above, ×0.79 | **0.18** | **0.59 mWh** all-in (0.44) |
+| CLEER (Sustainable AI Group, September 2026), Claude Sonnet 4.6, one-question chat ("Light") | Estimate: open "donor" models measured on B200/B300, plus host, idle and cooling (implied PUE ≈ 1.45); token counts not published | 0.20 | not published |
+| TokWatt (Bahi, October 2026), short chat answer | Meta-analysis of 134 published estimates harmonised to server plus facility (preprint) | 0.34 (range 0.16–0.99) | — |
+| ML.ENERGY leaderboard v3, DeepSeek-V3.1 (671B total, 37B active) on 8×B200, chat prompts, 64–256 concurrent requests | Measured, GPU only, prefill folded in, no PUE | — | 0.36–0.81 mWh |
 
-On these references the absolute coefficient could plausibly be about 2–4.5× higher for a Sonnet-class model. Susty keeps its values until they can be calibrated against provider data (§15), rather than swapping one unverified number for another.
+"All-in" in the last column is the whole query's energy divided by its output tokens, input included, which is how the Oviedo et al. and EcoLogits figures are built. On that basis the older references put a Sonnet-class query at about 1.4–3.3× Susty's figure (Oviedo et al.'s ≈ 1.0 mWh and EcoLogits' 1.45–2.43 mWh against Susty's 0.75 for the anchor; for Sonnet 5.5, EcoLogits' 1.16–1.82 against 0.59). Until 2.2.0 this compared them with Susty's output coefficient alone (0.56) and said 2–4.5×, which overstated the gap. Susty keeps its values until they can be calibrated against provider data (§15), rather than swapping one unverified number for another.
 
-**Cross-check as average power draw.** Energy per token × generation speed gives the data-centre power attributed to one active reply. Susty's coefficients (including PUE) imply about 62 W for Haiku 4.5 (1.05 J/token × 59 tokens/s), 67 W for Sonnet 4.6 (2.02 × 33) and 93 W for Gemini 3.5 Flash-Lite (1.71 × 54), using EcoLogits' measured throughputs. An 8×H100 node (10.2 kW maximum, 0.7 utilisation, PUE 1.12) shared by 32–64 concurrent requests implies 125–250 W per request. Susty's figures falling below that range is consistent with its coefficients being on the low side, or with an assumption of heavier batching than 64.
+**Re-checked for 2.2.0 (25 November 2026).** No provider has published a per-query or per-token figure since mid-2025: Google's 2026 Environmental Report repeats the May 2025 median, OpenAI's 0.34 Wh is unchanged, and Anthropic publishes no energy figure at all. The newer evidence brackets Susty rather than displacing it:
+
+- **Measured hardware.** GPU energy for large open mixture-of-experts models on current accelerators, at chat-like loads of 64–256 concurrent requests, is about 0.2–0.8 mWh per output token with prefill folded in (ML.ENERGY leaderboard v3, from Qwen3-235B-A22B on four B200s at 256 concurrent requests to DeepSeek-V3.1 on eight at 64; SemiAnalysis InferenceX reports runs on newer models in a similar range). Susty falls inside it on the same basis: 0.5 mWh for the output coefficient before PUE, 0.67 mWh for a 1,000-input, 300-output query. That range excludes host and idle energy, which Google measured at about 0.7× its accelerator energy on top (0.24 Wh total against 0.14 Wh of accelerators), so on a like-for-like boundary Susty sits in the lower half.
+- **An independent per-model estimate.** CLEER puts a one-question Sonnet 4.6 exchange at 0.20 Wh, close to Susty's 0.22 Wh for the anchor, though CLEER does not publish its token counts.
+- **A meta-analysis.** TokWatt harmonises 134 published estimates to 0.34 Wh for a short chat answer (0.16–0.99 Wh). Susty's anchor (0.22 Wh) is near the bottom of that range, and so is Sonnet 5.5: 0.18 Wh for the same token counts, or about 0.23 Wh for the same text, because its tokenizer counts about 30% more tokens (§4.2).
+
+Susty's level therefore still sits at the low end of what is published, but no longer below every estimate. Where the new evidence disagrees with Susty is the spread between models (§4.4), not the level.
+
+**The 10:1 split.** Measured GPU energy from disaggregated serving, where separate GPU pools run prefill and decode (SemiAnalysis InferenceX, runs of August–November 2026, 8,192-token prompts with no cache hits), gives 8–13 : 1 output to input at 64–256 concurrent requests, falling to 3–7 : 1 at throughput-optimised loads in the thousands. Susty's 10:1 sits inside the moderate range. Cached input costs far less: 60 to 1,000 times below an output token in InferenceX's agentic traces. Susty sets no prompt caching, so this does not apply to its own requests, except where a provider caches implicitly (Gemini does, above a minimum prompt length); there Susty overstates the cost of re-sent context.
+
+**Cross-check as average power draw.** Energy per token × generation speed gives the data-centre power attributed to one active reply. With the throughputs in EcoLogits' registry of 19 November 2026, Susty's coefficients (including PUE) imply about 162 W for Haiku 5.5 (1.05 J/token × 155 tokens/s), 166 W for Sonnet 5.5 (1.59 × 104), 354 W for Opus 5.5 (2.70 × 131), 212 W for Gemini 3.5 Flash-Lite (1.71 × 124) and 164 W for Gemini 4 Hydrogen (1.33 × 123). An 8×H100 node (10.2 kW maximum, 0.7 utilisation, PUE 1.12) shared by 32–64 concurrent requests implies 125–250 W per request. Until 2.2.0 this check put Susty below that range (62–93 W, at the September throughputs of 33–59 tokens/s), which was read as a sign that the coefficients are low. At today's throughputs it no longer says so: the same coefficients now land inside or above the range. The check is only as good as its inputs: per-reply speed rises with faster hardware and serving techniques without implying more power per reply, and an H100 node is an older reference point than the hardware now serving these models. It is kept as a sanity bound, not as evidence in either direction.
 
 The tenfold difference between input and output means long generated responses generally dominate inference energy, although accumulated chat history makes later prompts progressively more expensive.
 
-**Reply length matters more than model choice.** Oviedo et al. find that a reasoning-length query (median 5,000 output tokens, ~15× a standard query) raises median energy about **13×**, to 3.91 Wh (IQR 2.15–7.05). The entire spread between Haiku and Opus in the factor table below is about 2.6× (20× or more on EcoLogits' full model; §4.4). Whether extended thinking is on, and how long the reply runs, decides far more than which model serves it.
+**Reply length matters more than model choice.** Oviedo et al. find that a reasoning-length query (median 5,000 output tokens, ~15× a standard query) raises median energy about **13×**, to 3.91 Wh (IQR 2.15–7.05). The entire spread between Haiku 5.5 and Opus 5.5 in the factor table below is about 2.6× (20× or more on EcoLogits' full model; §4.4). Whether extended thinking is on, and how long the reply runs, decides far more than which model serves it.
 
 ### 4.4 Model factors
 
@@ -256,46 +282,70 @@ Per-token energy scales with a model's active parameter count. Susty applies rel
 f(P_active, B) = 1.1665e-6 · e^(-0.011206·B) · P_active + 4.0529e-5   Wh per output token
 ```
 
-`P_active` is in billions of parameters, evaluated at the midpoint of EcoLogits' active-parameter range. Susty evaluates at batch size **B = 32**; EcoLogits' own default is 64, which would narrow the spread (Haiku 0.59, Opus 1.29). `tools/clock.test.mjs` reproduces every published factor from this function, so none of them is a typed-in number.
+`P_active` is in billions of parameters, evaluated at the midpoint of EcoLogits' active-parameter range. Susty evaluates at batch size **B = 32**; EcoLogits' own default is 64, which would narrow the spread (Haiku 5.5 0.59, Opus 5.5 1.30). The constants are unchanged in EcoLogits 0.11.3. The architectures are EcoLogits' registry of 19 November 2026, committed as `data/ecologits-2026-11-19-models.csv`; `tools/model-factors.mjs --check` regenerates every factor from it and fails if `MODEL_ENERGY` in `index.html` disagrees, so none of them is a typed-in number.
 
 | Model/tier | Active params (EcoLogits est.) | Relative factor | Status |
 |---|---|---:|---|
-| Claude Haiku 4.5 | 10–35B, dense | 0.52 | derived from EcoLogits/ML.ENERGY |
-| Claude Sonnet 4.6 | 44–132B, MoE | 1.00 | anchor |
-| Claude Opus 4.6 / 4.7 / 4.8 | 67–200B, MoE | 1.33 | derived from EcoLogits/ML.ENERGY |
+| Claude Haiku 5.5 | 10–35B, dense | 0.52 | derived from EcoLogits/ML.ENERGY |
+| Claude Sonnet 5.5 | 29–88B, MoE (293B total) | 0.79 | derived from EcoLogits/ML.ENERGY |
+| Claude Opus 5.5 | 70–200B, MoE (670B total) | 1.34 | derived from EcoLogits/ML.ENERGY |
 | Gemini 3.5 Flash-Lite | 30–105B, dense | 0.85 | derived from EcoLogits/ML.ENERGY |
-| Gemini 3.8 Flash | 75–200B, MoE | 1.36 | derived from EcoLogits/ML.ENERGY |
+| Gemini 4 Hydrogen | 18.75–62.5B, MoE (187.5B total) | 0.66 | derived from EcoLogits/ML.ENERGY |
+| Claude Sonnet 4.6 | 44–132B, MoE (440B total) | 1.00 | anchor; no longer offered |
 
-**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. The Gemini factors are derived exactly as the Claude ones are; until 23 September 2026 both Gemini tiers were priced at the Sonnet anchor as an uncalibrated proxy, which understated Gemini 3.8 Flash by about a quarter. The factor covers per-token energy only: Gemini's thinking tokens are counted separately (§4.1) and priced as output. The 5-series Claude models are deliberately absent; an unrecognised model falls back to the anchor.
+**The anchor is not an offered model.** Sonnet 4.6 stays the anchor because the absolute coefficients (§4.3) and the high end k (§4.8) are calibrated on it; re-anchoring on Sonnet 5.5 would silently raise every model's absolute energy by 27%. The API still serves it, and `ANTHROPIC_MODEL` can point the default tier at it, so it is still priced correctly if it answers. The table in `index.html` also prices other models the API still serves, from the same registry: Haiku 4.5 ×0.52, Sonnet 5 ×0.79, Opus 4.6 / 4.7 / 4.8 / 5 ×1.33, Fable 5.2 ×1.91, Gemini 3.8 Flash ×1.36. An unrecognised model falls back to the anchor.
 
-**What the factors leave out: GPU count.** The factors use only EcoLogits' per-GPU energy term. EcoLogits' full model also multiplies by the number of GPUs needed to hold the model in memory (1.2 × total parameters × 2 bytes over 80 GB GPUs, rounded up to a power of two), and adds non-GPU server power, provider PUE and batch 64. Because GPU count follows **total** parameters, the full model separates small and large models far more:
+**Limits.** EcoLogits flags every Anthropic and Google entry `model-arch-not-released`: parameter counts are inferred, not disclosed, so these factors are a spread rather than a precision. EcoLogits says it sizes proprietary models from leaks, benchmarks and pricing; the new entries are consistent with the pricing route, and each choice moves a factor:
+
+- **Sonnet 5.5** is 293B total, Sonnet 4.6's 440B × 2/3, the ratio of their prices ($2 / $10 against $3 / $15 per million tokens). That is the whole reason the default Anthropic tier now prices 21% below the old anchor per token. Per token only: Sonnet 5.5 counts about 30% more tokens than Sonnet 4.6 for the same text (§4.2), so the same answer costs about the same energy as before (0.79 × 1.3 ≈ 1.02).
+- **Haiku 5.5** keeps Haiku 4.5's 10–35B although its price fell tenfold ($0.10 / $0.50 against $1 / $5). With its newer tokenizer counting about 30% more tokens, the same text now costs about 1.3 times what it did on Haiku 4.5. Opus 5.5 uses the same tokenizer as Opus 4.8.
+- **Gemini 4 Hydrogen** is 187.5B total, a quarter of Gemini 3.8 Flash's 750B, although Hydrogen's list price ($1.50 / $7.50) equals 3.8 Flash's from January 2027 and is twice its introductory price. Its measured speed (123 tokens/s against 72) is consistent with fewer active parameters, and Google says it is "adapted from" Gemini 4 Carbon, but no source states its size. Sized like 3.8 Flash, its factor would be 1.36, not 0.66. Its active range also tops out at a third of total parameters where EcoLogits documents 10–30%; at 30% the factor would be 0.63.
+
+The factor covers per-token energy only: thinking tokens are counted separately (§4.1) and priced as output.
+
+**What the factors leave out: GPU count.** The factors use only EcoLogits' per-GPU energy term. EcoLogits' full model also multiplies by the number of GPUs needed to hold the model in memory (1.2 × total parameters × 2 bytes over 80 GB GPUs, rounded up to a power of two), and adds non-GPU server power (1.2 kW per eight GPUs) over the reply's duration (output tokens ÷ the registry's tokens per second, plus its time to first token, shared across a batch of 64), and provider PUE (1.09–1.14 for Anthropic, 1.09 for Google). Because GPU count follows **total** parameters, the full model separates small and large models far more. Recomputed by `tools/model-factors.mjs` from the same registry, for a 300-token reply:
 
 | Model | Susty factor | EcoLogits full model, mWh per output token (300 tokens) |
 |---|---:|---:|
-| Claude Haiku 4.5 | 0.52 | 0.07–0.19 |
-| Gemini 3.5 Flash-Lite | 0.85 | 0.09–0.53 |
-| Claude Sonnet 4.6 | 1.00 | 1.52–2.51 |
-| Claude Opus 4.8 | 1.33 | 3.50–6.43 |
-| Gemini 3.8 Flash | 1.36 | 3.66–6.14 |
+| Claude Haiku 5.5 | 0.52 | 0.06–0.15 |
+| Gemini 4 Hydrogen | 0.66 | 0.54–0.76 |
+| Claude Sonnet 5.5 | 0.79 | 1.16–1.82 |
+| Gemini 3.5 Flash-Lite | 0.85 | 0.07–0.47 |
+| Claude Sonnet 4.6 (anchor) | 1.00 | 1.45–2.43 |
+| Claude Opus 5.5 | 1.34 | 3.15–5.99 |
 
-On the full model the Haiku-to-Opus spread is 20× or more, against Susty's 2.6×. Susty's factors therefore likely **understate large models and overstate small ones**, and Flash-Lite's modeled saving against Sonnet (15% per token) is likely understated. The full model is not adopted wholesale because it also appears to overstate some serving: for Gemini 3.8 Flash it gives 1.1–1.8 Wh per 300-token reply, while Google's measured median for a Gemini Apps prompt is 0.24 Wh, a gap consistent with GPU-based sizing misrepresenting TPU serving. Calibrating against provider data is the next step (§15). Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
+On the full model the Haiku-to-Opus spread is 20× or more, against Susty's 2.6×. Susty's factors therefore likely **understate large models and overstate small ones**. The two methods also disagree on the order of the Gemini tiers: per token, Hydrogen (×0.66) sits below Flash-Lite (×0.85), but Flash-Lite is dense and needs one to four GPUs across its 30–105B range, while Hydrogen's 187.5B total needs eight, so the full model puts Flash-Lite lowest. The full model is not adopted wholesale because it also appears to overstate some serving: for Gemini 3.8 Flash it gives 1.0–1.8 Wh per 300-token reply, while Google's measured median for a Gemini Apps prompt is 0.24 Wh, a gap consistent with GPU-based sizing misrepresenting TPU serving. Calibrating against provider data is the next step (§15).
+
+**Measured and independent evidence.** Two sources bear on the spread. On ML.ENERGY's v3 leaderboard (B200, chat prompts, 64 concurrent requests), the dense Qwen3-32B uses 0.31 J per output token on one GPU, while the mixture-of-experts Qwen3-235B-A22B (22B active) uses 2.04 J on four and DeepSeek-V3.1 (37B active) 2.92 J on eight: 6–9 times as much at similar or fewer active parameters. So scaling by active parameters alone, as Susty's factors do, misses the cost of holding a large model's weights. Neither parameter count predicts the ratio, though: between the two MoE models the measured spread is 1.4×, below both their active (1.7×) and total (2.9×) ratios, with precision and GPU count differing too. ML.ENERGY v3 also measured 15–41% less energy per token than v2 for the same models on newer serving software, so EcoLogits' fit, made on v2 data, runs high in absolute terms. CLEER's independent estimates (September 2026) spread a one-question exchange from 0.023 Wh (Claude Haiku 4.5) through 0.203 Wh (Sonnet 4.6) to 0.532 Wh (Opus 4.8), 23× from Haiku to Opus against Susty's 2.6×, with Gemini 3.5 Flash-Lite at 0.062 Wh. CLEER also disagrees with EcoLogits on the direction of one change: it puts Sonnet 5 17% *above* Sonnet 4.6 for the same exchange, where EcoLogits' sizing puts it 21% below. CLEER has no estimate for any 5.5 model or for Gemini 4, so Susty follows EcoLogits for method consistency and says here that the sign of the Sonnet 4.6 → 5.5 change is uncertain.
+
+Model ids are matched by longest prefix because the API answers with dated ids (`claude-haiku-4-5` returns `claude-haiku-4-5-20251001`); an exact lookup once billed Haiku at the Sonnet anchor.
 
 ### 4.5 Model routing and tiers
 
-The ledger's model picker offers six tiers across two providers. The client sends an opaque key and `api/chat.js` owns the only mapping to a model, so a modified client cannot name an arbitrary model or switch thinking on.
+The ledger's model picker offers six tiers across two providers. The client sends an opaque key and `api/chat.js` owns the only mapping to a model, so a modified client cannot name an arbitrary model or switch thinking on. The keys are unchanged from 2.1, so a visitor's saved choice carries over to the new model.
 
 | Tier | Model | Thinking | Per-token factor |
 |---|---|---|---|
-| Haiku 4.5 | `claude-haiku-4-5` | off | ×0.52 |
-| Sonnet 4.6 | `claude-sonnet-4-6` (overridable via `ANTHROPIC_MODEL`) | off | ×1.00 (anchor) |
-| Opus 4.8 | `claude-opus-4-8` | off | ×1.33 |
-| Opus 4.8, extended thinking | `claude-opus-4-8` | adaptive, effort `low`, 4,000-token ceiling | ×1.33 **plus the thinking tokens** |
+| Haiku 5.5 | `claude-haiku-5-5` | off (`disabled`), effort `low` | ×0.52 |
+| Sonnet 5.5 | `claude-sonnet-5-5` (overridable via `ANTHROPIC_MODEL`) | off (`between_tools`), effort `low` | ×0.79 |
+| Opus 5.5 | `claude-opus-5-5` | cannot be disabled; effort `low`, 2,000-token ceiling | ×1.34 **plus the thinking tokens** |
+| Opus 5.5, extended thinking | `claude-opus-5-5` | adaptive, effort `medium`, 4,000-token ceiling | ×1.34 **plus the thinking tokens** |
 | **Gemini 3.5 Flash-Lite** (client default) | `gemini-3.5-flash-lite` | cannot be disabled; level `minimal` | ×0.85 **plus the thinking tokens** |
-| Gemini 3.8 Flash | `gemini-3.8-flash` | cannot be disabled; level `low` | ×1.36 **plus the thinking tokens** |
+| Gemini 4 Hydrogen | `gemini-4-hydrogen` | cannot be disabled; level `low` | ×0.66 **plus the thinking tokens** |
 
-**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Flash-Lite is the default because it has the lowest modeled per-token energy of the Gemini tiers (×0.85) and runs at the lowest thinking level Google offers for it. That is a modeled comparison, not a measured one, and it says nothing about answer quality; the picker labels it simply "Gemini 3.5 Flash-Lite (default)" rather than calling it efficient; its factor is shown in the ledger's model row.
+**Each tier asks for the least thinking its model allows.** The 5.5 models do not share one switch, and omitting `thinking` means *on* for all three:
 
-Gemini 3 models cannot switch thinking off. Each tier runs at the lowest level its model accepts: `minimal` for Flash-Lite (also Google's default for that model) and `low` for Flash, which does not offer `minimal`. Until 23 September 2026 Flash-Lite ran at `low`, above its floor. Thinking tokens are measured through `thoughtsTokenCount` and priced as output.
+- Haiku 5.5 accepts `thinking: {type: "disabled"}` at effort `high` or below.
+- Sonnet 5.5 rejects `disabled` with a 400; its off-mode is `{type: "between_tools"}`, at effort `high` or below, and no other model accepts it.
+- Opus 5.5 cannot switch thinking off at any effort: `disabled` and `budget_tokens` are both a 400. Effort is the only control, and `low` is the floor. So the plain Opus tier, which never thought on Opus 4.8, now does, a little, and its thinking tokens are measured and priced as Gemini's are. Its ceiling is twice the standard one so that thinking cannot crowd out the answer.
+
+The setting is chosen from the model id (`minimalThinking()` in `api/chat.js`), not the tier, because `ANTHROPIC_MODEL` can point the default tier at any model and one model's off-switch is a 400 on another; a deployment that still sets `claude-sonnet-4-6`, as `.env.example` once suggested, sends neither field, which on 4.x means no thinking. The non-thinking tiers also send effort `low`, which Anthropic recommends for chat and which spends fewer tokens. The extended-thinking tier moved from `low` to `medium`, Opus 5.5's own default, because `low` is now what the plain Opus tier runs at.
+
+**The client default is Gemini 3.5 Flash-Lite.** A Gemini tier became the default to spread load off the Anthropic key. Until 2.2.0 Flash-Lite was the default because it had the lowest modeled per-token energy of the Gemini tiers. With Gemini 4 Hydrogen it no longer does (×0.85 against ×0.66), and it stays the default for three other reasons: it is the only Gemini tier that can think at `minimal`, "near-off" in Google's words, while Hydrogen's floor is `low`, and on a short answer the extra thinking tokens can outweigh a per-token difference of that size; EcoLogits' full model, which counts the GPUs needed to hold the whole model, puts Flash-Lite lowest of the two (§4.4); and the Hydrogen size estimate is the least certain in the table (§4.4). It is also Google's "lowest-cost" model, about a third of Hydrogen's output price. All of this is modeled, not measured, and it says nothing about answer quality; the picker labels it simply "Gemini 3.5 Flash-Lite (default)" rather than calling it efficient; its factor is shown in the ledger's model row.
+
+Gemini models cannot switch thinking off either. Each Gemini tier runs at the lowest level its model accepts: `minimal` for Flash-Lite (also Google's default for that model) and `low` for Hydrogen, which defaults to `high` and rejects `minimal` with an error. Until 23 September 2026 Flash-Lite ran at `low`, above its floor. Thinking tokens are measured through `thoughtsTokenCount` and priced as output.
+
+The picker's labels compare each Claude tier's per-token factor with the Sonnet tier's: Haiku 5.5 is about two-thirds of it (0.52 / 0.79), Opus 5.5 about 1.7 times (1.34 / 0.79), before thinking.
 
 **Server fallback is a separate concept.** `DEFAULT_TIER` in `api/chat.js` stays `sonnet`: it is what a request degrades to if a tier is unrecognised, gated, or its provider is not configured, and it must be a provider that is always present. The tier is a request, not a setting — the ledger reports the model that actually answered (from the response's `message.model`), not the one asked for.
 
@@ -306,14 +356,14 @@ Two server switches, both default-on:
 | `SUSTY_EXPENSIVE_TIERS=off` | Drops the thinking tier; everything else stays |
 | `SUSTY_TIERS=off` | Collapses every request to the default tier |
 
-A visitor on the thinking tier can raise the cost of an exchange several times over, on the deployment's own key, against a rate limit that resets on cold start. `SUSTY_EXPENSIVE_TIERS=off` is the lever.
+A visitor on the thinking tier can raise the cost of an exchange several times over, on the deployment's own key, against a rate limit that resets on cold start. `SUSTY_EXPENSIVE_TIERS=off` is the lever. It does not drop the plain Opus tier, which now thinks a little: its 2,000-token ceiling at Opus 5.5's $20 per million output tokens is at most 1.6× what the Opus 4.8 tier could spend (1,000 tokens at $25). `SUSTY_TIERS=off` removes it with every other tier.
 
 ### 4.6 Guardrails
 
 The endpoint is public, so:
 
 - **40 messages** of history forwarded, **4,000 characters** per message.
-- **1,000 output tokens** maximum per Anthropic reply (4,000 on the thinking tier, because thinking counts against the ceiling).
+- **1,000 output tokens** maximum per Anthropic reply (2,000 on the Opus tier, which cannot switch thinking off, and 4,000 on the thinking tier, because thinking counts against the ceiling).
 - **2,000 output tokens** per Gemini reply. Gemini counts thinking tokens against `maxOutputTokens` and enforces it as a hard cutoff, so the cap is the standard reply ceiling plus the same again as thinking headroom. A reply that hits it ends with `MAX_TOKENS` and is recorded as incomplete.
 - **25 requests per IP per 10 minutes.** Rate-limit state is in-process: it resets on a cold start and is not shared between instances. It deters casual abuse; it is not a quota. The limiter checks before recording, so rejected attempts do not extend the window, and when the map exceeds 5,000 addresses it evicts the oldest 1,000 rather than clearing.
 
@@ -342,7 +392,7 @@ k = 0.60 Wh / 0.224 Wh = 2.68, rounded up to 2.7
 | Denominator | Susty's own figure for the same standard query: 1,000 input / 300 output tokens on the Sonnet anchor at PUE 1.12, (1,000 × 0.05 + 300 × 0.5) mWh × 1.12 = **0.224 Wh** (the §4.3 table row) |
 | Data-quality label | **Derived** (a ratio of a published statistic to Susty's modeled figure) |
 | Applies to | Inference energy only (chip energy × PUE). Hosting, device time and both grid intensities are not ranged; they carry their own, separately disclosed uncertainty (§5, §6, §7). |
-| Likely direction of error | The upper quartile is not a maximum: a quarter of Oviedo et al.'s modeled queries use more. EcoLogits' full model puts Sonnet-class models at up to about 4.5× Susty's coefficient (§4.3), so for large models the high end may still be low. For small models such as Haiku 4.5 the same full model sits below Susty's figure (§4.4), so there the high end is generous. |
+| Likely direction of error | The upper quartile is not a maximum: a quarter of Oviedo et al.'s modeled queries use more. EcoLogits' full model puts a Sonnet-class query at up to about 3.3× Susty's figure (§4.3), so for large models the high end may still be low. For small models such as Haiku 5.5 the same full model sits below Susty's figure (§4.4), so there the high end is generous. |
 
 **Not a statistical interval.** Oviedo et al.'s IQR describes the spread of their own modeled queries; dividing it by a Susty figure gives a plausible upper scenario, not a confidence bound on Susty's estimate. The ledger says so in words.
 
@@ -365,13 +415,13 @@ comparison_Wh(m)
 comparison_gCO2e(m) = comparison_Wh(m) x server_grid_intensity / 1000
 ```
 
-Tokens and server grid come from the latest completed request record, frozen when it was recorded. The models are Haiku 4.5, Sonnet 4.6, Opus 4.8, Gemini 3.5 Flash-Lite and Gemini 3.8 Flash, with the §4.4 factors; the model that actually answered is marked, and when its answer included thinking the mark says "excl. thinking", because that row is then below the inference energy the ledger's Energy block shows for the same answer.
+Tokens and server grid come from the latest completed request record, frozen when it was recorded. The models are the five the picker offers, Haiku 5.5, Sonnet 5.5, Opus 5.5, Gemini 3.5 Flash-Lite and Gemini 4 Hydrogen, with the §4.4 factors; the model that actually answered is marked, and when its answer included thinking the mark says "excl. thinking", because that row is then below the inference energy the ledger's Energy block shows for the same answer.
 
 | Choice | Why | Direction it errs |
 |---|---|---|
-| Thinking tokens left out | Each model thinks differently, Gemini always adds some, and the extended-thinking tier's cost is its thinking, which cannot be known in advance; that tier has no row | Low for any model that thinks; the answered model's row is below what it actually cost when it thought |
+| Thinking tokens left out | Each model thinks differently, Gemini and Opus 5.5 always add some, and the extended-thinking tier's cost is its thinking, which cannot be known in advance; that tier has no row | Low for any model that thinks; the answered model's row is below what it actually cost when it thought |
 | Hosting and device left out | Identical whichever model answers | Neither; the comparison is of inference only |
-| Same token counts for every model | The only measured counts available | Unknown: Claude and Gemini tokenizers count the same text differently, and models write answers of different lengths |
+| Same token counts for every model | The only measured counts available | Unknown: Claude and Gemini tokenizers count the same text differently, as do Claude generations (Haiku 5.5 and Sonnet 5.5 count about 30% more tokens than their 4.x predecessors), and models write answers of different lengths |
 | §4.4 factors | Susty's existing model scaling | Compresses the real spread: likely understates large models and overstates small ones (§4.4) |
 
 It says nothing about answer quality. Data-quality label: **modeled** (measured tokens, modeled coefficients and factors).
@@ -390,7 +440,7 @@ PUE is therefore a material uncertainty and is treated as a modeled parameter ra
 
 ### Idle and reserved capacity
 
-Susty has no explicit term for idle capacity that providers keep available for reliability and low latency, or for host-system energy beyond what the per-token coefficient implicitly covers. Google reports these as material: its median Gemini Apps prompt is 0.10 Wh on active accelerators alone and 0.24 Wh once host systems, idle machines and data-centre overhead are included.
+Susty has no explicit term for idle capacity that providers keep available for reliability and low latency, or for host-system energy beyond what the per-token coefficient implicitly covers. Google reports these as material: of its 0.24 Wh median Gemini Apps prompt, active accelerators account for 0.14 Wh (58%), host CPU and memory 0.06 Wh, idle machines 0.02 Wh and data-centre overhead 0.02 Wh, so the whole system draws about 1.7× the accelerators. Google's narrower 0.10 Wh figure is accelerators only on a sample of the most efficient data centres, not the accelerator share of the 0.24 Wh; this section said otherwise until 2.2.0.
 
 ### Hosting and network
 
@@ -493,7 +543,7 @@ Inference and hosting energy are priced on a servers' grid of **307 g CO2e/kWh**
 | Source | Watershed, [AI emissions by region](https://watershed.com/blog/ai-emissions-by-region), 16 September 2026: US data-centre grid intensity "weighted by data center capacity", "about 307 grams of CO2e per kWh today", rising to 351 with planned projects |
 | Accounting basis | **Basis not stated by source.** Watershed attributes its state maps to location-based eGRID CO2e output rates (operational), but does not say which source or basis produced the 307 figure. The ledger shows it as "basis not stated by source". |
 | Data-quality label | **Modeled** (a Susty assumption about where requests are served), using a figure **derived** by Watershed |
-| Likely direction of error | Unknown. The serving region is not disclosed by either provider. A capacity weighting over all US data centres need not match the facilities that serve AI requests, and a request served outside the US could sit on a cleaner or dirtier grid. |
+| Likely direction of error | Unknown. The serving region is not disclosed by either provider. A capacity weighting over all US data centres need not match the facilities that serve AI requests, and a request served outside the US could sit on a cleaner or dirtier grid. For the capacity Anthropic is building itself, its own statement points higher: "much of that new power is natural gas" (Anthropic, data-centre commitments, checked 25 November 2026). Not adopted, because it describes new sites, not where today's requests are served. |
 
 **Why a US figure.** Neither provider Susty calls (Anthropic, Google) discloses which facility served a given request, so any server grid is an assumption. A US figure is the assumption chosen because it is the only capacity-weighted data-centre figure found with a stated source, and because Susty's own hosting is on Vercel, whose functions run in Washington, D.C. (`iad1`) by default for new projects ([Vercel docs](https://vercel.com/docs/functions/configuring-functions/region)); `vercel.json` sets no region (a dashboard setting could override this and is not visible from the repository). A single, sourced default is used rather than a region picker, which would let the reader choose a number Susty cannot check.
 
@@ -711,7 +761,7 @@ It also verifies that failed or partial exchanges do not increase the denominato
 
 ## 14. Verification log
 
-Re-checked on **23 September 2026** against primary sources where reachable. Rows marked "added 11 October 2026" were checked for 2.1.0.
+Re-checked on **23 September 2026** against primary sources where reachable. Rows marked "added 11 October 2026" were checked for 2.1.0, and rows marked "added 25 November 2026" for 2.2.0.
 
 | Claim | Result | How checked |
 |---|---|---|
@@ -741,7 +791,7 @@ Re-checked on **23 September 2026** against primary sources where reachable. Row
 | Comparisons: tea, shower | Not traced to a primary source | — |
 | Burger: Poore & Nemecek (2018) beef, 99.48 (beef herd) and 33.3 (dairy herd) kg CO2e per kg of product (added 11 October 2026) | Confirmed; quarter-pound (113 g) patty at the dairy-herd figure gives 3,763 g, shown as 3,800 | Our World in Data, ghg-per-kg-poore dataset |
 | EPA smartphone charge 0.019 kWh (added 11 October 2026) | Confirmed: [28.446 Wh − 22 h × 0.411 W] ÷ 1,000 | EPA Greenhouse Gas Equivalencies Calculator, calculations and references |
-| Google median Gemini Apps text prompt: 0.24 Wh comprehensive, 0.10 Wh accelerators only | Confirmed | Google 2025, arXiv 2508.15734 |
+| Google median Gemini Apps text prompt: 0.24 Wh comprehensive, 0.10 Wh accelerators only | **Corrected** (25 November 2026): 0.24 Wh comprehensive, of which active accelerators 0.14 Wh (58%), host 0.06, idle 0.02, overhead 0.02; 0.10 Wh is Google's narrower method (accelerators only, top 10% most efficient data centres), not the accelerator share | Google 2025, arXiv 2508.15734 v1 (still the only version), §4 and Table 1 |
 | OpenAI average ChatGPT query 0.34 Wh | Confirmed as cited by Oviedo et al.; OpenAI's method unpublished | Oviedo et al. 2026 |
 | EcoLogits full-model energy per request (Haiku, Sonnet, Opus, Gemini Flash-Lite and Flash; 300 output tokens) | Computed with EcoLogits 0.11.1 and its current model registry | EcoLogits source |
 | Susty factors include GPU count | **No** — per-GPU term only; disclosed in §4.4 | EcoLogits source |
@@ -758,7 +808,22 @@ Re-checked on **23 September 2026** against primary sources where reachable. Row
 | eGRID2023 Rev 2 subregion resource mix (added 11 October 2026) | 27 subregions, Table 2; percentages may not sum to 100 (EPA), normalised | EPA eGRID2023 summary tables Rev 2 |
 | Watershed US data-centre grid, capacity-weighted: about 307 g CO2e/kWh, 351 with planned projects (added 11 October 2026) | Confirmed; published 16 September 2026; the article does not state the source or accounting basis of the 307 figure (its state maps use location-based eGRID CO2e output rates) | Watershed, AI emissions by region |
 | Vercel Functions default region `iad1` (Washington, D.C.) for new projects (added 11 October 2026) | Confirmed; `vercel.json` sets no region; dashboard setting not visible from the repository | Vercel documentation |
-| 275-token system-prompt allowance | Carried from the original measurement; not re-measured | — |
+| 275-token system-prompt allowance | Carried from the original measurement; not re-measured. Measured on Sonnet 4.6; likely low on the 5.5 models' newer tokenizer (added 25 November 2026) | — |
+| Claude Haiku 5.5, Sonnet 5.5, Opus 5.5: ids, prices, thinking controls (added 25 November 2026) | Confirmed: Haiku 5.5 accepts `disabled` at effort high or below; Sonnet 5.5 rejects `disabled`, off-mode `between_tools` at effort high or below, only on that model; Opus 5.5 cannot disable thinking at any effort, default effort `medium`; omitting `thinking` means on for all three; effort levels are `low`, `medium`, `high`, `xhigh`, `max`, so `low` is the lowest; Anthropic suggests starting chat at `low` (Sonnet 5.5 notes); Opus 5 accepts `disabled` at effort high or below and Sonnet 5 accepts it; Haiku 4.5 rejects `effort`; Haiku 5.5 and Sonnet 5.5 count about 30% more tokens than their 4.x predecessors for the same text | Anthropic models overview, thinking and effort docs, migration guide, as given in Anthropic's API reference material dated 3 November 2026, checked on 25 November 2026 |
+| EcoLogits registry of 19 November 2026: architecture and throughput for 14 models (added 25 November 2026) | Extracted by script to `data/ecologits-2026-11-19-models.csv`; energy function constants unchanged in 0.11.3 | EcoLogits commit `8bc6848`; `ecologits/impacts/llm.py` |
+| EcoLogits full-model figures (§4.4) (added 25 November 2026) | Recomputed with EcoLogits' formulas re-implemented twice, in Python and in `tools/model-factors.mjs`, and a third time by an independent review; all agree to every printed digit. Run on the registry of 21 September 2026 (EcoLogits commit `2b36303`, which stored time to first token in milliseconds, converted here), the code reproduces the old Sonnet 4.6 row (1.52–2.51) within 1%, but the other old rows differ by up to 13% (Opus 4.8 most); a different registry snapshot would explain it, but that is not confirmed | EcoLogits source |
+| Gemini 4 Hydrogen: GA 12 November 2026; Google's named upgrade from Gemini 3.8 Flash; thinking levels low/medium/high/xhigh, default high; `minimal` returns an error; thinking cannot be disabled (added 25 November 2026) | Confirmed | Google AI Studio docs: thinking, what's new in Gemini 4 Hydrogen, choosing a model; Gemini 4 Hydrogen model card |
+| Gemini 3.5 Flash-Lite: "fastest, lowest-cost" model; no shutdown date; floor and default `minimal`; no Gemini 4 Flash-Lite exists (added 25 November 2026) | Confirmed. A "Gemini 4 Helium" is rumoured, with no model id or documentation | Google AI Studio docs: choosing a model, deprecations, thinking |
+| Gemini prices per million input / output tokens, paid tier (added 25 November 2026) | 3.5 Flash-Lite $0.30 / $2.50; 4 Hydrogen $1.50 / $7.50; 3.8 Flash $0.75 / $3.75 until 31 December 2026, then $1.50 / $7.50 | Google AI Studio pricing page (undated) |
+| Gemini `usageMetadata` and output cap (added 25 November 2026) | Confirmed: `totalTokenCount` = prompt + tool-use prompt + thoughts + candidates, so candidates exclude thoughts; `maxOutputTokens` includes thought tokens. `generateContent` is now labelled legacy, with no shutdown date; the adapter is unchanged | Google AI Studio API reference and thinking page (the ai.google.dev pages redirect there) |
+| Provider per-query or per-token energy disclosures since mid-2025 (added 25 November 2026) | None found. Google's 2026 Environmental Report repeats the May 2025 median (0.24 Wh) and reports 2025 fleet PUE 1.09; Anthropic publishes no energy, emissions or water figure (its data-centre commitments page promises site metrics; its S-1 of October 2026 has none, per Axios); OpenAI's 0.34 Wh is unchanged | Google 2026 Environmental Report; anthropic.com/policy/infrastructure; Axios, 27 October 2026 |
+| Oviedo et al. figures are the Joule (v2) version (added 25 November 2026) | Confirmed: 0.31 Wh (IQR 0.16–0.60) and 3.91 Wh are v2 of 9 June 2026, as published in Joule; v1 (September 2025) said 0.34 Wh (IQR 0.18–0.67) and 4.32 Wh | arXiv 2509.20241 v1 and v2 |
+| ML.ENERGY v3 chat energy on B200 (added 25 November 2026): DeepSeek-V3.1 (FP8, 8 GPUs) 2.92 J per output token at 64 concurrent requests, 1.31 J at 256; Qwen3-235B-A22B (BF16, 4 GPUs) 2.04 J at 64, 0.71 J (0.20 mWh) at 256; dense Qwen3-32B (1 GPU) 0.31 J at 64 | Confirmed from the leaderboard's raw task data | ml.energy leaderboard data, `lm-arena-chat` task |
+| CLEER per-model estimates (Light chat: Haiku 4.5 0.023, Sonnet 4.6 0.203, Sonnet 5 0.238, Opus 4.8 0.532, Gemini 3.5 Flash-Lite 0.062 Wh); boundary includes host, idle, cooling, total ÷ IT = 1.45 (added 25 November 2026) | Confirmed from the published dataset; no entries for any 5.5 model or Gemini 4. Data licence CC BY-NC: figures are cited, not redistributed | CLEER dataset v1 (updated 30 October 2026) |
+| TokWatt: 0.34 Wh short chat answer, range 0.16–0.99 (added 25 November 2026) | Confirmed from the abstract (single-author preprint) | arXiv 2610.39846 |
+| Disaggregated prefill / decode GPU energy: 8–13 : 1 at 64–256 concurrent requests, 3–7 : 1 at thousands (added 25 November 2026) | Reported from SemiAnalysis InferenceX benchmark data (power schema v2, runs August–November 2026); benchmark, not peer-reviewed | InferenceX API |
+| Implied power per reply at 19 November 2026 throughputs (§4.3) (added 25 November 2026) | Recomputed: 162–354 W, now inside or above the 125–250 W H100 reference; the old "below the range" reading withdrawn | `tools/model-factors.mjs` registry, arithmetic in §4.3 |
+| Anthropic's data centres "require little to no water to operate"; "much of that new power is natural gas" (added 25 November 2026) | Confirmed; page undated | anthropic.com/policy/infrastructure |
 
 ---
 
@@ -768,9 +833,9 @@ In priority order. None of these changes numbers until the data exists; each sho
 
 | Gap | Data needed | Candidate source | Expected effect |
 |---|---|---|---|
-| Absolute energy per token | Per-model energy per input and output token, or per-query energy with token counts | Provider disclosures (Google's 2025 method; a request to Anthropic); ML.ENERGY measurements | Replaces the largest assumption; likely raises estimates |
-| Input/output split | Measured prefill vs decode energy per token at production batch sizes | ML.ENERGY; serving-framework benchmarks; Oviedo et al.'s simulation code | Replaces the fixed 10:1 ratio |
-| Model scaling | GPU-count-aware, hardware-specific (TPU vs GPU) scaling with batch and utilisation assumptions | EcoLogits full model, reconciled to provider disclosures | Wider, better-grounded spread between models |
+| Absolute energy per token | Per-model energy per input and output token, or per-query energy with token counts | Provider disclosures (Google's 2025 method; a request to Anthropic; none published since mid-2025, checked 25 November 2026); ML.ENERGY measurements | Replaces the largest assumption; on 2026 evidence more likely to widen the spread between models than to move the Sonnet-class level (§4.3) |
+| Input/output split | Measured prefill vs decode energy per token at production batch sizes, and the share of cached input | SemiAnalysis InferenceX disaggregated runs (8–13 : 1 at moderate load, §4.3); ML.ENERGY; Oviedo et al.'s simulation code | Replaces the fixed 10:1 ratio; a cached-input term |
+| Model scaling | GPU-count-aware, hardware-specific (TPU vs GPU) scaling with batch and utilisation assumptions | EcoLogits full model, reconciled to provider disclosures; ML.ENERGY v3 measurements, which show active parameters alone missing the cost of holding a large model's weights (§4.4); CLEER's per-model estimates as a cross-check | Wider, better-grounded spread between models; the largest known error in the per-model figures |
 | Idle and host overhead | Share of idle reserved capacity and host energy | Google 2025 (0.10 → 0.24 Wh) | Adds a documented term |
 | Uncertainty | A distribution for each parameter, propagated by Monte Carlo | Oviedo et al.'s approach | A statistical interval in place of the single-scenario high end (§4.8), covering device and grid as well as inference |
 | Device power | Measured whole-device power during Susty-type sessions on phone, tablet and laptop | Lab measurement following Kirkeby & Lagermann | Validates the 1.35–10 W values |
@@ -810,9 +875,9 @@ The ledger shows three rows: cooling at the data centre (on-site), power station
 | Value | **1.15 L/kWh** of IT energy, every tier |
 | Source | Google (2025), *Measuring the environmental impact of delivering AI at Google scale* (arXiv 2508.15734): "For both 2023 and 2024, Google's WUE Category 2 value was 1.15 L/kWh", a fleet average weighted by AI-serving energy, applied as `(E_total − E_overhead) × WUE`, i.e. to IT energy |
 | Data-quality label | **Measured** (by Google, for Google's fleet); applied to Anthropic tiers as a **modeled** proxy |
-| Likely direction of error | **High** for any Claude traffic served from AWS, whose 2025 North America average WUE was 0.08 L/kWh (AWS fact sheet); Anthropic does not disclose where it serves. Hosting (Vercel) takes the same WUE on its whole 0.003 Wh, not divided by PUE, because Vercel publishes neither a WUE nor an overhead split: about 0.003 mL per request, and errs **high** (Vercel's default region `iad1` is listed as `us-east-1`, AWS's naming, and AWS reports 0.08 L/kWh for North America; Vercel does not name its provider) |
+| Likely direction of error | **High** for any Claude traffic served from AWS, whose 2025 North America average WUE was 0.08 L/kWh (AWS fact sheet), and from Anthropic's own data centres, which it says "require little to no water to operate" (closed-loop and air cooling); Anthropic does not disclose where it serves. Hosting (Vercel) takes the same WUE on its whole 0.003 Wh, not divided by PUE, because Vercel publishes neither a WUE nor an overhead split: about 0.003 mL per request, and errs **high** (Vercel's default region `iad1` is listed as `us-east-1`, AWS's naming, and AWS reports 0.08 L/kWh for North America; Vercel does not name its provider) |
 
-Microsoft's figures are not used (no Susty tier runs on Azure). For the record, Microsoft's current WUE is 0.27 L/kWh globally in FY25, not the 0.1–1.65 regional range often quoted from older reports (§14).
+Microsoft's figures are not used. Until 2.2.0 this said no Susty tier runs on Azure. That was already out of date: Anthropic had agreed to buy Azure capacity (announced November 2025), and it does not say which facility serves a request, so the reason is the same as for AWS: the serving facility is unknown. For the record, Microsoft's current WUE is 0.27 L/kWh globally in FY25, not the 0.1–1.65 regional range often quoted from older reports (§14).
 
 ### 16.3 Off-site: power stations
 
@@ -922,3 +987,18 @@ Water and energy err in **opposite directions**. Every water choice that is not 
 - Poore & Nemecek (2018), **Reducing food's environmental impacts through producers and consumers**, *Science* 360, 987–992; data via Our World in Data — https://ourworldindata.org/grapher/ghg-per-kg-poore
 - CDR.fyi, **Durable CDR Market 2024: Year in Review** — https://www.cdr.fyi/blog/2024-year-in-review
 - U.S. DOE, **Carbon Negative Shot Strategy** (target: under $100 per net tonne CO2e, durably stored) — https://www.energy.gov/fecm/carbon-negative-shot-strategy
+
+Added in 2.2.0 (checked 25 November 2026):
+
+- Anthropic, **Models overview**, per-model pages, **Thinking**, **Effort** and **Migration guide** — https://platform.claude.com/docs/en/about-claude/models/overview, https://platform.claude.com/docs/en/build-with-claude/thinking, https://platform.claude.com/docs/en/build-with-claude/effort
+- Anthropic, **Data center community commitments** — https://www.anthropic.com/policy/infrastructure
+- Anthropic, **Microsoft, NVIDIA and Anthropic announce strategic partnerships** (November 2025) — https://www.anthropic.com/news/microsoft-nvidia-anthropic-announce-strategic-partnerships
+- EcoLogits model registry, commit `8bc6848` (19 November 2026) — https://github.com/mlco2/ecologits/blob/main/ecologits/data/models.json; methodology for proprietary models — https://ecologits.ai/latest/methodology/proprietary_models/
+- Google AI Studio documentation: **Thinking**, **Models**, **Choosing a model**, **Deprecations**, **What's new in Gemini 4 Hydrogen**, **API reference: generate content** — https://aistudio.google.com/docs/thinking, https://aistudio.google.com/docs/choosing-a-model, https://aistudio.google.com/docs/deprecations, https://aistudio.google.com/docs/whats-new-gemini-4-hydrogen, https://aistudio.google.com/api-reference/generate-content
+- Google DeepMind, **Gemini 4 Hydrogen model card** — https://deepmind.google/models/model-cards/gemini-4-hydrogen/
+- Google (2026), **Environmental Report** — https://sustainability.google/files/google-2026-environmental-report.pdf
+- Chung et al., **The ML.ENERGY Benchmark**, arXiv 2505.06371, and the ML.ENERGY leaderboard v3 — https://ml.energy/leaderboard/
+- SemiAnalysis, **InferenceX** (formerly InferenceMAX) benchmark data — https://inferencex.semianalysis.com/
+- Sustainable AI Group (Jegham, Koh, Gamazaychikov, Luccioni), **CLEER** dataset v1 and technical report (CC BY-NC) — https://github.com/sustainableaigroup/CLEER, https://reports.sustainableaigroup.com/CLEER-Tech-Report
+- Bahi (2026), **TokWatt: an open, boundary-annotated database of AI inference energy**, arXiv 2610.39846 — https://arxiv.org/abs/2610.39846
+- Axios (27 October 2026), on the absence of emissions data in Anthropic's S-1 — https://www.axios.com/pro/climate-deals/2026/10/27/anthropics-emissions-data-s-1

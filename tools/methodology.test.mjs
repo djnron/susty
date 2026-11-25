@@ -4,7 +4,11 @@
 // that explains it changing too.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LIMITS, TIERS } from '../api/chat.js';
+// The document describes the default deployment, so an ANTHROPIC_MODEL
+// exported in the shell must not reach api/chat.js (it reads it at load).
+delete process.env.ANTHROPIC_MODEL;
+const { LIMITS, TIERS } = await import('../api/chat.js');
+const { fullModel, registry } = await import('./model-factors.mjs');
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const grid = readFileSync(new URL('../api/grid.js', import.meta.url), 'utf8');
@@ -56,11 +60,12 @@ check(`high-bound factor ${MODEL.inferenceHighFactor} matches, in doc and in-pag
   has(/\*\*Not a statistical interval\.\*\*/);
   assert.match(html, new RegExp(`${MODEL.inferenceHighFactor} times ours`), 'ledger note should quote the factor');
 });
-check('model comparison covers every model in MODEL_ENERGY except superseded Opus ids', () => {
+check('model comparison covers exactly the models the picker offers, each with a factor', () => {
   const start = html.indexOf('const COMPARE_MODELS = [');
   const ids = [...html.slice(start, html.indexOf('];', start)).matchAll(/\['([\w.-]+)'/g)].map(m => m[1]);
-  const offered = Object.keys(MODEL_ENERGY).filter(k => !/claude-opus-4-[67]/.test(k));
+  const offered = [...new Set(Object.values(TIERS).map(t => t.model))];
   assert.deepEqual([...ids].sort(), [...offered].sort());
+  for (const id of ids) assert.ok(MODEL_ENERGY[id], `${id} has no factor`);
   has(/### 4\.9 The latest answer on other models/);
   has(/\*\*hypothetical\*\*/);
 });
@@ -86,12 +91,37 @@ check('history, length, rate limits match api/chat.js', () => {
 });
 check('thinking-tier ceiling matches', () =>
   has(new RegExp(`${TIERS['opus-thinking'].maxTokens.toLocaleString('en-US')}-token ceiling`)));
+check('Opus tier: cannot disable thinking, effort and ceiling match', () => {
+  const o = TIERS.opus;
+  assert.equal(o.thinking, undefined);
+  has(new RegExp(`\\| Opus 5\\.5 \\| \`${o.model}\` \\| cannot be disabled; effort \`${o.effort}\`, ${o.maxTokens.toLocaleString('en-US')}-token ceiling`));
+  has(new RegExp(`\\(${o.maxTokens.toLocaleString('en-US')} on the Opus tier, which cannot switch thinking off`));
+  has(new RegExp(`\\| Opus 5\\.5, extended thinking \\| \`${TIERS['opus-thinking'].model}\` \\| adaptive, effort \`${TIERS['opus-thinking'].effort}\``));
+});
+check('Claude tier thinking settings match the doc', () => {
+  has(new RegExp(`\\| Haiku 5\\.5 \\| \`${TIERS.haiku.model}\` \\| off \\(\`${TIERS.haiku.thinking.type}\`\\), effort \`${TIERS.haiku.effort}\``));
+  has(new RegExp(`\\| Sonnet 5\\.5 \\| \`${TIERS.sonnet.model}\` \\(overridable via \`ANTHROPIC_MODEL\`\\) \\| off \\(\`${TIERS.sonnet.thinking.type}\`\\), effort \`${TIERS.sonnet.effort}\``));
+});
 check('Gemini output cap and thinking levels match', () => {
   const cap = TIERS['gemini-flash'].maxTokens;
   assert.equal(TIERS['gemini-flash-lite'].maxTokens, cap);
   has(new RegExp(`\\*\\*${cap.toLocaleString('en-US')} output tokens\\*\\* per Gemini reply`));
   has(new RegExp(`\\| \\*\\*Gemini 3\\.5 Flash-Lite\\*\\* \\(client default\\) \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash-lite'].thinkingLevel}\``));
-  has(new RegExp(`\\| Gemini 3\\.8 Flash \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash'].thinkingLevel}\``));
+  has(new RegExp(`\\| Gemini 4 Hydrogen \\|[^|]*\\| cannot be disabled; level \`${TIERS['gemini-flash'].thinkingLevel}\``));
+});
+check('the client expects each tier to answer with that tier\'s model', () => {
+  const EXPECTED_MODEL = objectLiteral(html, 'EXPECTED_MODEL');
+  for (const [key, tier] of Object.entries(TIERS)) assert.equal(EXPECTED_MODEL[key], tier.model, key);
+});
+check('picker labels quote the factor ratios against the Sonnet tier', () => {
+  const sonnet = MODEL_ENERGY[TIERS.sonnet.model].factor;
+  const haiku = MODEL_ENERGY[TIERS.haiku.model].factor / sonnet;
+  const opus = MODEL_ENERGY[TIERS.opus.model].factor / sonnet;
+  assert.match(html, /<option value="haiku">Haiku 5\.5, two-thirds the energy<\/option>/);
+  assert.ok(haiku > 0.62 && haiku < 0.71, `Haiku/Sonnet is ${haiku.toFixed(3)}, not about two-thirds`);
+  assert.match(html, /<option value="opus">Opus 5\.5, 1\.7×, always thinks<\/option>/);
+  assert.equal(opus.toFixed(1), '1.7');
+  has(new RegExp(`Haiku 5\\.5 is about two-thirds of it \\(${MODEL_ENERGY[TIERS.haiku.model].factor} / ${sonnet}\\), Opus 5\\.5 about 1\\.7 times \\(${MODEL_ENERGY[TIERS.opus.model].factor} / ${sonnet}\\)`));
 });
 check('client default tier is documented', () => {
   const tier = html.match(/tier: '([\w-]+)',\s+\/\/ what we asked for/)[1];
@@ -101,11 +131,12 @@ check('client default tier is documented', () => {
 
 console.log('\nModel factors');
 const factorRows = {
-  'claude-haiku-4-5':      /Claude Haiku 4\.5 \|[^|]*\| ([\d.]+) \|/,
-  'claude-sonnet-4-6':     /Claude Sonnet 4\.6 \|[^|]*\| ([\d.]+) \|/,
-  'claude-opus-4-8':       /Claude Opus 4\.6 \/ 4\.7 \/ 4\.8 \|[^|]*\| ([\d.]+) \|/,
-  'gemini-3.8-flash':      /Gemini 3\.8 Flash \|[^|]*\| ([\d.]+) \|/,
-  'gemini-3.5-flash-lite': /Gemini 3\.5 Flash-Lite \|[^|]*\| ([\d.]+) \|/,
+  'claude-haiku-5-5':      /\| Claude Haiku 5\.5 \|[^|]*\| ([\d.]+) \| derived/,
+  'claude-sonnet-5-5':     /\| Claude Sonnet 5\.5 \|[^|]*\| ([\d.]+) \| derived/,
+  'claude-opus-5-5':       /\| Claude Opus 5\.5 \|[^|]*\| ([\d.]+) \| derived/,
+  'gemini-3.5-flash-lite': /\| Gemini 3\.5 Flash-Lite \|[^|]*\| ([\d.]+) \| derived/,
+  'gemini-4-hydrogen':     /\| Gemini 4 Hydrogen \|[^|]*\| ([\d.]+) \| derived/,
+  'claude-sonnet-4-6':     /\| Claude Sonnet 4\.6 \|[^|]*\| ([\d.]+) \| anchor/,
 };
 for (const [id, re] of Object.entries(factorRows)) {
   check(`${id} factor matches`, () => {
@@ -115,6 +146,27 @@ for (const [id, re] of Object.entries(factorRows)) {
   });
 }
 
+
+check('the 4.4 full-model table reproduces from tools/model-factors.mjs', () => {
+  const rows = {
+    'Claude Haiku 5.5': 'claude-haiku-5-5', 'Gemini 4 Hydrogen': 'gemini-4-hydrogen',
+    'Claude Sonnet 5.5': 'claude-sonnet-5-5', 'Gemini 3.5 Flash-Lite': 'gemini-3.5-flash-lite',
+    'Claude Sonnet 4.6 \\(anchor\\)': 'claude-sonnet-4-6', 'Claude Opus 5.5': 'claude-opus-5-5',
+  };
+  for (const [label, id] of Object.entries(rows)) {
+    const r = fullModel(id);
+    has(new RegExp(`\\| ${label} \\| ${MODEL_ENERGY[id].factor.toFixed(2)} \\| ${r.lo.toFixed(2)}–${r.hi.toFixed(2)} \\|`), `full-model row for ${id}`);
+  }
+});
+check('the 4.3 power-per-reply figures reproduce from the factors and registry throughputs', () => {
+  const reg = registry();
+  for (const [id, name] of [['claude-haiku-5-5', 'Haiku 5.5'], ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-opus-5-5', 'Opus 5.5'],
+                            ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'], ['gemini-4-hydrogen', 'Gemini 4 Hydrogen']]) {
+    const j = MODEL_ENERGY[id].factor * MODEL.whPerOutputToken * 1000 * MODEL.pue * 3.6;
+    const w = Math.round(j * reg[id].tps);
+    has(new RegExp(`${w} W for ${name.replace(/\./g, '\\.')} \\(${j.toFixed(2)}`), `${name}: ${w} W from ${j.toFixed(2)} J/token`);
+  }
+});
 
 console.log('\nDevice table');
 const deviceRows = [
@@ -258,7 +310,7 @@ console.log('\nWorked example (METHODOLOGY 3)');
   const row = (label, value) => assert.ok(sect.includes(value),
     `worked example: ${label} should read ${value}`);
   const f = (n, d = 3) => n.toFixed(d);
-  const factor = MODEL_ENERGY['claude-opus-4-8'].factor;
+  const factor = MODEL_ENERGY['claude-opus-5-5'].factor;
   const laptopW = DEVICE_BASE.laptop + PANELS.lcdLaptop.light;
   const chicago = US_SUB.RFCW;
   const inf = (1000 * MODEL.whPerInputToken + 5000 * MODEL.whPerOutputToken) * factor * MODEL.pue;
@@ -269,7 +321,8 @@ console.log('\nWorked example (METHODOLOGY 3)');
   const central = g(chicago);
   const us = WATER_GRIDS.US, rfcw = WATER_US_SUB.RFCW;
   check('inputs are the ones the table names', () => {
-    assert.equal(factor, 1.33); assert.equal(laptopW, 10); assert.equal(chicago, 416);
+    assert.equal(factor, 1.34); assert.equal(laptopW, 10); assert.equal(chicago, 416);
+    has(/Inputs: Claude Opus 5\.5 \(×1\.34, §4\.4\)/);
     assert.equal(GRIDS.NO.g, 30); assert.equal(GRIDS.ZA.g, 718);
     assert.equal(MODEL.serverGridGPerKwh, 307); assert.equal(MODEL.inferenceHighFactor, 2.7);
     assert.match(html, /\['Illinois — northern \(Chicago\)','RFCW'\]/);

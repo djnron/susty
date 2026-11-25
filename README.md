@@ -2,7 +2,7 @@
 
 A sustainability chatbot that estimates the operational carbon, and separately the water, of its own conversation. The meter shows the running total for the conversation, and the number of answers beneath it. The average per answer (g CO2e per completed exchange, the functional unit) is in the ledger.
 
-**Version 2.1.3** (11 October 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
+**Version 2.2.0** (25 November 2026). What changed, and when: [CHANGELOG.md](CHANGELOG.md). Releases are tagged in git (`v2.1.0`, `v2.0.0`), so any version can be redeployed. `v1.0.0` (commit `b1df3e2`) predates tagging and is not tagged.
 
 No build step, no framework, no dependencies.
 
@@ -15,7 +15,7 @@ server.js             plain Node server, same logic, for local dev or a VPS
 og.png, favicon.png,
 apple-touch-icon.png  share card and icons, generated — see Tools
 tools/                dev-only: not uploaded to Vercel (.vercelignore)
-data/                 source data behind the water figures, with provenance (also not uploaded)
+data/                 source data behind the water figures and model factors, with provenance (also not uploaded)
 ```
 
 - [METHODOLOGY.md](METHODOLOGY.md) — every constant, source, and acknowledged
@@ -108,8 +108,9 @@ The endpoint spends your money, so treat it accordingly.
 | Model tiers offered in the ledger | `TIERS` in `api/chat.js` |
 | What a fresh visitor's picker starts on | `tier:` in the `state` object in `index.html` |
 | The fallback a request degrades to if a tier is unrecognised, gated, or its provider is unconfigured — must stay a provider that's always configured | `DEFAULT_TIER` in `api/chat.js` |
-| Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-4-6` |
+| Anthropic's own default tier's model | `ANTHROPIC_MODEL` env var, or `TIERS.sonnet` in `api/chat.js`, defaults to `claude-sonnet-5-5`; the thinking settings follow the model (`minimalThinking()`) |
 | Carbon coefficients | `MODEL` object near the top of the inline script in `index.html` |
+| Model factors | never by hand: edit `data/ecologits-2026-11-19-models.csv` (or add a newer registry extract), update `MODEL_ENERGY` in `index.html`, and `node tools/model-factors.mjs --check` |
 | Water tables | never by hand: edit `data/`, then `node tools/water-factors.mjs --write` |
 | Device power and panel types | `DEVICE_BASE` and `PANELS` in `index.html` |
 | How long attention is assumed to last | `GRACE` in `index.html` |
@@ -130,7 +131,8 @@ sh tools/test.sh               # everything below, in one go — run before push
 
 node tools/contrast.mjs        # every colour pair against its WCAG threshold
 node tools/clock.test.mjs      # attended-time clock, device table, model factors
-node tools/tiers.test.mjs      # model-tier mapping and its off switches
+node tools/tiers.test.mjs      # model-tier mapping, per-model thinking settings, off switches
+node tools/model-factors.mjs --check   # model factors match data/ (prints EcoLogits' full model too)
 node tools/water.test.mjs      # water: transcription, cross-check, tables, accrual
 node tools/water-factors.mjs --check   # water tables match data/ (--write to regenerate)
 sh tools/make-brand-assets.sh  # regenerate og.png, favicon.png, apple-touch-icon.png
@@ -195,9 +197,13 @@ Declared rather than fixed, and all in METHODOLOGY:
   The ledger therefore shows the chat as a range: the high end puts AI energy
   at the upper quartile of Oviedo et al.'s estimates, about 2.7× Susty's
   (METHODOLOGY §4.8). It is one published scenario, not a statistical interval.
-- **Gemini always thinks.** Thinking cannot be switched off on Gemini 3, so
-  every Gemini reply carries some reasoning tokens. They are measured and
-  priced; the default, Flash-Lite, runs at the lowest level Google offers.
+- **Gemini and Opus always think.** Thinking cannot be switched off on
+  Gemini 3.5 Flash-Lite, Gemini 4 Hydrogen or Claude Opus 5.5, so every reply
+  from them carries some reasoning tokens. They are measured and priced; each
+  runs at the lowest level its provider offers (`minimal`, `low`, effort `low`).
+- **Model sizes are estimates.** Neither provider discloses parameter counts;
+  the factors use EcoLogits' estimates, and the one for Gemini 4 Hydrogen is
+  the least certain (METHODOLOGY §4.4).
 - **History is browser-local.** Saved chats live in one browser's storage and
   are gone if it is cleared; nothing is sent anywhere (METHODOLOGY §8.1).
 - **Water figures err high** (cooling towers everywhere, all water, a proxy WUE),
@@ -210,6 +216,9 @@ Declared rather than fixed, and all in METHODOLOGY:
 - **The extended-thinking tier costs real money on your key.** A visitor can
   pick it and raise an exchange several times over, against a rate limit that
   resets on cold start. Set `SUSTY_EXPENSIVE_TIERS=off` to drop it from the
-  menu, or `SUSTY_TIERS=off` to collapse every request to the default.
+  menu, or `SUSTY_TIERS=off` to collapse every request to the default. The
+  plain Opus tier now thinks a little too (Opus 5.5 cannot switch it off),
+  within a 2,000-token ceiling; the first switch does not drop it, the second
+  does.
 
 The ledger keeps both the normalized functional unit and the cumulative session total visible. Everyday comparisons continue to use the session total, not the per-exchange average.

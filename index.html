@@ -1065,12 +1065,12 @@ textarea, input { caret-color: var(--ink); }
     <div class="pick">
       <label for="tier">Answer with</label>
       <select id="tier">
-        <option value="haiku">Haiku 4.5, about half the energy</option>
-        <option value="sonnet">Sonnet 4.6</option>
-        <option value="opus">Opus 4.8, about a third more</option>
-        <option value="opus-thinking">Opus 4.8, extended thinking: several times more</option>
+        <option value="haiku">Haiku 5.5, two-thirds the energy</option>
+        <option value="sonnet">Sonnet 5.5</option>
+        <option value="opus">Opus 5.5, 1.7×, always thinks</option>
+        <option value="opus-thinking">Opus 5.5, extended thinking: can cost several times more</option>
         <option value="gemini-flash-lite" selected>Gemini 3.5 Flash-Lite (default)</option>
-        <option value="gemini-flash">Gemini 3.8 Flash</option>
+        <option value="gemini-flash">Gemini 4 Hydrogen</option>
       </select>
     </div>
     <div class="pick">
@@ -1092,7 +1092,7 @@ textarea, input { caret-color: var(--ink); }
     <h3>The latest answer on other models</h3>
     <p class="note" id="compareEmpty">Appears after the first answer.</p>
     <table class="rows" id="compareTable" hidden><tbody id="compareRows"></tbody></table>
-    <p class="note" id="compareNote" hidden>Hypothetical: this answer's tokens priced on each model. Leaves out thinking (Gemini always thinks, so its real cost is higher), hosting and your device. The real gap between small and large models is probably bigger. Says nothing about answer quality.</p>
+    <p class="note" id="compareNote" hidden>Hypothetical: this answer's tokens priced on each model. Leaves out thinking (Gemini and Opus always think, so their real cost is higher), hosting and your device. The real gap between small and large models is probably bigger. Says nothing about answer quality.</p>
   </div>
 
   <div class="sect">
@@ -1232,23 +1232,35 @@ textarea, input { caret-color: var(--ink); }
 // — the parameter counts are inferred, not disclosed. Factors are therefore
 // rounded to two places and treated as a spread, not a precision.
 //
-// Gemini, from EcoLogits' models.json (checked 2026-09-23):
-//   gemini-3.8-flash       MoE, 75-200B active  -> 137.5B midpoint -> ×1.36
-//   gemini-3.5-flash-lite  dense, 30-105B       -> 67.5B midpoint  -> ×0.85
-// Both always think (it cannot be switched off on Gemini 3); those tokens are
-// measured through thoughtsTokenCount and priced as output, not folded in here.
+// Never by hand: the architectures are in data/ecologits-2026-11-19-models.csv
+// (EcoLogits' registry of 19 November 2026), and `node tools/model-factors.mjs
+// --check` fails if a factor here disagrees with them.
+//
+// The anchor stays Sonnet 4.6, though the picker now offers Sonnet 5.5: the
+// absolute coefficients and the high end (MODEL.inferenceHighFactor) are
+// calibrated on it. Models no longer offered stay in the table because the
+// API still serves them and ANTHROPIC_MODEL can point the default tier at one.
+// Thinking tokens are not folded into a factor: they are measured and priced
+// as output, whichever model produces them.
 const MODEL_ENERGY = {
-  'claude-haiku-4-5':      { factor: 0.52, thinks: false },
-  'claude-sonnet-4-6':     { factor: 1.00, thinks: false },   // the anchor
-  'claude-opus-4-6':       { factor: 1.33, thinks: true  },
-  'claude-opus-4-7':       { factor: 1.33, thinks: true  },
-  'claude-opus-4-8':       { factor: 1.33, thinks: true  },
-  'gemini-3.8-flash':      { factor: 1.36, thinks: true  },
-  'gemini-3.5-flash-lite': { factor: 0.85, thinks: true  }
+  // Offered (api/chat.js TIERS)
+  'claude-haiku-5-5':      { factor: 0.52 },   // dense 10-35B
+  'claude-sonnet-5-5':     { factor: 0.79 },   // MoE 29-88B active
+  'claude-opus-5-5':       { factor: 1.34 },   // MoE 70-200B active
+  'gemini-3.5-flash-lite': { factor: 0.85 },   // dense 30-105B
+  'gemini-4-hydrogen':     { factor: 0.66 },   // MoE 18.75-62.5B active
+  // The anchor, and other models the API still serves
+  'claude-sonnet-4-6':     { factor: 1.00 },   // the anchor
+  'claude-haiku-4-5':      { factor: 0.52 },
+  'claude-sonnet-5':       { factor: 0.79 },
+  'claude-opus-4-6':       { factor: 1.33 },
+  'claude-opus-4-7':       { factor: 1.33 },
+  'claude-opus-4-8':       { factor: 1.33 },
+  'claude-opus-5':         { factor: 1.33 },
+  'claude-fable-5-2':      { factor: 1.91 },
+  'gemini-3.8-flash':      { factor: 1.36 }
 };
-// Unknown or newer models fall back to the anchor rather than guessing. The
-// Claude 5-series is deliberately absent: EcoLogits has no architecture
-// estimate for it, so a factor would be invention.
+// Unknown or newer models fall back to the anchor rather than guessing.
 // Longest-prefix match, because the API answers with dated ids: ask for
 // claude-haiku-4-5 and message_start reports claude-haiku-4-5-20251001. An
 // exact lookup missed that and billed Haiku at the Sonnet anchor.
@@ -1634,7 +1646,7 @@ const BURGER_G = 3800;
 
 // Carried on every record and history entry, so a figure priced under an
 // older methodology is labeled with it and never repriced.
-const METHODOLOGY_VERSION = '2.1.3';
+const METHODOLOGY_VERSION = '2.2.0';
 
 const ENDPOINT = '/api/chat';
 // The system prompt is billed as input on every turn but never appears in
@@ -1644,7 +1656,7 @@ const SYSTEM_TOKENS = 275;
 const state = {
   inTokens: 0, outTokens: 0, history: [], busy: false,
   screen: 'lcdLaptop',
-  model: 'claude-sonnet-4-6',   // replaced by whatever message_start reports
+  model: 'claude-sonnet-5-5',   // replaced by whatever message_start reports
   tier: 'gemini-flash-lite',    // what we asked for; the server may override
   thinkTokens: 0,               // measured subset of outTokens
   freshChatNudged: false,       // the long-chat notice shows once per session
@@ -1835,16 +1847,16 @@ function freshChatNudge(requests, alreadyShown) {
 // "What this answer would have cost on other models": hypothetical, so it is
 // computed for display and never written to state.requests. Same frozen
 // input tokens and visible output tokens (thinking left out: it varies by
-// model and Gemini always adds some), priced with each model's factor at the
+// model, and Gemini and Opus 5.5 always add some), priced with each model's factor at the
 // record's frozen server grid. Hosting and device are identical whichever
 // model answers, so they are left out. Opus with extended thinking is not a
 // separate row: its cost is its thinking, which cannot be known in advance.
 const COMPARE_MODELS = [
-  ['claude-haiku-4-5',      'Haiku 4.5'],
-  ['claude-sonnet-4-6',     'Sonnet 4.6'],
-  ['claude-opus-4-8',       'Opus 4.8'],
+  ['claude-haiku-5-5',      'Haiku 5.5'],
+  ['claude-sonnet-5-5',     'Sonnet 5.5'],
+  ['claude-opus-5-5',       'Opus 5.5'],
   ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'],
-  ['gemini-3.8-flash',      'Gemini 3.8 Flash']
+  ['gemini-4-hydrogen',     'Gemini 4 Hydrogen']
 ];
 function modelComparison(r) {
   const visibleOut = Math.max(0, (r.outTok || 0) - (r.thinkTok || 0));
@@ -2592,9 +2604,9 @@ const DEFAULT_TIER = 'sonnet';
 // the ledger's "answered by" already disambiguates them by whichever tier
 // key was actually requested, so this map only needs to catch a fallback.
 const EXPECTED_MODEL = {
-  haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-4-6',
-  opus: 'claude-opus-4-8', 'opus-thinking': 'claude-opus-4-8',
-  'gemini-flash': 'gemini-3.8-flash', 'gemini-flash-lite': 'gemini-3.5-flash-lite'
+  haiku: 'claude-haiku-5-5', sonnet: 'claude-sonnet-5-5',
+  opus: 'claude-opus-5-5', 'opus-thinking': 'claude-opus-5-5',
+  'gemini-flash': 'gemini-4-hydrogen', 'gemini-flash-lite': 'gemini-3.5-flash-lite'
 };
 // resolveTier() only ever falls back to one place — the default tier — when
 // a tier is unrecognised, gated, or its provider isn't configured. So a

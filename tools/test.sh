@@ -5,6 +5,10 @@
 set -e
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
+# The checks describe the default deployment. An ANTHROPIC_MODEL exported in
+# the shell (an existing override, say) would change TIERS.sonnet under them,
+# so it is cleared here and set only for the override runs below.
+unset ANTHROPIC_MODEL
 
 echo "== contrast =========================================================="
 node tools/contrast.mjs
@@ -14,6 +18,9 @@ node tools/clock.test.mjs
 
 echo "\n== completed-exchange functional unit ================================"
 node tools/completed-exchange.test.mjs
+
+echo "\n== model factors: index.html matches data/ ==========================="
+node tools/model-factors.mjs --check
 
 echo "\n== water: data, generated tables, accrual ==========================="
 node tools/water-factors.mjs --check
@@ -31,6 +38,10 @@ echo "\n== model tiers: expensive gated ======================================"
 SUSTY_EXPENSIVE_TIERS=off node tools/tiers.test.mjs
 echo "\n== model tiers: all collapsed ========================================"
 SUSTY_TIERS=off node tools/tiers.test.mjs
+echo "\n== model tiers: an existing ANTHROPIC_MODEL override ================="
+ANTHROPIC_MODEL=claude-sonnet-4-6 node tools/tiers.test.mjs
+echo "\n== model tiers: ANTHROPIC_MODEL on a model that always thinks ========"
+ANTHROPIC_MODEL=claude-opus-5-5 node tools/tiers.test.mjs
 
 echo "\n== syntax ============================================================"
 node --check server.js && echo "server.js ok"

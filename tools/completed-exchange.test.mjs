@@ -237,9 +237,9 @@ console.log('\nThe latest answer on other models');
 {
   const MODEL = { whPerInputToken: 0.00005, whPerOutputToken: 0.0005, pue: 1.12 };
   const MODEL_ENERGY = {
-    'claude-haiku-4-5': { factor: 0.52 }, 'claude-sonnet-4-6': { factor: 1.00 },
-    'claude-opus-4-8': { factor: 1.33 }, 'gemini-3.5-flash-lite': { factor: 0.85 },
-    'gemini-3.8-flash': { factor: 1.36 },
+    'claude-haiku-5-5': { factor: 0.52 }, 'claude-sonnet-5-5': { factor: 0.79 },
+    'claude-opus-5-5': { factor: 1.34 }, 'gemini-3.5-flash-lite': { factor: 0.85 },
+    'gemini-4-hydrogen': { factor: 0.66 },
   };
   const constStart = html.indexOf('const COMPARE_MODELS = [');
   const constEnd = html.indexOf('];', constStart) + 2;
@@ -267,8 +267,11 @@ console.log('\nThe latest answer on other models');
   });
   check('the model that answered is marked, by longest prefix of a dated id', () => {
     assert.deepEqual(rows.filter(r => r.answered).map(r => r.id), ['gemini-3.5-flash-lite']);
-    const dated = local(context.compare({ ...rec, model: 'claude-haiku-4-5-20251001' }));
-    assert.deepEqual(dated.filter(r => r.answered).map(r => r.id), ['claude-haiku-4-5']);
+    const dated = local(context.compare({ ...rec, model: 'claude-haiku-5-5-20261101' }));
+    assert.deepEqual(dated.filter(r => r.answered).map(r => r.id), ['claude-haiku-5-5']);
+    // A model the comparison does not offer marks no row rather than a wrong one.
+    const old = local(context.compare({ ...rec, model: 'claude-sonnet-4-6' }));
+    assert.deepEqual(old.filter(r => r.answered), []);
   });
   check('hypothetical only: nothing is written to the request records', () => {
     assert.doesNotMatch(extractNamedFunction(html, 'modelComparison'), /state\.|recordRequest/);

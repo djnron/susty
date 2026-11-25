@@ -8,14 +8,21 @@
 // once a third provider makes one worth having.
 //
 // Verified against ai.google.dev/api/generate-content and
-// ai.google.dev/gemini-api/docs/generate-content/thinking on 2026-09-15:
-//   - streamGenerateContent, ?alt=sse, auth via the x-goog-api-key header
+// ai.google.dev/gemini-api/docs/generate-content/thinking on 2026-09-15, and
+// re-checked on 2026-11-25 at aistudio.google.com/api-reference/generate-content
+// and aistudio.google.com/docs/thinking (the ai.google.dev pages now redirect
+// there):
+//   - streamGenerateContent, ?alt=sse, auth via the x-goog-api-key header.
+//     Google now labels generateContent "legacy" and recommends its
+//     Interactions API for new projects; no deprecation or shutdown date is
+//     given, so this adapter stays on the endpoint it was verified against.
 //   - candidatesTokenCount EXCLUDES thoughtsTokenCount — totalTokenCount is
-//     documented as "prompt + thoughts + response candidates", i.e. additive.
-//     Do not add thoughtsTokenCount into the output count again downstream.
-//   - Gemini 3 Flash and Flash-Lite cannot fully disable thinking. Each tier
-//     sends the lowest level its model accepts: "low" for gemini-3.8-flash,
-//     "minimal" for gemini-3.5-flash-lite (re-checked 2026-09-23).
+//     documented as "prompt + tool-use prompt + thoughts + response
+//     candidates", i.e. additive. Do not add thoughtsTokenCount into the
+//     output count again downstream.
+//   - Neither tier can disable thinking. Each sends the lowest level its
+//     model accepts: "low" for gemini-4-hydrogen (it rejects "minimal" with
+//     an error), "minimal" for gemini-3.5-flash-lite.
 //   - maxOutputTokens includes thought tokens and is a hard cutoff; hitting it
 //     ends the stream with finishReason MAX_TOKENS, which the client records
 //     as an incomplete attempt.
